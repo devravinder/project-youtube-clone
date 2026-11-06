@@ -53,4 +53,4 @@ See `git-commit-convention` for the per-task rule (commit after every task, unde
 
 - Keep hooks enabled; do not `--no-verify` unless explicitly required.
 - On Windows, Gradle hook commands use `gradlew.bat`.
-- Tooling packages resolve via the org registry (`.npmrc`).
+- Tooling packages resolve via the org registry (developer's npm settings; not committed).

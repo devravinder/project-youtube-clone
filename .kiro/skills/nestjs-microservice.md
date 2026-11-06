@@ -58,7 +58,8 @@ Match the pattern to the service, not the other way round (see `ADR-011`):
 | Linting | spotless/compiler | oxlint / ESLint |
 | Git hooks | Husky + lint-staged + commitlint | Husky + lint-staged + commitlint (same) |
 
-All packages resolve via the org registry (configured in `.npmrc`; not documented here).
+All packages resolve via the org registry (configured in the developer's npm settings; not
+committed to the repo).
 
 ## Structure — layered MVC (CRUD service)
 
@@ -138,4 +139,4 @@ export interface StoragePort {
 - Native `fetch` for outbound HTTP (no axios unless needed).
 - Structured logging + OpenTelemetry (see `observability-otel`).
 - Idempotent queue consumers (see `messaging-patterns`).
-- Internal packages resolve via the org registry (configured in `.npmrc`).
+- Internal packages resolve via the org registry (developer's npm settings; not committed).

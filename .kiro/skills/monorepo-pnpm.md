@@ -68,7 +68,7 @@ logs:l
 ## Rules
 
 - No Nx. Reach for pnpm filters (`pnpm --filter <app> ...`) and plain scripts.
-- Internal npm packages resolve via the org registry (configured in `.npmrc`).
+- Internal npm packages resolve via the org registry (developer's npm settings; not committed).
 - Each service is independently buildable and runnable; contracts are the only shared
   coupling between languages (events/REST), never shared runtime code across Node↔Java.
 - One Dockerfile per app; multi-stage builds.
