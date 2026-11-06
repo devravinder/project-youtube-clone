@@ -18,13 +18,13 @@ Scripts follow `start|stop:env:service`:
 
 ## What runs today
 
-| Capability | How | Status |
-|------------|-----|--------|
-| Local infra (Postgres + MinIO) | `pnpm start:l:pods` | ✅ available |
-| Upload service (NestJS) | — | ⏳ not built yet |
-| Web UI (React) | — | ⏳ not built yet |
-| Transcoder (Spring Boot) | — | ⏳ not built yet |
-| Observability (otel-lgtm) | `pnpm start:lo:pods` | ⏳ compose file not added yet |
+| Capability                     | How                  | Status                        |
+| ------------------------------ | -------------------- | ----------------------------- |
+| Local infra (Postgres + MinIO) | `pnpm start:l:pods`  | ✅ available                  |
+| Upload service (NestJS)        | —                    | ⏳ not built yet              |
+| Web UI (React)                 | —                    | ⏳ not built yet              |
+| Transcoder (Spring Boot)       | —                    | ⏳ not built yet              |
+| Observability (otel-lgtm)      | `pnpm start:lo:pods` | ⏳ compose file not added yet |
 
 ## 1. Install dependencies
 
@@ -54,11 +54,11 @@ pnpm logs:l
 
 ## Local service URLs & credentials
 
-| Service | URL | Credentials |
-|---------|-----|-------------|
-| Postgres | `localhost:5432` | user `yt` / password `yt_password` / db `youtube_clone` |
-| MinIO S3 API | <http://localhost:9000> | `minioadmin` / `minioadmin` |
-| MinIO Console | <http://localhost:9001> | `minioadmin` / `minioadmin` |
+| Service       | URL                     | Credentials                                             |
+| ------------- | ----------------------- | ------------------------------------------------------- |
+| Postgres      | `localhost:5432`        | user `yt` / password `yt_password` / db `youtube_clone` |
+| MinIO S3 API  | <http://localhost:9000> | `minioadmin` / `minioadmin`                             |
+| MinIO Console | <http://localhost:9001> | `minioadmin` / `minioadmin`                             |
 
 > Credentials are local dev defaults only — never use them outside local.
 
@@ -71,8 +71,8 @@ pnpm format:md   # auto-fix
 
 ## Troubleshooting
 
-| Issue | Fix |
-|-------|-----|
+| Issue                       | Fix                                                                                                        |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | `port is already allocated` | Another service uses 5432/9000/9001. Stop it or change the host port in `infra/docker-compose-local.yaml`. |
-| MinIO buckets missing | Check the `yt-minio-setup` container logs: `pnpm logs:l`. It runs once then exits — that is expected. |
-| `docker compose` not found | Docker Desktop not running, or old Docker without Compose v2. |
+| MinIO buckets missing       | Check the `yt-minio-setup` container logs: `pnpm logs:l`. It runs once then exits — that is expected.      |
+| `docker compose` not found  | Docker Desktop not running, or old Docker without Compose v2.                                              |

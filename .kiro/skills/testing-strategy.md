@@ -10,15 +10,15 @@ advanced-starter. Fast tests run on build; slow/integration tests run on demand.
 
 ## Pyramid
 
-| Layer | Node | Java |
-|-------|------|------|
-| Unit | Jest (services) / Vitest (frontend) + Testing Library | JUnit 5 + Mockito |
-| Component / controller | supertest against Nest app | MockMvc + Spring Security Test (`jwt()`) |
-| Architecture rules | dependency-cruiser | ArchUnit |
-| Integration / API | supertest against running app (tagged) | Java `HttpClient`, `@Tag("api-test")` |
-| E2E (browser) | Playwright | — |
-| Load / performance | k6 | k6 |
-| Coverage gate | Vitest/Jest threshold | JaCoCo (75% min) |
+| Layer                  | Node                                                  | Java                                     |
+| ---------------------- | ----------------------------------------------------- | ---------------------------------------- |
+| Unit                   | Jest (services) / Vitest (frontend) + Testing Library | JUnit 5 + Mockito                        |
+| Component / controller | supertest against Nest app                            | MockMvc + Spring Security Test (`jwt()`) |
+| Architecture rules     | dependency-cruiser                                    | ArchUnit                                 |
+| Integration / API      | supertest against running app (tagged)                | Java `HttpClient`, `@Tag("api-test")`    |
+| E2E (browser)          | Playwright                                            | —                                        |
+| Load / performance     | k6                                                    | k6                                       |
+| Coverage gate          | Vitest/Jest threshold                                 | JaCoCo (75% min)                         |
 
 ## Rules
 
@@ -44,7 +44,7 @@ advanced-starter. Fast tests run on build; slow/integration tests run on demand.
 
 ## Commands (convention)
 
-```
+```bash
 # Node
 pnpm --filter <app> test           # unit
 pnpm --filter <app> test:e2e       # Playwright

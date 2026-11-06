@@ -23,6 +23,7 @@ Write a Product Requirements Document (PRD) in Markdown with exactly these secti
 9. Open Questions
 
 Rules:
+
 - Do not include technical details, architecture, or tech stack.
 - Do not write detailed requirements, user stories, or acceptance criteria yet.
 - Do not invent features that are not in the summary. If something is unclear or missing, put it under Open Questions instead of guessing.
@@ -42,10 +43,12 @@ Rules:
 <What is broken today and why existing options do not solve it.>
 
 **Target users**
+
 - <User type 1: who they are and what they want>
 - <User type 2: who they are and what they want>
 
 **MVP scope**
+
 - <Feature 1>
 - <Feature 2>
 - <Feature 3>
@@ -79,11 +82,13 @@ that must react to things that already happened. A learner needs one coherent pr
 where each hard concept appears naturally and can be built, observed, broken, and fixed.
 
 **Target users**
+
 - Learner / Builder: builds each layer to understand system design and its trade-offs.
 - Creator (in-product): uploads videos and expects them to become watchable and discoverable.
 - Viewer (in-product): browses, searches, watches, and is notified about new content.
 
 **MVP scope**
+
 - Upload a video and have it processed into a smoothly playable form.
 - Watch videos with quality that adapts to the connection.
 - Browse public videos.

@@ -12,7 +12,7 @@ has no open-source substitute worth learning. We learn the real mechanics, not m
 
 ## The journey of a video (mental model)
 
-```
+```text
 Upload → Store raw → Transcode (async) → Store HLS → Serve via edge/CDN → Stream (ABR)
                           │ emits "video.ready" event
                           ├────────────► Index into search
@@ -26,37 +26,37 @@ decoupling stages with events — is the highest-leverage lesson in the whole pr
 
 ## Concept map
 
-| # | Concept | Where it appears | Why it matters | OSS tool that teaches it |
-|---|---------|------------------|----------------|--------------------------|
-| 1 | Object storage | Store raw + processed video | Blobs do not belong in a DB; learn buckets, keys, lifecycle | **MinIO** (S3-API compatible) |
-| 2 | Resumable / multipart upload | Upload large files | A 2GB upload cannot be one POST | MinIO multipart |
-| 3 | Presigned URLs | Client uploads direct to storage | Keep bytes out of the app server; scalability pattern | MinIO presigned |
-| 4 | Asynchronous processing | Transcoding after upload | Slow work must not block the request | **RabbitMQ** (command queue) |
-| 5 | Work queue semantics | Transcode jobs | Acks, retries, DLQ, prefetch/back-pressure | **RabbitMQ** |
-| 6 | Event log / pub-sub | "video.ready" fan-out | One event, many consumers, replayable | **Apache Kafka** (or Redpanda) |
-| 7 | Transactional outbox | DB write + publish event atomically | Avoid the dual-write problem | Postgres outbox + relay |
-| 8 | Idempotency | Any queue consumer | Queues are at-least-once; dedupe is mandatory | RabbitMQ + Kafka consumers |
-| 9 | Adaptive bitrate streaming | Playback | Player picks quality by bandwidth | **ffmpeg** (HLS) + hls.js |
-| 10 | Transcoding | Upload → playable | CPU-heavy multi-resolution conversion | **ffmpeg** |
-| 11 | CDN / edge caching | Serving segments | Cache near users; invalidation; byte-range | **nginx** |
-| 12 | Full-text search | Search videos | Inverted index, relevance, analyzers vs SQL LIKE | **Elasticsearch** |
-| 13 | Search sync | Keep index fresh | Denormalize from source of truth via events | Kafka → ES indexer |
-| 14 | Caching | Hot metadata, view counts | Cache-aside, TTL, invalidation | **Redis** |
-| 15 | Relational modeling | Video/channel/user metadata | Source of truth, indexing, constraints | **PostgreSQL** |
-| 16 | Eventual consistency | View/subscriber counts | Not everything needs to be instant | Redis + Postgres |
-| 17 | Authentication / OIDC | Who can upload/watch | Standard OAuth2/OIDC, JWT, roles | **Keycloak** |
-| 18 | Real-time notifications | "Your video is ready" | WebSockets + event consumer | Kafka consumer + WebSocket |
-| 19 | Back-pressure & autoscaling | Workers under load | Scale consumers by queue depth | **kind + Helm + HPA** |
-| 20 | Observability | Everything | Trace one request across services | **grafana/otel-lgtm** (OTLP) |
-| 21 | Load testing | Prove scale behavior | Reproduce spikes, watch autoscaling | **k6** |
-| 22 | Ports & adapters | Every external dependency | Swap local↔cloud by config, not rewrite | hexagonal architecture |
-| 23 | Polyglot microservices | Node + Java services | Language-agnostic contracts (events/REST) | NestJS + Spring Boot |
+| #   | Concept                      | Where it appears                    | Why it matters                                              | OSS tool that teaches it       |
+| --- | ---------------------------- | ----------------------------------- | ----------------------------------------------------------- | ------------------------------ |
+| 1   | Object storage               | Store raw + processed video         | Blobs do not belong in a DB; learn buckets, keys, lifecycle | **MinIO** (S3-API compatible)  |
+| 2   | Resumable / multipart upload | Upload large files                  | A 2GB upload cannot be one POST                             | MinIO multipart                |
+| 3   | Presigned URLs               | Client uploads direct to storage    | Keep bytes out of the app server; scalability pattern       | MinIO presigned                |
+| 4   | Asynchronous processing      | Transcoding after upload            | Slow work must not block the request                        | **RabbitMQ** (command queue)   |
+| 5   | Work queue semantics         | Transcode jobs                      | Acks, retries, DLQ, prefetch/back-pressure                  | **RabbitMQ**                   |
+| 6   | Event log / pub-sub          | "video.ready" fan-out               | One event, many consumers, replayable                       | **Apache Kafka** (or Redpanda) |
+| 7   | Transactional outbox         | DB write + publish event atomically | Avoid the dual-write problem                                | Postgres outbox + relay        |
+| 8   | Idempotency                  | Any queue consumer                  | Queues are at-least-once; dedupe is mandatory               | RabbitMQ + Kafka consumers     |
+| 9   | Adaptive bitrate streaming   | Playback                            | Player picks quality by bandwidth                           | **ffmpeg** (HLS) + hls.js      |
+| 10  | Transcoding                  | Upload → playable                   | CPU-heavy multi-resolution conversion                       | **ffmpeg**                     |
+| 11  | CDN / edge caching           | Serving segments                    | Cache near users; invalidation; byte-range                  | **nginx**                      |
+| 12  | Full-text search             | Search videos                       | Inverted index, relevance, analyzers vs SQL LIKE            | **Elasticsearch**              |
+| 13  | Search sync                  | Keep index fresh                    | Denormalize from source of truth via events                 | Kafka → ES indexer             |
+| 14  | Caching                      | Hot metadata, view counts           | Cache-aside, TTL, invalidation                              | **Redis**                      |
+| 15  | Relational modeling          | Video/channel/user metadata         | Source of truth, indexing, constraints                      | **PostgreSQL**                 |
+| 16  | Eventual consistency         | View/subscriber counts              | Not everything needs to be instant                          | Redis + Postgres               |
+| 17  | Authentication / OIDC        | Who can upload/watch                | Standard OAuth2/OIDC, JWT, roles                            | **Keycloak**                   |
+| 18  | Real-time notifications      | "Your video is ready"               | WebSockets + event consumer                                 | Kafka consumer + WebSocket     |
+| 19  | Back-pressure & autoscaling  | Workers under load                  | Scale consumers by queue depth                              | **kind + Helm + HPA**          |
+| 20  | Observability                | Everything                          | Trace one request across services                           | **grafana/otel-lgtm** (OTLP)   |
+| 21  | Load testing                 | Prove scale behavior                | Reproduce spikes, watch autoscaling                         | **k6**                         |
+| 22  | Ports & adapters             | Every external dependency           | Swap local↔cloud by config, not rewrite                     | hexagonal architecture         |
+| 23  | Polyglot microservices       | Node + Java services                | Language-agnostic contracts (events/REST)                   | NestJS + Spring Boot           |
 
 ---
 
 ## Theory & distributed-systems concepts (the named ideas)
 
-The table above is the *practical* map. These are the *named theoretical concepts* behind
+The table above is the _practical_ map. These are the _named theoretical concepts_ behind
 it — the vocabulary to recognize and reason about. Each lists where it shows up in this
 project.
 
@@ -64,93 +64,92 @@ project.
 
 - **CAP theorem** — under a network **P**artition you must choose **C**onsistency or
   **A**vailability. Our metadata (Postgres) leans **CP** (correctness first); our view/
-  subscriber counts lean **AP** (stay available, reconcile later). *Where: counts vs. the
-  video record.*
+  subscriber counts lean **AP** (stay available, reconcile later). _Where: counts vs. the
+  video record._
 - **PACELC** — the extension of CAP: **E**lse (no partition) you trade **L**atency vs.
-  **C**onsistency. Caching view counts in Redis is a latency-for-consistency trade. *Where:
-  Redis cache in front of Postgres.*
+  **C**onsistency. Caching view counts in Redis is a latency-for-consistency trade. _Where:
+  Redis cache in front of Postgres._
 - **Eventual consistency** — replicas/derived data converge over time, not instantly. Search
-  index and counts are eventually consistent with the source of truth. *Where: Elasticsearch
-  index, view counts.*
+  index and counts are eventually consistent with the source of truth. _Where: Elasticsearch
+  index, view counts._
 - **Strong vs. read-your-writes consistency** — a creator should see their own just-uploaded
-  video even if search hasn't indexed it yet. *Where: upload → "my videos" vs. public search.*
-- **Source of truth** — Postgres is authoritative; search/cache/counts are *derived* and
-  rebuildable. *Where: everywhere downstream of metadata.*
+  video even if search hasn't indexed it yet. _Where: upload → "my videos" vs. public search._
+- **Source of truth** — Postgres is authoritative; search/cache/counts are _derived_ and
+  rebuildable. _Where: everywhere downstream of metadata._
 
 ### Messaging & event-driven
 
 - **Message queue vs. event log** — work-queue (RabbitMQ: consume-and-gone, competing
   consumers) vs. append-only log (Kafka: retained, replayable, many consumer groups).
-  *Where: transcode command vs. `video.ready` event. See `messaging-patterns`.*
-- **Pub/sub & fan-out** — one event, many independent subscribers. *Where: `video.ready` →
-  search + notifications + (future) analytics.*
+  _Where: transcode command vs. `video.ready` event. See `messaging-patterns`._
+- **Pub/sub & fan-out** — one event, many independent subscribers. _Where: `video.ready` →
+  search + notifications + (future) analytics._
 - **Delivery semantics** — at-most-once / **at-least-once** / exactly-once. Real brokers are
-  at-least-once; "exactly-once" is achieved with idempotency, not magic. *Where: all consumers.*
+  at-least-once; "exactly-once" is achieved with idempotency, not magic. _Where: all consumers._
 - **Idempotency** — processing the same message twice yields the same result. Dedupe by event
-  id or use upserts. *Where: transcode consumer, indexer.*
+  id or use upserts. _Where: transcode consumer, indexer._
 - **Transactional outbox** — solve the **dual-write problem** (DB write + publish must be
-  atomic) by writing an `outbox` row in the same transaction, then relaying it. *Where:
-  emitting `video.ready`. See `messaging-patterns`.*
+  atomic) by writing an `outbox` row in the same transaction, then relaying it. _Where:
+  emitting `video.ready`. See `messaging-patterns`._
 - **Dead-letter queue (DLQ)** — park messages that fail after max retries instead of dropping
-  them. *Where: transcode failures.*
+  them. _Where: transcode failures._
 - **Back-pressure** — let a slow consumer signal upstream to slow down (prefetch limits,
-  bounded queues) rather than collapse. *Where: RabbitMQ prefetch + HPA.*
+  bounded queues) rather than collapse. _Where: RabbitMQ prefetch + HPA._
 - **Ordering & partitioning** — Kafka guarantees order only within a partition (key by
-  videoId). *Where: per-video event ordering.*
+  videoId). _Where: per-video event ordering._
 - **Saga / choreography** — a multi-step distributed workflow (upload → transcode → index →
-  notify) coordinated by events, with compensation on failure. *Where: the whole pipeline.*
-- **Event replay** — a new consumer group reads history to backfill. *Where: adding a future
-  analytics/recommendations service.*
+  notify) coordinated by events, with compensation on failure. _Where: the whole pipeline._
+- **Event replay** — a new consumer group reads history to backfill. _Where: adding a future
+  analytics/recommendations service._
 
 ### Scaling & resilience
 
-- **Horizontal vs. vertical scaling** — add instances vs. bigger instances. *Where:
-  transcoder worker replicas.*
+- **Horizontal vs. vertical scaling** — add instances vs. bigger instances. _Where:
+  transcoder worker replicas._
 - **Statelessness** — stateless services scale freely; state lives in Postgres/Kafka/MinIO.
-  *Where: API/services as Deployments, data as StatefulSets.*
-- **Autoscaling (HPA)** — scale replicas by a signal (CPU, memory, or queue depth). *Where:
-  transcoder scales on RabbitMQ backlog. See `k8s-kind-helm`.*
+  _Where: API/services as Deployments, data as StatefulSets._
+- **Autoscaling (HPA)** — scale replicas by a signal (CPU, memory, or queue depth). _Where:
+  transcoder scales on RabbitMQ backlog. See `k8s-kind-helm`._
 - **Caching strategies** — cache-aside, TTL, invalidation, and the **thundering-herd /
-  cache-stampede** problem. *Where: Redis for hot metadata + counts.*
-- **Load balancing** — spread requests across instances. *Where: nginx-ingress.*
-- **Rate limiting** — protect upload/API endpoints from abuse. *Where: API gateway.*
-- **Retries, timeouts & circuit breakers** — fail fast and recover gracefully. *Where:
-  service-to-service and consumer logic.*
-- **Graceful degradation** — if search is down, browsing still works. *Where: search vs. core
-  playback.*
+  cache-stampede** problem. _Where: Redis for hot metadata + counts._
+- **Load balancing** — spread requests across instances. _Where: nginx-ingress._
+- **Rate limiting** — protect upload/API endpoints from abuse. _Where: API gateway._
+- **Retries, timeouts & circuit breakers** — fail fast and recover gracefully. _Where:
+  service-to-service and consumer logic._
+- **Graceful degradation** — if search is down, browsing still works. _Where: search vs. core
+  playback._
 
 ### Data & storage
 
 - **Blob/object storage vs. database** — large media in object storage, metadata in the DB.
-  *Where: MinIO vs. Postgres.*
-- **Denormalization** — duplicate/shape data for fast reads (the search index). *Where:
-  Elasticsearch documents.*
-- **Indexing & inverted index** — how search differs from `WHERE title LIKE`. *Where:
-  Elasticsearch.*
+  _Where: MinIO vs. Postgres._
+- **Denormalization** — duplicate/shape data for fast reads (the search index). _Where:
+  Elasticsearch documents._
+- **Indexing & inverted index** — how search differs from `WHERE title LIKE`. _Where:
+  Elasticsearch._
 - **Read replicas & sharding (concept)** — scale reads and partition hot writes (view
-  counts are the classic hot-write). *Where: discussed at the counts/Postgres boundary.*
+  counts are the classic hot-write). _Where: discussed at the counts/Postgres boundary._
 
 ### Delivery & streaming
 
 - **Adaptive bitrate streaming (ABR)** — client picks quality per bandwidth via a manifest +
-  segments (HLS/DASH). *Where: ffmpeg HLS + hls.js.*
+  segments (HLS/DASH). _Where: ffmpeg HLS + hls.js._
 - **CDN / edge caching** — serve segments near users; cache invalidation; **byte-range
-  requests** for seeking. *Where: nginx edge.*
+  requests** for seeking. _Where: nginx edge._
 - **Presigned URLs & direct upload** — clients talk to storage directly, keeping bytes off
-  the app server. *Where: upload flow.*
+  the app server. _Where: upload flow._
 
 ### Architecture & cross-cutting
 
 - **Ports & adapters (hexagonal)** vs. **layered MVC** — isolate the domain from infra where
-  it earns its keep. *Where: transcoder (hexagonal) vs. metadata (MVC). See `ADR-011`.*
+  it earns its keep. _Where: transcoder (hexagonal) vs. metadata (MVC). See `ADR-011`._
 - **Twelve-factor config** — config from the environment, validated and typed, never
-  hardcoded. *Where: zod config / Spring `AppProperties`.*
+  hardcoded. _Where: zod config / Spring `AppProperties`._
 - **Observability (three pillars)** — metrics, traces, logs — and **distributed tracing /
-  context propagation** across service and broker boundaries. *Where: otel-lgtm. See
-  `observability-otel`.*
+  context propagation** across service and broker boundaries. _Where: otel-lgtm. See
+  `observability-otel`._
 - **Contracts** — OpenAPI for REST, **AsyncAPI** for events, so polyglot services agree.
-  *Where: `libs/ts/contracts`.*
-
+  _Where: `libs/ts/contracts`._
 
 ---
 
@@ -164,19 +163,19 @@ stays focused on the concepts themselves.
 
 ## Tooling decisions (open-source-first)
 
-| Capability | We use (OSS) | Cloud equivalent we deliberately avoid | Note |
-|---|---|---|---|
-| Object storage | MinIO | S3 | Same SDK; S3 optional at the very end |
-| Command queue | RabbitMQ | SQS | Teaches ack/DLQ/prefetch |
-| Event log | Apache Kafka / Redpanda | SNS+SQS | Teaches partitions/offsets/replay |
-| Search | Elasticsearch | OpenSearch Service | Real inverted index |
-| Cache | Redis | ElastiCache | Identical API |
-| Relational DB | PostgreSQL | RDS/Aurora | Identical |
-| CDN / edge | nginx | CloudFront | Cache headers by hand |
-| Transcoding | ffmpeg | MediaConvert | Teaches HLS/ABR |
-| Identity | Keycloak | Cognito | Industry-standard OIDC |
-| Observability | grafana/otel-lgtm | CloudWatch/X-Ray | One container, OTLP standard |
-| Orchestration | kind + Helm | EKS | EKS only as deploy target |
+| Capability     | We use (OSS)            | Cloud equivalent we deliberately avoid | Note                                  |
+| -------------- | ----------------------- | -------------------------------------- | ------------------------------------- |
+| Object storage | MinIO                   | S3                                     | Same SDK; S3 optional at the very end |
+| Command queue  | RabbitMQ                | SQS                                    | Teaches ack/DLQ/prefetch              |
+| Event log      | Apache Kafka / Redpanda | SNS+SQS                                | Teaches partitions/offsets/replay     |
+| Search         | Elasticsearch           | OpenSearch Service                     | Real inverted index                   |
+| Cache          | Redis                   | ElastiCache                            | Identical API                         |
+| Relational DB  | PostgreSQL              | RDS/Aurora                             | Identical                             |
+| CDN / edge     | nginx                   | CloudFront                             | Cache headers by hand                 |
+| Transcoding    | ffmpeg                  | MediaConvert                           | Teaches HLS/ABR                       |
+| Identity       | Keycloak                | Cognito                                | Industry-standard OIDC                |
+| Observability  | grafana/otel-lgtm       | CloudWatch/X-Ray                       | One container, OTLP standard          |
+| Orchestration  | kind + Helm             | EKS                                    | EKS only as deploy target             |
 
 **AWS appears only as a deploy target:** EKS, and optionally real S3. Nothing else.
 
@@ -188,11 +187,11 @@ we use real open-source tools instead of AWS services), fully-containerized `doc
 
 ## Environments
 
-| Env | App | Infra | Observability |
-|-----|-----|-------|---------------|
-| `local` | dev server / IDE | Postgres, Redis, MinIO, RabbitMQ, Kafka, Elasticsearch, Keycloak | off |
-| `local-observability` | dev server / IDE | all of the above + grafana/otel-lgtm | on (sampling 1.0) |
-| `aws` | EKS | same OSS tools (optionally S3) | on |
+| Env                   | App              | Infra                                                            | Observability     |
+| --------------------- | ---------------- | ---------------------------------------------------------------- | ----------------- |
+| `local`               | dev server / IDE | Postgres, Redis, MinIO, RabbitMQ, Kafka, Elasticsearch, Keycloak | off               |
+| `local-observability` | dev server / IDE | all of the above + grafana/otel-lgtm                             | on (sampling 1.0) |
+| `aws`                 | EKS              | same OSS tools (optionally S3)                                   | on                |
 
 ---
 

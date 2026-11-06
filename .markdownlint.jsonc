@@ -1,0 +1,10 @@
+{
+  // See the `markdown-lint` skill for rationale.
+  "default": true,
+  "MD013": false, // line length — prose/tables wrap naturally
+  "MD033": false, // inline HTML allowed where needed
+  "MD036": false, // emphasis-as-heading — used intentionally in prompt templates
+  "MD060": false, // table-column-style — cosmetic pipe spacing, not enforced
+  "MD041": true, // first line must be a top-level heading
+  "MD040": true // fenced code blocks must declare a language
+}

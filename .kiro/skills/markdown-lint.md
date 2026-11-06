@@ -20,7 +20,7 @@ Tooling: `markdownlint-cli2` (resolved via the org registry), config in `.markdo
 - **MD025** — only one H1 per document.
 - **MD032** — lists surrounded by blank lines.
 - **MD031** — fenced code blocks surrounded by blank lines.
-- **MD040** — fenced code blocks declare a language (```ts, ```bash, ```mermaid).
+- **MD040** — fenced code blocks declare a language (`ts,`bash, ```mermaid).
 - **MD047** — file ends with a single trailing newline.
 - **MD009** — no trailing whitespace.
 - **MD012** — no multiple consecutive blank lines.
@@ -32,7 +32,9 @@ Tooling: `markdownlint-cli2` (resolved via the org registry), config in `.markdo
 
 - **MD013 (line length)** — disabled. Prose and tables wrap naturally; do not hard-wrap.
 - **MD033 (inline HTML)** — allowed where needed (rare).
-- **MD036** — tables and emphasis used as structure are fine.
+- **MD036 (emphasis-as-heading)** — disabled; bold labels are used intentionally in prompt
+  templates and structured lists.
+- **MD060 (table-column-style)** — disabled; cosmetic pipe spacing not enforced.
 
 ## Config
 
@@ -42,8 +44,10 @@ Tooling: `markdownlint-cli2` (resolved via the org registry), config in `.markdo
   "default": true,
   "MD013": false,
   "MD033": false,
+  "MD036": false,
+  "MD060": false,
   "MD041": true,
-  "MD040": true
+  "MD040": true,
 }
 ```
 

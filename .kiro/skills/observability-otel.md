@@ -60,8 +60,8 @@ flowchart LR
 
 ## Three pillars
 
-| Pillar | Signal | Where |
-|--------|--------|-------|
+| Pillar  | Signal                                  | Where                |
+| ------- | --------------------------------------- | -------------------- |
 | Metrics | request rate, queue depth, worker count | Prometheus → Grafana |
-| Traces | end-to-end request/pipeline spans | Tempo → Grafana |
-| Logs | structured, trace-correlated | Loki → Grafana |
+| Traces  | end-to-end request/pipeline spans       | Tempo → Grafana      |
+| Logs    | structured, trace-correlated            | Loki → Grafana       |

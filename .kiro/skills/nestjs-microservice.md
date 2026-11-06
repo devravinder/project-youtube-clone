@@ -31,32 +31,32 @@ Match the pattern to the service, not the other way round (see `ADR-011`):
 
 ## Library mapping (Spring Boot reference → NestJS)
 
-| Capability | Spring Boot | NestJS (use this) |
-|---|---|---|
-| Web framework | spring-boot-starter-webmvc | `@nestjs/core`, `@nestjs/platform-express` |
-| ORM / DB | spring-data-jpa + Hibernate | **Prisma** (`prisma`, `@prisma/client`) |
-| DB driver | postgresql | `pg` (via Prisma) |
-| Migrations | Liquibase | **Prisma Migrate** |
-| Cache | spring-boot-starter-cache | `@nestjs/cache-manager`, `cache-manager` |
-| Redis | spring-boot-starter-data-redis | `ioredis` (+ cache-manager Redis store) |
-| Auth (verify JWT) | spring-security + oauth2-resource-server | `@nestjs/passport`, `passport-jwt`, `jwks-rsa` |
-| OAuth2 client | oauth2-client | `openid-client` |
-| Keycloak admin | keycloak-admin-client | `@keycloak/keycloak-admin-client` |
-| API docs | springdoc-openapi | `@nestjs/swagger` |
-| Validation | spring-boot-starter-validation | `class-validator`, `class-transformer` |
-| Config (typed) | AppProperties + @ConfigurationProperties | `@nestjs/config` + **zod** |
-| DTO mapping | MapStruct | plain mapper fns or `@automapper/nestjs` |
-| Boilerplate | Lombok | not needed (TS native) |
-| Metrics | Actuator + micrometer-prometheus | `@nestjs/terminus`, `prom-client`, `@willsoto/nestjs-prometheus` |
-| Tracing | spring-boot-starter-opentelemetry | `@opentelemetry/sdk-node`, `@opentelemetry/auto-instrumentations-node` |
-| Logging | loki-logback-appender | `nestjs-pino` → OTLP/Loki |
-| Messaging | (RabbitMQ/Kafka clients) | `amqplib` (RabbitMQ) + `kafkajs` (Kafka) |
-| Architecture tests | ArchUnit | **dependency-cruiser** |
-| Unit/integration | JUnit 5 + Mockito + MockMvc | **Jest** + **supertest** |
-| Coverage gate | JaCoCo (75%) | Jest `coverageThreshold` (75%) |
-| Formatting | Spotless | Prettier |
-| Linting | spotless/compiler | oxlint / ESLint |
-| Git hooks | Husky + lint-staged + commitlint | Husky + lint-staged + commitlint (same) |
+| Capability         | Spring Boot                              | NestJS (use this)                                                      |
+| ------------------ | ---------------------------------------- | ---------------------------------------------------------------------- |
+| Web framework      | spring-boot-starter-webmvc               | `@nestjs/core`, `@nestjs/platform-express`                             |
+| ORM / DB           | spring-data-jpa + Hibernate              | **Prisma** (`prisma`, `@prisma/client`)                                |
+| DB driver          | postgresql                               | `pg` (via Prisma)                                                      |
+| Migrations         | Liquibase                                | **Prisma Migrate**                                                     |
+| Cache              | spring-boot-starter-cache                | `@nestjs/cache-manager`, `cache-manager`                               |
+| Redis              | spring-boot-starter-data-redis           | `ioredis` (+ cache-manager Redis store)                                |
+| Auth (verify JWT)  | spring-security + oauth2-resource-server | `@nestjs/passport`, `passport-jwt`, `jwks-rsa`                         |
+| OAuth2 client      | oauth2-client                            | `openid-client`                                                        |
+| Keycloak admin     | keycloak-admin-client                    | `@keycloak/keycloak-admin-client`                                      |
+| API docs           | springdoc-openapi                        | `@nestjs/swagger`                                                      |
+| Validation         | spring-boot-starter-validation           | `class-validator`, `class-transformer`                                 |
+| Config (typed)     | AppProperties + @ConfigurationProperties | `@nestjs/config` + **zod**                                             |
+| DTO mapping        | MapStruct                                | plain mapper fns or `@automapper/nestjs`                               |
+| Boilerplate        | Lombok                                   | not needed (TS native)                                                 |
+| Metrics            | Actuator + micrometer-prometheus         | `@nestjs/terminus`, `prom-client`, `@willsoto/nestjs-prometheus`       |
+| Tracing            | spring-boot-starter-opentelemetry        | `@opentelemetry/sdk-node`, `@opentelemetry/auto-instrumentations-node` |
+| Logging            | loki-logback-appender                    | `nestjs-pino` → OTLP/Loki                                              |
+| Messaging          | (RabbitMQ/Kafka clients)                 | `amqplib` (RabbitMQ) + `kafkajs` (Kafka)                               |
+| Architecture tests | ArchUnit                                 | **dependency-cruiser**                                                 |
+| Unit/integration   | JUnit 5 + Mockito + MockMvc              | **Jest** + **supertest**                                               |
+| Coverage gate      | JaCoCo (75%)                             | Jest `coverageThreshold` (75%)                                         |
+| Formatting         | Spotless                                 | Prettier                                                               |
+| Linting            | spotless/compiler                        | oxlint / ESLint                                                        |
+| Git hooks          | Husky + lint-staged + commitlint         | Husky + lint-staged + commitlint (same)                                |
 
 All packages resolve via the org registry (configured in the developer's npm settings; not
 committed to the repo).

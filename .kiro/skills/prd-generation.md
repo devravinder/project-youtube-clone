@@ -38,12 +38,12 @@ technical detail, architecture, or tech stack**.
 ## Framing variants
 
 - **Product-framed:** write as a genuine product for end users; keep learning/meta intent out.
-- **Learning-framed:** stated goal is learning, but still name *capabilities* (streaming,
-  search), never *tools* (Kafka, NestJS). The "how" lives in a separate doc.
+- **Learning-framed:** stated goal is learning, but still name _capabilities_ (streaming,
+  search), never _tools_ (Kafka, NestJS). The "how" lives in a separate doc.
 
 ## Input template (brainstorming summary)
 
-```
+```text
 PRODUCT_NAME: <name>
 What we are building: <1-2 sentences>
 Vision / goal: <core outcome>

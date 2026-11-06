@@ -8,6 +8,7 @@ Format: `## ADR-NNN — <title>` · Date · Status (Accepted / Superseded / Prop
 ---
 
 ## ADR-001 — Open-source-first; cloud only where it is the standard
+
 Date: 2026-11-06 · Status: Accepted
 
 Use the widely-adopted open-source container for each capability (MinIO, RabbitMQ, Kafka,
@@ -21,6 +22,7 @@ Why: the goal is learning the real mechanics, not managed magic. OSS tools expos
 offsets, cache headers, and segmenting that managed services hide.
 
 ## ADR-002 — Messaging: RabbitMQ (commands) + Kafka (events), phased
+
 Date: 2026-11-06 · Status: Accepted
 
 Use both, deliberately: RabbitMQ for the "transcode this video" command (work-queue:
@@ -32,6 +34,7 @@ Alternative considered: Kafka-only (fewer moving parts) — rejected because exp
 command-queue vs event-log side by side is a core learning objective.
 
 ## ADR-003 — Backend: NestJS for API/light services, Spring Boot for heavy
+
 Date: 2026-11-06 · Status: Accepted
 
 NestJS + TypeScript for the API/BFF and light services (DI container cleanly supports
@@ -43,18 +46,21 @@ Not Next.js for the API: Next.js is a frontend framework; its API routes are ill
 WebSockets, queue consumers, and hexagonal DI.
 
 ## ADR-004 — Frontend: React 19 + Vite + Tailwind v4, no shadcn
+
 Date: 2026-11-06 · Status: Accepted
 
 React 19 + TypeScript + Vite + Tailwind v4. No shadcn, but a shadcn-like theme (CSS
 variable design tokens). Reusable components via tailwind-styled-components.
 
 ## ADR-005 — Monorepo: pnpm workspaces, no Nx
+
 Date: 2026-11-06 · Status: Accepted
 
 pnpm workspaces for the JS side; Gradle multi-project for Java. No Nx — the goal is system
 design, not build tooling. Revisit only if task-graph/caching pain becomes real.
 
 ## ADR-006 — Identity: Keycloak
+
 Date: 2026-11-06 · Status: Accepted
 
 Keycloak as the OIDC identity service (matches the reference starter, industry-standard,
@@ -62,6 +68,7 @@ and the container is available). Rust alternatives (Rauthy, Kanidm) and ZITADEL 
 discussed; not adopted — auth should be a boring, solved dependency behind an OIDC adapter.
 
 ## ADR-007 — Observability: single grafana/otel-lgtm container
+
 Date: 2026-11-06 · Status: Accepted
 
 Use the all-in-one `grafana/otel-lgtm` image (Loki + Grafana + Tempo + Prometheus + OTLP
@@ -69,6 +76,7 @@ collector) instead of the reference starter's 5-container stack. All services ex
 `:4318`. Pyroscope dropped (Linux-only, flaky on Windows; not needed).
 
 ## ADR-008 — Environments: local, local-observability, aws
+
 Date: 2026-11-06 · Status: Accepted
 
 Three environments. `local` (minimal infra, observability off), `local-observability` (adds
@@ -78,6 +86,7 @@ Dropped: `localstack` (redundant once we use real OSS tools instead of AWS servi
 fully-containerized `docker` env (kind covers it).
 
 ## ADR-009 — Spec-driven workflow: Kiro Specs + this decision log
+
 Date: 2026-11-06 · Status: Accepted
 
 Use Kiro's native Spec workflow per feature (`requirements.md` / `design.md` / `tasks.md`)
@@ -86,12 +95,14 @@ instead of a review.md. Development proceeds step by step, one task at a time, r
 before moving on.
 
 ## ADR-010 — Skills: project-level now, promote to global later
+
 Date: 2026-11-06 · Status: Accepted
 
 Keep all skills in `.kiro/skills/` (workspace) for now. `docs/SKILLS.md` records which are
 good candidates to promote to `~/.kiro/skills/` (user-level, available in every project).
 
 ## ADR-011 — Pattern per service: layered MVC for CRUD, ports & adapters for infra-heavy
+
 Date: 2026-11-06 · Status: Accepted
 
 Do not force one pattern across all services. Choose by the service's shape:
@@ -109,6 +120,7 @@ project goals that hexagonal serves; CRUD services gain nothing from the extra l
 Applies to both Spring Boot and NestJS services.
 
 ## ADR-012 — NestJS stack mirrors the Spring Boot reference; Prisma for DB
+
 Date: 2026-11-06 · Status: Accepted
 
 NestJS services use libraries that mirror the Spring Boot reference project's capabilities

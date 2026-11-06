@@ -16,14 +16,14 @@ language; use `mermaid` for diagrams).
 
 ## When to use which diagram
 
-| Need | Mermaid diagram |
-|------|-----------------|
-| Service / component architecture | `flowchart` or `graph` |
-| Request / message flow over time | `sequenceDiagram` |
-| Data model / entities | `erDiagram` |
-| State of a resource (e.g. video lifecycle) | `stateDiagram-v2` |
-| Deployment topology (k8s, envs) | `flowchart` with subgraphs |
-| Phases / milestones | `gantt` or `timeline` |
+| Need                                       | Mermaid diagram            |
+| ------------------------------------------ | -------------------------- |
+| Service / component architecture           | `flowchart` or `graph`     |
+| Request / message flow over time           | `sequenceDiagram`          |
+| Data model / entities                      | `erDiagram`                |
+| State of a resource (e.g. video lifecycle) | `stateDiagram-v2`          |
+| Deployment topology (k8s, envs)            | `flowchart` with subgraphs |
+| Phases / milestones                        | `gantt` or `timeline`      |
 
 ## Conventions
 

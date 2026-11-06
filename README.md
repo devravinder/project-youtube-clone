@@ -16,23 +16,23 @@ for the full concept map (CAP, outbox, messaging queues, eventual consistency, A
 
 ## Tech stack
 
-| Area | Choice |
-|------|--------|
-| Backend API & light services | NestJS + TypeScript |
-| Heavy / transcoding service | Spring Boot 4.1 + Java 21 |
-| Frontend | React 19 + TypeScript + Vite + Tailwind v4 (no shadcn; shadcn-like theme) |
-| Database | PostgreSQL (via Prisma) |
-| Object storage | MinIO (S3-compatible) |
-| Command queue | RabbitMQ |
-| Event log | Apache Kafka |
-| Search | Elasticsearch |
-| Cache | Redis |
-| Edge / CDN | nginx |
-| Transcoding | ffmpeg |
-| Identity | Keycloak (OIDC) |
-| Observability | grafana/otel-lgtm (OTLP) |
-| Orchestration | Docker Compose, kind + Helm (local k8s) |
-| Monorepo | pnpm workspaces (no Nx) |
+| Area                         | Choice                                                                    |
+| ---------------------------- | ------------------------------------------------------------------------- |
+| Backend API & light services | NestJS + TypeScript                                                       |
+| Heavy / transcoding service  | Spring Boot 4.1 + Java 21                                                 |
+| Frontend                     | React 19 + TypeScript + Vite + Tailwind v4 (no shadcn; shadcn-like theme) |
+| Database                     | PostgreSQL (via Prisma)                                                   |
+| Object storage               | MinIO (S3-compatible)                                                     |
+| Command queue                | RabbitMQ                                                                  |
+| Event log                    | Apache Kafka                                                              |
+| Search                       | Elasticsearch                                                             |
+| Cache                        | Redis                                                                     |
+| Edge / CDN                   | nginx                                                                     |
+| Transcoding                  | ffmpeg                                                                    |
+| Identity                     | Keycloak (OIDC)                                                           |
+| Observability                | grafana/otel-lgtm (OTLP)                                                  |
+| Orchestration                | Docker Compose, kind + Helm (local k8s)                                   |
+| Monorepo                     | pnpm workspaces (no Nx)                                                   |
 
 Principle: **open-source-first.** Cloud (AWS/EKS, optional S3) appears only as a deploy
 target. See [`docs/DECISIONS.md`](docs/DECISIONS.md).
@@ -69,11 +69,11 @@ project-youtube-clone/
 
 ## Environments
 
-| Env | Infra | Observability |
-|-----|-------|---------------|
-| `local` | Postgres, Redis, MinIO, RabbitMQ, Kafka, Elasticsearch, Keycloak | off |
-| `local-observability` | all of the above + grafana/otel-lgtm | on |
-| `aws` | EKS (optionally S3) | on |
+| Env                   | Infra                                                            | Observability |
+| --------------------- | ---------------------------------------------------------------- | ------------- |
+| `local`               | Postgres, Redis, MinIO, RabbitMQ, Kafka, Elasticsearch, Keycloak | off           |
+| `local-observability` | all of the above + grafana/otel-lgtm                             | on            |
+| `aws`                 | EKS (optionally S3)                                              | on            |
 
 ## Documentation
 

@@ -44,7 +44,7 @@ Concepts: object storage, presigned/multipart upload, relational modeling, ports
 - [ ] `apps/web` (React 19 + Vite + Tailwind v4) — upload UI + plain playback
 - [ ] Wire Keycloak (OIDC) — login + JWT verification
 - [ ] Tests: Jest (service), supertest (controller), Vitest (web)
-- [ ] Git hooks: Husky + lint-staged + commitlint + markdownlint
+- [x] Git hooks: Husky + lint-staged + commitlint + markdownlint
 
 ## Stage 2 — Phase 1: Async transcoding (RabbitMQ + ffmpeg)
 

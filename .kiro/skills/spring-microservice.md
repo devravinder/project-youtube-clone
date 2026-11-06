@@ -41,7 +41,7 @@ transcoder/
 
 ## Structure
 
-```
+```text
 apps/<service>/src/main/java/com/<org>/<service>/
 ├── <Service>App.java
 ├── AppProperties.java          # record: all config
@@ -64,13 +64,13 @@ Conditional beans via `@Profile` / `@ConditionalOnProperty`. Observability beans
 
 ## Testing (adopted from the reference starter)
 
-| Layer | Tool | Runs on build? |
-|-------|------|----------------|
-| Unit | JUnit 5 + Mockito | yes (`./gradlew test`) |
-| Controller + security | MockMvc + Spring Security Test (`jwt()`) | yes |
-| Architecture rules | ArchUnit | yes |
-| API / data injection | Java built-in `HttpClient`, `@Tag("api-test")` | `./gradlew apiTest` (manual) |
-| Coverage | JaCoCo (75% min) | enforced on `build` |
+| Layer                 | Tool                                           | Runs on build?               |
+| --------------------- | ---------------------------------------------- | ---------------------------- |
+| Unit                  | JUnit 5 + Mockito                              | yes (`./gradlew test`)       |
+| Controller + security | MockMvc + Spring Security Test (`jwt()`)       | yes                          |
+| Architecture rules    | ArchUnit                                       | yes                          |
+| API / data injection  | Java built-in `HttpClient`, `@Tag("api-test")` | `./gradlew apiTest` (manual) |
+| Coverage              | JaCoCo (75% min)                               | enforced on `build`          |
 
 - Use `@Tag("api-test")` to split fast tests (in build) from integration tests (on-demand).
 - Do **not** use REST Assured on JDK 21+ (Groovy NPE issues); use Java `HttpClient`.
