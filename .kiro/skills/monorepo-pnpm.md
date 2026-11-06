@@ -65,6 +65,16 @@ stop:l:pods
 logs:l
 ```
 
+## Dependency policy
+
+- **Use the latest available version** of every library (checked via `pnpm view <pkg>
+version` against the org registry). Current baselines: TypeScript `7.0.2`, zod `4.6.7`,
+  `@types/node` `26.6.5`.
+- **Pin exact versions** (no `^`/`~`) in `package.json` for reproducibility; bump
+  deliberately.
+- Add `@types/node` to any package that touches `process`/Node APIs, and set
+  `"types": ["node"]` in its `tsconfig.json`.
+
 ## Rules
 
 - No Nx. Reach for pnpm filters (`pnpm --filter <app> ...`) and plain scripts.

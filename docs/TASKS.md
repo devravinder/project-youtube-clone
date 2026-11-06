@@ -38,7 +38,7 @@ Concepts: object storage, presigned/multipart upload, relational modeling, ports
 - [x] pnpm workspace skeleton (`pnpm-workspace.yaml`, root `package.json`, scripts)
 - [x] `infra/docker-compose-local.yaml` — Postgres + MinIO (+ consoles)
 - [x] `libs/ts/config` — zod-validated typed config
-- [ ] `libs/ts/ports` — `StoragePort` interface
+- [x] `libs/ts/ports` — `StoragePort` interface
 - [ ] `apps/upload-service` (NestJS) — MinIO adapter + presigned-upload endpoint
 - [ ] Prisma schema + first migration (video metadata)
 - [ ] `apps/web` (React 19 + Vite + Tailwind v4) — upload UI + plain playback
