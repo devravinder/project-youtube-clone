@@ -90,3 +90,33 @@ Date: 2026-11-06 · Status: Accepted
 
 Keep all skills in `.kiro/skills/` (workspace) for now. `docs/SKILLS.md` records which are
 good candidates to promote to `~/.kiro/skills/` (user-level, available in every project).
+
+## ADR-011 — Pattern per service: layered MVC for CRUD, ports & adapters for infra-heavy
+Date: 2026-11-06 · Status: Accepted
+
+Do not force one pattern across all services. Choose by the service's shape:
+
+- **Layered MVC** for CRUD-over-DB services (metadata, channels, users), matching the
+  reference starter: controller → service (interface + impl) → repository → model/entity.
+  Hexagonal adds ceremony with little payoff when the only dependency is the database.
+- **Ports & adapters (pragmatic hexagonal)** for services wiring 2+ swappable infrastructure
+  dependencies — notably the **transcoder-service** (MinIO/S3 storage, RabbitMQ, Kafka,
+  ffmpeg), and leaning that way for search and notification services. Domain/use-case logic
+  depends only on `*Port` interfaces; adapters implement them.
+
+Why: the MinIO↔S3 swap and unit-testing infra-heavy logic without live infra are explicit
+project goals that hexagonal serves; CRUD services gain nothing from the extra layers.
+Applies to both Spring Boot and NestJS services.
+
+## ADR-012 — NestJS stack mirrors the Spring Boot reference; Prisma for DB
+Date: 2026-11-06 · Status: Accepted
+
+NestJS services use libraries that mirror the Spring Boot reference project's capabilities
+(see `nestjs-microservice` skill for the full mapping): `@nestjs/config` + zod (typed
+config, the `AppProperties` analogue), `@nestjs/swagger` (OpenAPI), `class-validator`
+(validation), Passport + `jwks-rsa` (Keycloak JWT), cache-manager + ioredis (cache/Redis),
+`prom-client` + OpenTelemetry (observability), Jest + supertest (tests), dependency-cruiser
+(the ArchUnit analogue), Prettier + oxlint, Husky + lint-staged + commitlint.
+
+Database: **Prisma** (type-safe client + Prisma Migrate as the Liquibase analogue), chosen
+over TypeORM for the cleaner migration story and type safety.

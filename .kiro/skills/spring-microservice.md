@@ -8,6 +8,28 @@ description: Scaffold a Spring Boot 4.1 + Java 21 service with config-as-record,
 Standard heavy/JVM service: Spring Boot 4.1 + Java 21, built with Gradle (Kotlin DSL).
 Adapted from the reference advanced-starter conventions.
 
+## Choosing the pattern (important)
+
+Match the pattern to the service, not the other way round (see `ADR-011`):
+
+- **Layered MVC** for CRUD-over-DB services (metadata, channels, users), exactly as the
+  reference starter: `controller → service (interface + impl) → repository → entity`.
+- **Ports & adapters** for infra-heavy services wiring 2+ swappable dependencies —
+  notably the **transcoder-service** (object storage, RabbitMQ, Kafka, ffmpeg). Keep the
+  domain/use-case logic free of Spring and infra; adapters implement the ports.
+
+```text
+transcoder/
+├── domain/          # pure logic: TranscodeJob, rendition rules. No Spring, no infra.
+├── application/     # use-case services; depend on PORT interfaces only
+│   └── port/
+│       ├── in/      # driving ports (HandleTranscodeJob)
+│       └── out/     # StoragePort, EventPublisherPort, TranscoderPort
+└── adapter/
+    ├── in/          # RabbitMQ listener (driving adapter)
+    └── out/         # MinioStorageAdapter, KafkaEventAdapter, FfmpegAdapter
+```
+
 ## Principles
 
 - **Config as record, never hardcode.** Bind all config from `application.yaml` into an
