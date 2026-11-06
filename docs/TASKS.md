@@ -24,6 +24,9 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - [x] NestJS↔Spring library mapping + pattern decision (ADR-011, ADR-012)
 - [x] `docs/TASKS.md` — this tracker
 - [x] `.gitattributes` — normalize line endings (silence LF/CRLF warnings)
+- [x] `README.md` — project overview + quick architecture
+- [x] `docs/architecture.md` — system architecture and flows (Mermaid)
+- [x] `docs/LEARNING-GOALS.md` — add named theory concepts (CAP, outbox, queues, …)
 - [ ] Decide: make "update TASKS.md after each task" a standing rule/skill
 
 ## Stage 1 — Phase 0: Foundations (monorepo + storage skeleton)
