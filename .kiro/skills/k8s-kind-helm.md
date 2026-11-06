@@ -42,7 +42,7 @@ metric so workers scale to drain back-pressure. Drive it with k6 (see `testing-s
 Docker Desktop uses a containerd image store; `kind load docker-image` can misbehave.
 Load images into kind reliably by exporting and importing with `ctr`:
 
-```
+```bash
 # export built image to a tarball, then inside the kind node:
 ctr --namespace k8s.io images import --no-unpack <image>.tar
 ```
@@ -63,7 +63,7 @@ kind node. Use `imagePullPolicy: IfNotPresent` with simple local tags.
 
 Mirror the `start|stop:env:service` convention:
 
-```
+```bash
 start:k          # create cluster + build + load images + helm install
 start:k:up       # recreate cluster, images already built
 stop:k           # delete cluster

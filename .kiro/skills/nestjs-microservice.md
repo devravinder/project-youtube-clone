@@ -20,7 +20,7 @@ config, and a clear test strategy.
 
 ## Structure
 
-```
+```text
 apps/<service>/
 ├── src/
 │   ├── main.ts

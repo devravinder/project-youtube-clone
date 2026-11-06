@@ -13,7 +13,7 @@ After **every completed task**, make a git commit. Keep the message **short — 
 
 Conventional commits, imperative mood, lowercase after the type:
 
-```
+```text
 <type>: <short summary>
 ```
 
@@ -30,7 +30,7 @@ Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `build`, `ci`, `perf`
 
 ## Good examples
 
-```
+```text
 docs: add PRD and learning goals
 feat: add storage port and minio adapter
 feat: presigned upload endpoint
@@ -41,7 +41,7 @@ chore: add pnpm workspace config
 
 ## Bad examples
 
-```
+```text
 updated some files and fixed the upload thing and also docs   # too long, vague
 WIP                                                            # meaningless
 feat: Added Presigned Upload.                                  # capitalized, trailing period

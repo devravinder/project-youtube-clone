@@ -10,7 +10,7 @@ multi-project** for Java. No Nx — the goal is system design, not build tooling
 
 ## Layout
 
-```
+```text
 project-youtube-clone/
 ├── apps/
 │   ├── web/                   # React 19 + Vite + Tailwind v4
@@ -57,7 +57,7 @@ Root `package.json` uses the `start|stop:env:service` pattern:
 - `env`: `l` = local, `lo` = local-observability, `k` = k8s
 - `service`: `pods` = containers, `<name>` = a specific app
 
-```
+```bash
 start:l:pods      # docker compose up (local infra)
 start:l:web       # vite dev server
 start:l:api       # nest start (api-gateway)

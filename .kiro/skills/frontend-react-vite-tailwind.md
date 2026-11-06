@@ -96,7 +96,7 @@ export const Card = tw.div`
 
 ## Project layout
 
-```
+```text
 apps/web/
 ├── index.html
 ├── vite.config.ts
