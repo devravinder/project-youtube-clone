@@ -10,6 +10,10 @@ description: Author documentation in Markdown and use Mermaid diagrams for all a
 All documentation is **Markdown**. For **architecture and design** visuals, use **Mermaid**
 diagrams embedded in the Markdown (not ASCII art, not external image files).
 
+**Always follow the `markdown-lint` skill** when writing or editing any Markdown — every
+`.md` file must pass markdownlint rules (notably MD040: every code fence declares a
+language; use `mermaid` for diagrams).
+
 ## When to use which diagram
 
 | Need | Mermaid diagram |

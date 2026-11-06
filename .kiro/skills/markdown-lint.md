@@ -5,7 +5,11 @@ description: Author all Markdown to pass markdownlint rules (consistent headings
 
 # Markdown Lint
 
-All Markdown must follow **markdownlint** rules so docs stay consistent and clean.
+## Rule (always)
+
+**Every `.md` file this project writes or edits must pass markdownlint.** Apply these rules
+whenever authoring any Markdown — docs, skills, READMEs, specs. Run `--fix` before committing.
+
 Tooling: `markdownlint-cli2` (resolved via the org registry), config in `.markdownlint.jsonc`.
 
 ## Core rules to follow

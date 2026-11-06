@@ -14,6 +14,7 @@ technical detail, architecture, or tech stack**.
 2. Once clarified, generate the full PRD.
 3. Save as `docs/PRD.md`.
 4. Keep tech/architecture out — that belongs in a separate learning/architecture doc.
+5. The output is Markdown — follow the `markdown-lint` skill so it passes markdownlint.
 
 ## Exact section structure (do not deviate)
 
