@@ -6,7 +6,7 @@ name: youtube-clone-local
 
 services:
   postgres:
-    image: postgres:17-alpine
+    image: postgres:latest
     container_name: yt-postgres
     restart: unless-stopped
     environment:
@@ -32,8 +32,8 @@ services:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
     ports:
-      - "9000:9000"   # S3 API
-      - "9001:9001"   # Web console
+      - "9000:9000" # S3 API
+      - "9001:9001" # Web console
     volumes:
       - minio-data:/data
     healthcheck:
