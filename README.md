@@ -78,6 +78,7 @@ project-youtube-clone/
 ## Documentation
 
 - [`docs/PRD.md`](docs/PRD.md) — product requirements (learning-framed, tech-free)
+- [`docs/HOW-TO-RUN.md`](docs/HOW-TO-RUN.md) — how to start, stop, and work with the project
 - [`docs/LEARNING-GOALS.md`](docs/LEARNING-GOALS.md) — concepts, theory, and the OSS tool for each
 - [`docs/architecture.md`](docs/architecture.md) — system architecture and flows
 - [`docs/DECISIONS.md`](docs/DECISIONS.md) — architecture decision log (ADRs)

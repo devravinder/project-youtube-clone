@@ -26,6 +26,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - [x] `.gitattributes` — normalize line endings (silence LF/CRLF warnings)
 - [x] `README.md` — project overview + quick architecture
 - [x] `docs/architecture.md` — system architecture and flows (Mermaid)
+- [x] `docs/HOW-TO-RUN.md` — how to start/stop/run (kept updated as pieces are added)
 - [x] `docs/LEARNING-GOALS.md` — add named theory concepts (CAP, outbox, queues, …)
 - [x] Decide: "update TASKS.md after each task" — standing rule in `git-commit-convention`
 
