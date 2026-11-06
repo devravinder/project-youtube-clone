@@ -27,7 +27,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 - [x] `README.md` — project overview + quick architecture
 - [x] `docs/architecture.md` — system architecture and flows (Mermaid)
 - [x] `docs/LEARNING-GOALS.md` — add named theory concepts (CAP, outbox, queues, …)
-- [ ] Decide: make "update TASKS.md after each task" a standing rule/skill
+- [x] Decide: "update TASKS.md after each task" — standing rule in `git-commit-convention`
 
 ## Stage 1 — Phase 0: Foundations (monorepo + storage skeleton)
 

@@ -50,6 +50,7 @@ feat: Added Presigned Upload.                                  # capitalized, tr
 ## Flow per task
 
 1. Finish the task.
-2. Stage the specific files changed.
-3. Commit with a short conventional message.
-4. Pause for review before the next task.
+2. Update `docs/TASKS.md` — mark the task `[x]` (or `[~]` if partial).
+3. Stage the specific files changed (including `docs/TASKS.md`).
+4. Commit with a short conventional message.
+5. Pause for review before the next task.
