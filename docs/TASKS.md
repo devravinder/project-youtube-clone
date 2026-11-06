@@ -35,7 +35,7 @@ Goal: end-to-end upload + playback with no queue, no transcoding.
 Concepts: object storage, presigned/multipart upload, relational modeling, ports & adapters.
 
 - [x] pnpm workspace skeleton (`pnpm-workspace.yaml`, root `package.json`, scripts)
-- [ ] `infra/docker-compose-local.yaml` — Postgres + MinIO (+ consoles)
+- [x] `infra/docker-compose-local.yaml` — Postgres + MinIO (+ consoles)
 - [ ] `libs/ts/config` — zod-validated typed config
 - [ ] `libs/ts/ports` — `StoragePort` interface
 - [ ] `apps/upload-service` (NestJS) — MinIO adapter + presigned-upload endpoint
