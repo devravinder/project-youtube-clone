@@ -20,6 +20,7 @@ every task, a short git commit (see `git-commit-convention`).
 | `git-hooks-conventions` | Husky + lint-staged + commitlint | ✅ Global candidate |
 | `git-commit-convention` | Short commit after every task (<10 words), conventional format | ✅ Global candidate |
 | `doc-with-mermaid` | Author docs in Markdown with Mermaid for architecture/design diagrams | ✅ Global candidate |
+| `markdown-lint` | Author Markdown to pass markdownlint rules | ✅ Global candidate |
 | `observability-otel` | grafana/otel-lgtm + OTLP across Node/Java | ✅ Global candidate |
 | `messaging-patterns` | RabbitMQ command-queue vs Kafka event-log, outbox, idempotency, DLQ | ⬜ Project-specific |
 | `k8s-kind-helm` | kind + Helm + HPA + Windows `ctr import` trick | ⬜ Project-specific |
