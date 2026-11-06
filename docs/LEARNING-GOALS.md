@@ -154,23 +154,11 @@ project.
 
 ---
 
-## Phased roadmap (each phase is runnable and teaches one thing deeply)
+## Roadmap
 
-- **Phase 0 — Foundations:** monorepo, docker-compose (`local`), Postgres + MinIO, hexagonal
-  skeleton with a `StoragePort`. Upload via presigned URL, play back with a plain player.
-  No queue, no transcoding yet. *Concepts: 1, 2, 3, 15, 22.*
-- **Phase 1 — Async transcoding:** add RabbitMQ + ffmpeg worker. Upload returns instantly;
-  status is polled. Outbox + idempotent consumer. *Concepts: 4, 5, 7, 8, 10, 23.*
-- **Phase 2 — Real streaming:** ffmpeg produces HLS; player uses adaptive bitrate; nginx edge
-  cache + cache headers + byte-range/seek. *Concepts: 9, 11.*
-- **Phase 3 — Events & search:** Kafka "video.ready" → Elasticsearch indexer + notification
-  service. Search UI. *Concepts: 6, 12, 13, 18.*
-- **Phase 4 — Scale & resilience:** Redis caching, view counts, DLQs, retries, kind + Helm +
-  HPA, k6 load tests, watch workers autoscale. *Concepts: 14, 16, 19, 21.*
-- **Phase 5 — Observability:** otel-lgtm, OTLP across Node↔Java, Grafana dashboards, trace one
-  upload end to end. *Concept: 20.*
-- **Phase 6 — Cloud (optional):** deploy to EKS; optionally swap MinIO→S3 via the storage
-  adapter (config change, not rewrite). Everything else stays open-source.
+The stage-by-stage build sequence (which concept is learned in which phase) lives in
+[`TASKS.md`](TASKS.md) — the single source of truth for ordering and status. This document
+stays focused on the concepts themselves.
 
 ---
 
