@@ -1,0 +1,35 @@
+{
+  "name": "project-youtube-clone",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Learning-oriented mini YouTube clone — system design via open-source tools",
+  "type": "module",
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "prepare": "husky",
+    "help": "echo 'Scripts follow start|stop:env:service — env: l=local, lo=local-observability; service: pods=containers, <app>=a service'",
+
+    "start:l:pods": "docker compose -f infra/docker-compose-local.yaml up -d",
+    "stop:l:pods": "docker compose -f infra/docker-compose-local.yaml down -v",
+    "logs:l": "docker compose -f infra/docker-compose-local.yaml logs -f",
+
+    "start:lo:pods": "docker compose -f infra/docker-compose-local-observability.yaml up -d",
+    "stop:lo:pods": "docker compose -f infra/docker-compose-local-observability.yaml down -v",
+    "logs:lo": "docker compose -f infra/docker-compose-local-observability.yaml logs -f",
+
+    "lint:md": "markdownlint-cli2 \"**/*.md\" \"#node_modules\"",
+    "format:md": "markdownlint-cli2 --fix \"**/*.md\" \"#node_modules\""
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.0",
+    "markdownlint-cli2": "^0.15.0",
+    "oxlint": "^1.0.0",
+    "prettier": "^3.5.3"
+  }
+}

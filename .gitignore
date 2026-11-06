@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# Java / Gradle
+.gradle/
+**/build/
+!src/**/build/
+
+# Env & secrets
+.env
+.env.*
+!.env.sample
+*.local
+
+# Test / coverage
+coverage/
+test-results/
+playwright-report/
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+pnpm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Media scratch (local transcoding artifacts live under tmp/)
+tmp/

@@ -34,8 +34,8 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
 Goal: end-to-end upload + playback with no queue, no transcoding.
 Concepts: object storage, presigned/multipart upload, relational modeling, ports & adapters.
 
-- [ ] pnpm workspace skeleton (`pnpm-workspace.yaml`, root `package.json`, scripts)
-- [ ] `.npmrc` for internal registry (build-env config, not documented)
+- [x] pnpm workspace skeleton (`pnpm-workspace.yaml`, root `package.json`, scripts)
+- [x] `.npmrc` for internal registry (build-env config, not documented)
 - [ ] `infra/docker-compose-local.yaml` — Postgres + MinIO (+ consoles)
 - [ ] `libs/ts/config` — zod-validated typed config
 - [ ] `libs/ts/ports` — `StoragePort` interface
