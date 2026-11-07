@@ -18,13 +18,13 @@ Scripts follow `start|stop:env:service`:
 
 ## What runs today
 
-| Capability                              | How                   | Status                        |
-| --------------------------------------- | --------------------- | ----------------------------- |
-| Local infra (Postgres, MinIO, Keycloak) | `pnpm start:l:pods`   | ✅ available                  |
-| Upload service (NestJS)                 | `pnpm start:l:upload` | ✅ available                  |
-| Web UI (React)                          | `pnpm start:l:web`    | ✅ available                  |
-| Transcoder (Spring Boot)                | —                     | ⏳ not built yet              |
-| Observability (otel-lgtm)               | `pnpm start:lo:pods`  | ⏳ compose file not added yet |
+| Capability                                        | How                   | Status                        |
+| ------------------------------------------------- | --------------------- | ----------------------------- |
+| Local infra (Postgres, MinIO, Keycloak, RabbitMQ) | `pnpm start:l:pods`   | ✅ available                  |
+| Upload service (NestJS)                           | `pnpm start:l:upload` | ✅ available                  |
+| Web UI (React)                                    | `pnpm start:l:web`    | ✅ available                  |
+| Transcoder (Spring Boot)                          | —                     | ⏳ not built yet              |
+| Observability (otel-lgtm)                         | `pnpm start:lo:pods`  | ⏳ compose file not added yet |
 
 Web app settings live in `apps/web/.env.development` (public values only). Override any of them
 in a git-ignored `apps/web/.env.local`. Restart `pnpm start:l:web` after changing either file.
@@ -87,7 +87,7 @@ The script reports any image that has not been pulled yet; pull it and re-run.
 
 ## 3. Start local infrastructure
 
-Brings up Postgres, MinIO and Keycloak, and auto-creates the `raw-videos` and `hls-videos` buckets.
+Brings up Postgres, MinIO, Keycloak and RabbitMQ, and auto-creates the `raw-videos` and `hls-videos` buckets.
 
 Keycloak takes about 30 seconds to start. It imports `infra/keycloak/realm-youtube-clone.json`:
 
@@ -101,6 +101,14 @@ Keycloak takes about 30 seconds to start. It imports `infra/keycloak/realm-youtu
 | Token audience | `yt-api`                                     |
 
 The import only runs when the realm does not exist yet. Change the JSON, then run `pnpm stop:l:pods` and start again.
+
+RabbitMQ carries the transcode commands:
+
+| Item          | Value                                                            |
+| ------------- | ---------------------------------------------------------------- |
+| Management UI | <http://localhost:15672> (`yt` / `yt_password`)                  |
+| AMQP URL      | `amqp://yt:yt_password@localhost:5672` (`RABBITMQ_URL`)          |
+| Storage       | Named volume `rabbitmq-data`; queues survive a container restart |
 
 ```bash
 pnpm start:l:pods

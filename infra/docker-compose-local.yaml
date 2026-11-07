@@ -70,6 +70,27 @@ services:
     volumes:
       - ./keycloak:/opt/keycloak/data/import:ro
 
+  rabbitmq:
+    image: rabbitmq:3.12.13-management
+    container_name: yt-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: yt
+      RABBITMQ_DEFAULT_PASS: yt_password
+    ports:
+      - "5672:5672" # AMQP
+      - "15672:15672" # Management UI
+    volumes:
+      # Queues and messages survive a restart; the node name must stay fixed for that.
+      - rabbitmq-data:/var/lib/rabbitmq
+    hostname: yt-rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 6
+
 volumes:
   postgres-data:
   minio-data:
+  rabbitmq-data:

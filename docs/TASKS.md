@@ -63,7 +63,7 @@ Concepts: object storage, presigned/multipart upload, relational modeling, ports
 Goal: upload returns instantly; transcoding happens in the background.
 Concepts: async processing, work-queue semantics, outbox, idempotency, polyglot services.
 
-- [ ] Add RabbitMQ to `docker-compose-local.yaml` (+ management UI)
+- [x] Add RabbitMQ to `docker-compose-local.yaml` (+ management UI), `rabbitmqEnv` in `@yt/config`
 - [ ] `apps/transcoder-service` (Spring Boot 4.1 / Java 21) — ports & adapters
 - [ ] Java formatting: Gradle spotless + formatter (google or palantir) + lint-staged entry
 - [ ] RabbitMQ command producer (upload-service) + consumer (transcoder)

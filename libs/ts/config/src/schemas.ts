@@ -30,3 +30,7 @@ export const keycloakEnv = z.object({
   OIDC_ISSUER_URL: z.string().url(),
   OIDC_AUDIENCE: z.string().min(1),
 });
+
+export const rabbitmqEnv = z.object({
+  RABBITMQ_URL: z.string().url(),
+});
