@@ -54,6 +54,7 @@ Concepts: async processing, work-queue semantics, outbox, idempotency, polyglot 
 
 - [ ] Add RabbitMQ to `docker-compose-local.yaml` (+ management UI)
 - [ ] `apps/transcoder-service` (Spring Boot 4.1 / Java 21) — ports & adapters
+- [ ] Java formatting: Gradle spotless + formatter (google or palantir) + lint-staged entry
 - [ ] RabbitMQ command producer (upload-service) + consumer (transcoder)
 - [ ] ffmpeg adapter — produce renditions
 - [ ] Transactional outbox in Postgres
