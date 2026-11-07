@@ -132,3 +132,20 @@ config, the `AppProperties` analogue), `@nestjs/swagger` (OpenAPI), `class-valid
 
 Database: **Prisma** (type-safe client + Prisma Migrate as the Liquibase analogue), chosen
 over TypeORM for the cleaner migration story and type safety.
+
+## ADR-013 — Image versions follow availability; Kafka is Bitnami 3.5.1
+
+Date: 2026-11-06 · Status: Accepted
+
+Container tags are the versions actually obtainable in our environment, listed in
+`docs/IMAGES.md`. Where this conflicts with "use the latest" (ADR-012 dependency policy),
+availability wins: Kafka `bitnami/kafka:3.5.1` (KRaft, no ZooKeeper), Elasticsearch
+`8.19.16`, Redis `6.2.24`, RabbitMQ `3.12.13-management`, otel-lgtm `1.3`.
+
+Redpanda and `apache/kafka` were not available. Bitnami Kafka is upstream Apache Kafka, so
+`kafkajs` and Spring Kafka clients behave identically. Kafka UI and RedisInsight are
+dropped; the CLIs inside the containers are used instead.
+
+Compose files use plain image names so they stay portable. Images pulled from a private
+registry are tagged to those names with `infra/retag-images.ps1`, which takes the registry
+from the `IMAGE_REGISTRY` environment variable.

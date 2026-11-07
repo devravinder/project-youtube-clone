@@ -32,7 +32,19 @@ Scripts follow `start|stop:env:service`:
 pnpm install
 ```
 
-## 2. Start local infrastructure
+## 2. Prepare container images
+
+Image names and versions are listed in [IMAGES.md](IMAGES.md). If you pull from a private
+registry or mirror, tag the images to their plain names once after pulling:
+
+```powershell
+$env:IMAGE_REGISTRY = "<registry-host>[:port]"
+pwsh -File infra/retag-images.ps1
+```
+
+The script reports any image that has not been pulled yet; pull it and re-run.
+
+## 3. Start local infrastructure
 
 Brings up Postgres and MinIO, and auto-creates the `raw-videos` and `hls-videos` buckets.
 

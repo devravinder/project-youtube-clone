@@ -74,7 +74,7 @@ Concepts: ABR/HLS, CDN/edge caching, byte-range/seek.
 Goal: one event fans out to independent consumers.
 Concepts: event log, consumer groups/replay, search sync, real-time notifications.
 
-- [ ] Add Kafka (Redpanda) + Elasticsearch to compose
+- [ ] Add Kafka (Bitnami, KRaft) + Elasticsearch to compose
 - [ ] Emit `video.ready` event (from outbox) to Kafka
 - [ ] `apps/search-service` (NestJS) — Kafka consumer → Elasticsearch indexer
 - [ ] `apps/notification-service` (NestJS) — Kafka consumer → WebSocket
