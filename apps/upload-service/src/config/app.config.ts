@@ -1,8 +1,8 @@
 import { Global, Module } from "@nestjs/common";
-import { baseEnv, loadConfig, minioEnv } from "@yt/config";
+import { baseEnv, loadConfig, minioEnv, postgresEnv } from "@yt/config";
 import { z } from "zod";
 
-const schema = z.object({ ...baseEnv.shape, ...minioEnv.shape });
+const schema = z.object({ ...baseEnv.shape, ...minioEnv.shape, ...postgresEnv.shape });
 
 export type AppConfig = z.infer<typeof schema>;
 

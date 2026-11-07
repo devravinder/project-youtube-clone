@@ -85,12 +85,14 @@ Needs MinIO running (step 3). Config comes from `apps/upload-service/.env.sample
 pnpm start:l:upload
 ```
 
-Request a presigned upload URL, then PUT the file straight to storage:
+Request a presigned upload URL, then PUT the file straight to storage. `title` and
+`description` are optional; the title defaults to the filename. Each presign saves a `videos`
+row with status `UPLOADED`:
 
 ```bash
 curl -X POST http://localhost:3001/uploads/presign \
   -H "Content-Type: application/json" \
-  -d '{"filename":"clip.mp4","contentType":"video/mp4"}'
+  -d '{"filename":"clip.mp4","contentType":"video/mp4","title":"My clip"}'
 
 curl -X PUT --data-binary @clip.mp4 -H "Content-Type: video/mp4" "<uploadUrl from response>"
 ```

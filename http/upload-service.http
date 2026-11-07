@@ -7,10 +7,13 @@ Content-Type: application/json
 
 {
   "filename": "clip.mp4",
-  "contentType": "video/mp4"
+  "contentType": "video/mp4",
+  "title": "My first video",
+  "description": "Uploaded from httpYac"
 }
 
 ?? status == 201
+?? js response.parsedBody.videoId isString
 ?? js response.parsedBody.key endsWith source.mp4
 
 ### Upload a real file straight to storage using the presigned URL
