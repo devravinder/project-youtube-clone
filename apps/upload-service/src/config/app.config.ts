@@ -1,11 +1,12 @@
 import { Global, Module } from "@nestjs/common";
-import { baseEnv, loadConfig, minioEnv, postgresEnv } from "@yt/config";
+import { baseEnv, keycloakEnv, loadConfig, minioEnv, postgresEnv } from "@yt/config";
 import { z } from "zod";
 
 const schema = z.object({
   ...baseEnv.shape,
   ...minioEnv.shape,
   ...postgresEnv.shape,
+  ...keycloakEnv.shape,
   UPLOAD_PENDING_TTL_MINUTES: z.coerce.number().int().positive().default(1440),
 });
 

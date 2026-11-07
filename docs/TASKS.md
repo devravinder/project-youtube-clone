@@ -51,7 +51,7 @@ Concepts: object storage, presigned/multipart upload, relational modeling, ports
 - [x] Scheduled cleanup of abandoned pending uploads (cron, TTL `UPLOAD_PENDING_TTL_MINUTES`)
 - [ ] Multipart / resumable upload for large files, with abort of incomplete parts
 - [x] Keycloak in compose with an imported `youtube-clone` realm (client `yt-web`, user `alice`)
-- [ ] Verify Keycloak JWTs in upload-service (guard + `jwks-rsa`), protect upload endpoints
+- [x] Verify Keycloak JWTs in upload-service (`jose` guard), protect upload endpoints, record video owner
 - [ ] Login and logout in the web app (OIDC code flow with PKCE), send the bearer token
 - [ ] Tests: Jest (service), supertest (controller), Vitest (web)
 - [x] Git hooks: Husky + lint-staged + commitlint + markdownlint

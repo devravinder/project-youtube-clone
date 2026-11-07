@@ -23,6 +23,7 @@ model Video {
   rawBucket   String      @map("raw_bucket")
   rawKey      String      @map("raw_key")
   contentType String      @map("content_type")
+  ownerId     String?     @map("owner_id")
   viewCount   BigInt      @default(0) @map("view_count")
   createdAt   DateTime    @default(now()) @map("created_at")
   updatedAt   DateTime    @updatedAt @map("updated_at")

@@ -56,7 +56,7 @@ Keycloak takes about 30 seconds to start. It imports `infra/keycloak/realm-youtu
 | Realm          | `youtube-clone`                              |
 | Issuer         | `http://localhost:8180/realms/youtube-clone` |
 | Web client     | `yt-web` (public, PKCE)                      |
-| Demo user      | `alice` / `alice`                            |
+| Demo users     | `alice` / `alice`, `bob` / `bob`             |
 | Token audience | `yt-api`                                     |
 
 The import only runs when the realm does not exist yet. Change the JSON, then run `pnpm stop:l:pods` and start again.
@@ -92,7 +92,7 @@ run `db:generate` on a fresh clone before type-checking or starting the service.
 
 ## 5. Run the upload service
 
-Needs MinIO running (step 3). Config comes from `apps/upload-service/.env.sample`. Every 10 minutes a job deletes uploads still pending after UPLOAD_PENDING_TTL_MINUTES (default 1440).
+Needs MinIO running (step 3). Config comes from `apps/upload-service/.env.sample`. Upload endpoints need a Keycloak bearer token (`OIDC_ISSUER_URL`, `OIDC_AUDIENCE`); the web app does not log in yet, so use `http/upload-service.http`. Every 10 minutes a job deletes uploads still pending after UPLOAD_PENDING_TTL_MINUTES (default 1440).
 
 ```bash
 pnpm start:l:upload

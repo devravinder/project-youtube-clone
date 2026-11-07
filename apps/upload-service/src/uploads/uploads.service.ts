@@ -1,7 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { extname, parse } from "node:path";
-import { ConflictException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  ConflictException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import type { StoragePort } from "@yt/ports";
+import type { AuthUser } from "../auth/auth-user.js";
 import { APP_CONFIG, type AppConfig } from "../config/app.config.js";
 import { VideoStatus } from "../generated/prisma/enums.js";
 import { PrismaService } from "../prisma/prisma.service.js";
@@ -18,7 +25,7 @@ export class UploadsService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
   ) {}
 
-  async createPresignedUpload(request: PresignRequest): Promise<PresignResponse> {
+  async createPresignedUpload(request: PresignRequest, user: AuthUser): Promise<PresignResponse> {
     const videoId = randomUUID();
     const bucket = this.config.STORAGE_RAW_BUCKET;
     const key = `${videoId}/source${safeExtension(request.filename)}`;
@@ -37,16 +44,20 @@ export class UploadsService {
         rawBucket: bucket,
         rawKey: key,
         contentType: request.contentType,
+        ownerId: user.id,
       },
     });
 
     return { videoId, bucket, key, uploadUrl, expiresInSeconds: UPLOAD_URL_EXPIRY_SECONDS };
   }
 
-  async confirmUpload(videoId: string): Promise<ConfirmUploadResponse> {
+  async confirmUpload(videoId: string, user: AuthUser): Promise<ConfirmUploadResponse> {
     const video = await this.prisma.video.findUnique({ where: { id: videoId } });
     if (!video) {
       throw new NotFoundException(`Video ${videoId} not found`);
+    }
+    if (video.ownerId !== user.id) {
+      throw new ForbiddenException("Only the uploader can confirm this video");
     }
     if (video.status !== VideoStatus.PENDING) {
       return { videoId, status: video.status };

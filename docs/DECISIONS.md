@@ -194,3 +194,18 @@ support, has a consistent stroke style, and is the icon set shadcn/ui uses, whic
 shadcn-like theme. Tabler (5,000+ icons) is the fallback for a missing glyph. Phosphor was
 passed over because its last release was May 2025; react-icons mixes unrelated styles;
 Heroicons has a small set.
+
+## ADR-017 - JWT verification with jose
+
+Date: 2026-11-07 - Status: Accepted
+
+Services verify Keycloak access tokens themselves with `jose`: `createRemoteJWKSet` fetches and
+caches the realm's public keys, and `jwtVerify` checks the signature, issuer, audience and
+expiry. A Nest `AuthGuard` does this per request and exposes the user through `@CurrentUser()`.
+
+Why not Passport + `jwks-rsa` (the earlier plan in ADR-012): `jose` does the same job in one
+package with no strategy layer, and it works the same way in plain Node and in other services.
+
+Rules: reads stay public; upload endpoints need a token; a video records its `ownerId`
+(the token `sub`) and only the owner can confirm it. Stateless verification means no call to
+Keycloak per request, the trade-off being that a revoked token stays valid until it expires.

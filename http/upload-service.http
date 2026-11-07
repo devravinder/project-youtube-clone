@@ -1,8 +1,12 @@
+# @import ./keycloak.http
+
 @baseUrl = http://localhost:3001
 
 ### Create a presigned upload URL
 # @name presign
+# @ref token
 POST {{baseUrl}}/uploads/presign
+Authorization: Bearer {{token.access_token}}
 Content-Type: application/json
 
 {
@@ -29,7 +33,9 @@ Content-Type: video/mp4
 
 ### Title defaults to the filename when omitted
 # @name noUpload
+# @ref token
 POST {{baseUrl}}/uploads/presign
+Authorization: Bearer {{token.access_token}}
 Content-Type: application/json
 
 {
@@ -41,7 +47,9 @@ Content-Type: application/json
 ?? js response.parsedBody.key endsWith source.mov
 
 ### Untrusted filename path never reaches the storage key
+# @ref token
 POST {{baseUrl}}/uploads/presign
+Authorization: Bearer {{token.access_token}}
 Content-Type: application/json
 
 {
@@ -53,7 +61,9 @@ Content-Type: application/json
 ?? js response.parsedBody.key matches ^[0-9a-f-]{36}/source\.mp4$
 
 ### Unsafe extension is dropped from the storage key
+# @ref token
 POST {{baseUrl}}/uploads/presign
+Authorization: Bearer {{token.access_token}}
 Content-Type: application/json
 
 {
@@ -64,8 +74,46 @@ Content-Type: application/json
 ?? status == 201
 ?? js response.parsedBody.key matches ^[0-9a-f-]{36}/source$
 
-### Reject a non-video content type
+### Presign without a token is rejected
 POST {{baseUrl}}/uploads/presign
+Content-Type: application/json
+
+{
+  "filename": "clip.mp4",
+  "contentType": "video/mp4"
+}
+
+?? status == 401
+
+### Presign with a garbage token is rejected
+POST {{baseUrl}}/uploads/presign
+Authorization: Bearer not.a.token
+Content-Type: application/json
+
+{
+  "filename": "clip.mp4",
+  "contentType": "video/mp4"
+}
+
+?? status == 401
+
+### Another user cannot confirm someone else's upload
+# @ref noUpload
+# @ref bobToken
+POST {{baseUrl}}/uploads/{{noUpload.videoId}}/complete
+Authorization: Bearer {{bobToken.access_token}}
+
+?? status == 403
+
+### Confirm without a token is rejected
+# @ref noUpload
+POST {{baseUrl}}/uploads/{{noUpload.videoId}}/complete
+
+?? status == 401
+### Reject a non-video content type
+# @ref token
+POST {{baseUrl}}/uploads/presign
+Authorization: Bearer {{token.access_token}}
 Content-Type: application/json
 
 {
@@ -76,7 +124,9 @@ Content-Type: application/json
 ?? status == 400
 
 ### Reject a missing filename
+# @ref token
 POST {{baseUrl}}/uploads/presign
+Authorization: Bearer {{token.access_token}}
 Content-Type: application/json
 
 {
@@ -86,7 +136,9 @@ Content-Type: application/json
 ?? status == 400
 
 ### Reject a missing content type
+# @ref token
 POST {{baseUrl}}/uploads/presign
+Authorization: Bearer {{token.access_token}}
 Content-Type: application/json
 
 {
@@ -96,7 +148,9 @@ Content-Type: application/json
 ?? status == 400
 
 ### Reject a title longer than 200 characters
+# @ref token
 POST {{baseUrl}}/uploads/presign
+Authorization: Bearer {{token.access_token}}
 Content-Type: application/json
 
 {
@@ -107,6 +161,68 @@ Content-Type: application/json
 
 ?? status == 400
 
+### Seed video A for the pagination tests
+# @name seedA
+# @ref token
+POST {{baseUrl}}/uploads/presign
+Authorization: Bearer {{token.access_token}}
+Content-Type: application/json
+
+{
+  "filename": "seedA.mp4",
+  "contentType": "video/mp4"
+}
+
+?? status == 201
+
+###
+# @name seedAPut
+# @ref seedA
+PUT {{seedA.uploadUrl}}
+Content-Type: video/mp4
+
+< {{VIDEO_FILE}}
+
+?? status == 200
+
+###
+# @ref seedAPut
+# @ref token
+POST {{baseUrl}}/uploads/{{seedA.videoId}}/complete
+Authorization: Bearer {{token.access_token}}
+
+?? status == 201
+### Seed video B for the pagination tests
+# @name seedB
+# @ref token
+POST {{baseUrl}}/uploads/presign
+Authorization: Bearer {{token.access_token}}
+Content-Type: application/json
+
+{
+  "filename": "seedB.mp4",
+  "contentType": "video/mp4"
+}
+
+?? status == 201
+
+###
+# @name seedBPut
+# @ref seedB
+PUT {{seedB.uploadUrl}}
+Content-Type: video/mp4
+
+< {{VIDEO_FILE}}
+
+?? status == 200
+
+###
+# @ref seedBPut
+# @ref token
+POST {{baseUrl}}/uploads/{{seedB.videoId}}/complete
+Authorization: Bearer {{token.access_token}}
+
+?? status == 201
 ### First page of videos, newest first
 # @name page1
 GET {{baseUrl}}/videos?limit=2
@@ -148,7 +264,9 @@ GET {{baseUrl}}/videos?cursor=not-a-uuid
 ### Confirming before the file exists is rejected
 # @name earlyConfirm
 # @ref noUpload
+# @ref token
 POST {{baseUrl}}/uploads/{{noUpload.videoId}}/complete
+Authorization: Bearer {{token.access_token}}
 
 ?? status == 409
 
@@ -162,25 +280,33 @@ GET {{baseUrl}}/videos?limit=50
 ### Confirm marks the video as uploaded
 # @name confirm
 # @ref upload
+# @ref token
 POST {{baseUrl}}/uploads/{{presign.videoId}}/complete
+Authorization: Bearer {{token.access_token}}
 
 ?? status == 201
 ?? js response.parsedBody.status == UPLOADED
 
 ### Confirming twice is harmless
 # @ref presign
+# @ref token
 POST {{baseUrl}}/uploads/{{presign.videoId}}/complete
+Authorization: Bearer {{token.access_token}}
 
 ?? status == 201
 ?? js response.parsedBody.status == UPLOADED
 
 ### Confirm unknown video returns 404
+# @ref token
 POST {{baseUrl}}/uploads/00000000-0000-4000-8000-000000000000/complete
+Authorization: Bearer {{token.access_token}}
 
 ?? status == 404
 
 ### Confirm malformed id returns 400
+# @ref token
 POST {{baseUrl}}/uploads/not-a-uuid/complete
+Authorization: Bearer {{token.access_token}}
 
 ?? status == 400
 

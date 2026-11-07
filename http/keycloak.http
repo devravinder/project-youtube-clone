@@ -10,6 +10,15 @@ grant_type=password&client_id=yt-web&username=alice&password=alice&scope=openid
 ?? status == 200
 ?? js response.parsedBody.access_token isString
 
+### Get an access token for a second user
+# @name bobToken
+POST {{keycloak}}/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=password&client_id=yt-web&username=bob&password=bob&scope=openid
+
+?? status == 200
+
 ### Public signing keys used to verify tokens
 GET {{keycloak}}/certs
 
