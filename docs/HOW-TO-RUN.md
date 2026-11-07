@@ -18,13 +18,13 @@ Scripts follow `start|stop:env:service`:
 
 ## What runs today
 
-| Capability                     | How                   | Status                        |
-| ------------------------------ | --------------------- | ----------------------------- |
-| Local infra (Postgres + MinIO) | `pnpm start:l:pods`   | ✅ available                  |
-| Upload service (NestJS)        | `pnpm start:l:upload` | ✅ available                  |
-| Web UI (React)                 | `pnpm start:l:web`    | ✅ available                  |
-| Transcoder (Spring Boot)       | —                     | ⏳ not built yet              |
-| Observability (otel-lgtm)      | `pnpm start:lo:pods`  | ⏳ compose file not added yet |
+| Capability                              | How                   | Status                        |
+| --------------------------------------- | --------------------- | ----------------------------- |
+| Local infra (Postgres, MinIO, Keycloak) | `pnpm start:l:pods`   | ✅ available                  |
+| Upload service (NestJS)                 | `pnpm start:l:upload` | ✅ available                  |
+| Web UI (React)                          | `pnpm start:l:web`    | ✅ available                  |
+| Transcoder (Spring Boot)                | —                     | ⏳ not built yet              |
+| Observability (otel-lgtm)               | `pnpm start:lo:pods`  | ⏳ compose file not added yet |
 
 ## 1. Install dependencies
 
@@ -46,7 +46,20 @@ The script reports any image that has not been pulled yet; pull it and re-run.
 
 ## 3. Start local infrastructure
 
-Brings up Postgres and MinIO, and auto-creates the `raw-videos` and `hls-videos` buckets.
+Brings up Postgres, MinIO and Keycloak, and auto-creates the `raw-videos` and `hls-videos` buckets.
+
+Keycloak takes about 30 seconds to start. It imports `infra/keycloak/realm-youtube-clone.json`:
+
+| Item           | Value                                        |
+| -------------- | -------------------------------------------- |
+| Admin console  | <http://localhost:8180> (`admin` / `admin`)  |
+| Realm          | `youtube-clone`                              |
+| Issuer         | `http://localhost:8180/realms/youtube-clone` |
+| Web client     | `yt-web` (public, PKCE)                      |
+| Demo user      | `alice` / `alice`                            |
+| Token audience | `yt-api`                                     |
+
+The import only runs when the realm does not exist yet. Change the JSON, then run `pnpm stop:l:pods` and start again.
 
 ```bash
 pnpm start:l:pods

@@ -1,0 +1,25 @@
+@keycloak = http://localhost:8180/realms/youtube-clone/protocol/openid-connect
+
+### Get an access token for the demo user
+# @name token
+POST {{keycloak}}/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=password&client_id=yt-web&username=alice&password=alice&scope=openid
+
+?? status == 200
+?? js response.parsedBody.access_token isString
+
+### Public signing keys used to verify tokens
+GET {{keycloak}}/certs
+
+?? status == 200
+?? js response.parsedBody.keys isArray
+
+### Wrong password is rejected
+POST {{keycloak}}/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=password&client_id=yt-web&username=alice&password=wrong
+
+?? status == 400

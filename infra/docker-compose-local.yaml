@@ -54,6 +54,22 @@ services:
       echo 'Buckets ready: raw-videos, hls-videos'
       "
 
+  keycloak:
+    image: keycloak/keycloak:latest
+    container_name: yt-keycloak
+    restart: unless-stopped
+    command: start-dev --import-realm
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HTTP_PORT: 8180
+      # Fixed hostname keeps the token issuer identical for browser and services.
+      KC_HOSTNAME: http://localhost:8180
+    ports:
+      - "8180:8180"
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import:ro
+
 volumes:
   postgres-data:
   minio-data:
