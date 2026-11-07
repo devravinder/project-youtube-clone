@@ -41,6 +41,7 @@ Concepts: object storage, presigned/multipart upload, relational modeling, ports
 - [x] `libs/ts/config` — zod-validated typed config
 - [x] `libs/ts/ports` — `StoragePort` interface
 - [x] `apps/upload-service` (NestJS) — S3 adapter (MinIO) + presigned-upload endpoint
+- [x] `http/` — httpYac request files shared by all services
 - [ ] Prisma schema + first migration (video metadata)
 - [ ] `apps/web` (React 19 + Vite + Tailwind v4) — upload UI + plain playback
 - [ ] Wire Keycloak (OIDC) — login + JWT verification

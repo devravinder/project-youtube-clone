@@ -82,6 +82,33 @@ curl -X POST http://localhost:3001/uploads/presign \
 curl -X PUT --data-binary @clip.mp4 -H "Content-Type: video/mp4" "<uploadUrl from response>"
 ```
 
+### Test with httpYac
+
+Requests for all services live in the root `http/` folder, one `.http` file per service.
+Install the VS Code extension `anweber.vscode-httpyac`, open `http/upload-service.http`, and
+click **Send** above any request.
+
+Set the file used for the upload request once:
+
+```powershell
+Copy-Item http/.env.sample http/.env
+```
+
+Edit `VIDEO_FILE` in `http/.env` (git-ignored) to point at any local video. Your recordings
+are large (0.7 to 2 GB), so for quick checks cut a small slice into the ignored `tmp/` folder:
+
+```powershell
+$buf = New-Object byte[] (5MB)
+$fs = [IO.File]::OpenRead("<path to a recording>"); [void]$fs.Read($buf, 0, $buf.Length); $fs.Dispose()
+[IO.File]::WriteAllBytes("tmp/sample.mp4", $buf)
+```
+
+The slice is not playable but is enough to test uploads. Run all requests from the terminal:
+
+```bash
+pnpm dlx httpyac send http/upload-service.http --all
+```
+
 ## Local service URLs & credentials
 
 | Service        | URL                     | Credentials                                             |

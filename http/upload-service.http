@@ -1,0 +1,34 @@
+@baseUrl = http://localhost:3001
+
+### Create a presigned upload URL
+# @name presign
+POST {{baseUrl}}/uploads/presign
+Content-Type: application/json
+
+{
+  "filename": "clip.mp4",
+  "contentType": "video/mp4"
+}
+
+?? status == 201
+?? js response.parsedBody.key endsWith source.mp4
+
+### Upload a real file straight to storage using the presigned URL
+# @ref presign
+PUT {{presign.uploadUrl}}
+Content-Type: video/mp4
+
+< {{VIDEO_FILE}}
+
+?? status == 200
+
+### Reject a non-video content type
+POST {{baseUrl}}/uploads/presign
+Content-Type: application/json
+
+{
+  "filename": "notes.txt",
+  "contentType": "text/plain"
+}
+
+?? status == 400
