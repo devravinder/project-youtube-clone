@@ -1,13 +1,15 @@
 ---
 name: git-commit-convention
-description: Commit after every completed task with a short conventional message under 10 words. Use when finishing any task or discrete unit of work.
+description: Commit only after the user verifies a completed task, with a short conventional message under 10 words. Use when finishing any task or discrete unit of work.
 ---
 
 # Git Commit Convention
 
 ## Rule
 
-After **every completed task**, make a git commit. Keep the message **short — 10 words max**.
+After **every completed task**, leave the changes **uncommitted** and wait. The user reviews
+them in their editor's source control view. Commit only after the user says it is verified.
+Keep the message **short — 10 words max**.
 
 ## Format
 

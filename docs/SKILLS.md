@@ -4,7 +4,7 @@ Reusable skills live in `.kiro/skills/` (workspace-scoped). Each is a Markdown f
 front-matter (`name`, `description`) so it can be discovered and activated on demand.
 
 Development model: **step by step.** One task at a time, reviewed before moving on. After
-every task, a short git commit (see `git-commit-convention`).
+every task, a short git commit after you verify it (see `git-commit-convention`).
 
 ---
 
@@ -18,7 +18,7 @@ every task, a short git commit (see `git-commit-convention`).
 | `spring-microservice`          | Spring Boot 4.1 / Java 21 service (MapStruct, Lombok, JUnit + MockMvc + ArchUnit, JaCoCo) | ✅ Global candidate |
 | `testing-strategy`             | Test pyramid + coverage gates                                                             | ✅ Global candidate |
 | `git-hooks-conventions`        | Husky + lint-staged + commitlint                                                          | ✅ Global candidate |
-| `git-commit-convention`        | Short commit after every task (<10 words), conventional format                            | ✅ Global candidate |
+| `git-commit-convention`        | Short commit after you verify each task (<10 words)                                       | ✅ Global candidate |
 | `doc-with-mermaid`             | Author docs in Markdown with Mermaid for architecture/design diagrams                     | ✅ Global candidate |
 | `markdown-lint`                | Author Markdown to pass markdownlint rules                                                | ✅ Global candidate |
 | `code-comments`                | Minimal, precise comments; skip when names explain; short lines                           | ✅ Global candidate |
