@@ -1,3 +1,4 @@
+import { Moon, Sun } from "lucide-react";
 import { useState } from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
 import { Button } from "./ui";
@@ -19,7 +20,7 @@ function ThemeToggle() {
 
   return (
     <Button variant="ghost" onClick={toggle} aria-label="Toggle dark mode">
-      {dark ? "Light" : "Dark"}
+      {dark ? <Sun className="size-5" /> : <Moon className="size-5" />}
     </Button>
   );
 }

@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { BackButton } from "../components/back-button";
-import { ArrowRightIcon, CheckIcon } from "../components/icons";
+import { ArrowRight, Check } from "lucide-react";
 import { Button, Card, Input, Label, ProgressBar, Textarea } from "../components/ui";
 import { useUploadVideo } from "../queries/videos";
 
@@ -18,7 +18,7 @@ function UploadSuccess({ videoId, title, onUploadAnother }: UploadSuccessProps) 
       className="flex flex-col gap-4 border-transparent bg-primary p-6 text-primary-foreground"
     >
       <span className="flex size-10 items-center justify-center rounded-full bg-primary-foreground/20">
-        <CheckIcon className="size-6" />
+        <Check className="size-6" />
       </span>
       <h1 className="text-3xl font-bold">Upload complete</h1>
       <p className="text-lg">
@@ -30,7 +30,7 @@ function UploadSuccess({ videoId, title, onUploadAnother }: UploadSuccessProps) 
           className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest hover:underline"
         >
           Watch video
-          <ArrowRightIcon />
+          <ArrowRight className="size-5" />
         </Link>
         <div className="flex gap-4 text-sm">
           <button type="button" onClick={onUploadAnother} className="underline">

@@ -17,6 +17,7 @@ design tokens, and **tailwind-variants** for reusable styled primitives.
 - `@tanstack/react-query` for all server state (fetching, caching, pagination, mutations)
 - `react-router-dom` for routing
 - `react-player` for video (MP4 now, HLS and DASH lazy-loaded for streaming later)
+- `lucide-react` for icons (imported by name, tree-shaken)
 - Vitest + Testing Library (unit), Playwright (e2e)
 - oxlint + prettier
 
@@ -84,7 +85,10 @@ that must keep running while the user navigates, live notification counts.
   corners, a border instead of a shadow.
 - Status badges carry meaning through tone (ready is green, failed is red).
 - Equal-height cards in a grid: `h-full flex flex-col` on the card, `mt-auto` on the footer.
-- Icons are small inline SVG components; no icon library.
+- Icons come from `lucide-react`; never hand-draw SVG. Import by name
+  (`import { ArrowLeft } from "lucide-react"`) and size with a class (`className="size-5"`).
+  A filled glyph takes `fill="currentColor"`. Icon-only buttons need an `aria-label`. If a
+  glyph is missing, use `@tabler/icons-react` (5,000+ icons) for that one.
 
 ## Tailwind v4 note
 
@@ -243,7 +247,7 @@ apps/web/
 │   ├── themes/            # one css file per palette
 │   ├── query-client.ts    # QueryClient defaults and retry policy
 │   ├── types.ts           # API response types
-│   ├── components/        # layout, back button, cards, icons
+│   ├── components/        # layout, back button, cards
 │   │   └── ui/            # tailwind-variants primitives
 │   ├── hooks/             # useInView and similar
 │   ├── queries/           # TanStack Query hooks and key factories

@@ -181,3 +181,16 @@ live notification counts from the notification service.
 
 Consequence worth remembering: presigned playback URLs differ on every fetch, so the video
 detail query uses a long `staleTime` and no focus refetch to keep the player from restarting.
+
+## ADR-016 — Icons: lucide-react
+
+Date: 2026-11-07 · Status: Accepted
+
+All icons come from `lucide-react` (1.61.0), imported by name so unused icons are tree-shaken.
+Hand-drawn inline SVG components are removed.
+
+Why: it is actively maintained (published the day before this decision), declares React 19
+support, has a consistent stroke style, and is the icon set shadcn/ui uses, which fits the
+shadcn-like theme. Tabler (5,000+ icons) is the fallback for a missing glyph. Phosphor was
+passed over because its last release was May 2025; react-icons mixes unrelated styles;
+Heroicons has a small set.

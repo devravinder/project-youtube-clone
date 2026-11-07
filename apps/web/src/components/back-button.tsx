@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeftIcon } from "./icons";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "./ui";
 
 interface BackButtonProps {
@@ -21,7 +21,7 @@ export function BackButton({ fallback = "/" }: BackButtonProps) {
 
   return (
     <Button variant="ghost" onClick={goBack} className="-ml-3 mb-4">
-      <ArrowLeftIcon />
+      <ArrowLeft className="size-5" />
       Back
     </Button>
   );
