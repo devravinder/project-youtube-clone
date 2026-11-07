@@ -52,6 +52,7 @@ feat: Added Presigned Upload.                                  # capitalized, tr
 1. Finish the task.
 2. Update `docs/TASKS.md` — mark the task `[x]` (or `[~]` if partial).
 3. If the task changed how to run/use anything, update `docs/HOW-TO-RUN.md`.
-4. Stage the specific files changed (including the docs above).
-5. Commit with a short conventional message.
-6. Pause for review before the next task.
+4. If the task changed an API, update `http/<service>.http` (see `api-http-requests`).
+5. Stage the specific files changed (including the docs above).
+6. Commit with a short conventional message.
+7. Pause for review before the next task.

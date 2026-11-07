@@ -15,6 +15,7 @@ Content-Type: application/json
 ?? status == 201
 ?? js response.parsedBody.videoId isString
 ?? js response.parsedBody.key endsWith source.mp4
+?? js response.parsedBody.expiresInSeconds == 900
 
 ### Upload a real file straight to storage using the presigned URL
 # @forceRef presign
@@ -25,6 +26,42 @@ Content-Type: video/mp4
 
 ?? status == 200
 
+### Title defaults to the filename when omitted
+POST {{baseUrl}}/uploads/presign
+Content-Type: application/json
+
+{
+  "filename": "Holiday Trip.MOV",
+  "contentType": "video/quicktime"
+}
+
+?? status == 201
+?? js response.parsedBody.key endsWith source.mov
+
+### Untrusted filename path never reaches the storage key
+POST {{baseUrl}}/uploads/presign
+Content-Type: application/json
+
+{
+  "filename": "../../etc/passwd.mp4",
+  "contentType": "video/mp4"
+}
+
+?? status == 201
+?? js response.parsedBody.key matches ^[0-9a-f-]{36}/source\.mp4$
+
+### Unsafe extension is dropped from the storage key
+POST {{baseUrl}}/uploads/presign
+Content-Type: application/json
+
+{
+  "filename": "movie.mp4;rm -rf",
+  "contentType": "video/mp4"
+}
+
+?? status == 201
+?? js response.parsedBody.key matches ^[0-9a-f-]{36}/source$
+
 ### Reject a non-video content type
 POST {{baseUrl}}/uploads/presign
 Content-Type: application/json
@@ -32,6 +69,38 @@ Content-Type: application/json
 {
   "filename": "notes.txt",
   "contentType": "text/plain"
+}
+
+?? status == 400
+
+### Reject a missing filename
+POST {{baseUrl}}/uploads/presign
+Content-Type: application/json
+
+{
+  "contentType": "video/mp4"
+}
+
+?? status == 400
+
+### Reject a missing content type
+POST {{baseUrl}}/uploads/presign
+Content-Type: application/json
+
+{
+  "filename": "clip.mp4"
+}
+
+?? status == 400
+
+### Reject a title longer than 200 characters
+POST {{baseUrl}}/uploads/presign
+Content-Type: application/json
+
+{
+  "filename": "clip.mp4",
+  "contentType": "video/mp4",
+  "title": "{{'x'.repeat(201)}}"
 }
 
 ?? status == 400
