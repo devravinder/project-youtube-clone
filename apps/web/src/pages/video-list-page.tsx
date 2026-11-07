@@ -41,7 +41,7 @@ export function VideoListPage() {
 
   return (
     <section aria-labelledby="videos-heading">
-      <h1 id="videos-heading" className="mb-4 text-2xl font-semibold">
+      <h1 id="videos-heading" className="mb-4 text-3xl font-bold text-primary">
         Videos
       </h1>
       <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">

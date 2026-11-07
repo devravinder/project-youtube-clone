@@ -2,7 +2,7 @@ import type { ComponentProps } from "react";
 import { tv, type VariantProps } from "tailwind-variants";
 
 const card = tv({
-  base: "rounded-md border border-border bg-card p-4 text-card-foreground shadow-sm",
+  base: "rounded-md border border-border bg-card p-4 text-card-foreground",
 });
 
 const badge = tv({

@@ -30,10 +30,7 @@ export function Layout() {
       <header className="sticky top-0 z-10 border-b border-border bg-card/80 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
           <div className="flex items-center gap-6">
-            <Link
-              to="/"
-              className="bg-linear-to-r from-primary to-accent bg-clip-text text-lg font-bold text-transparent"
-            >
+            <Link to="/" className="text-lg font-bold text-primary">
               Mini YouTube
             </Link>
             <nav className="flex gap-4" aria-label="Main">

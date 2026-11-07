@@ -36,3 +36,12 @@ export function PlayIcon(props: ComponentProps<"svg">) {
     </svg>
   );
 }
+
+export function ArrowRightIcon(props: ComponentProps<"svg">) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M5 12h14" />
+      <path d="m12 5 7 7-7 7" />
+    </svg>
+  );
+}

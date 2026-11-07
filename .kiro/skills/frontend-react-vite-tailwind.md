@@ -25,8 +25,9 @@ design tokens, and **tailwind-variants** for reusable styled primitives.
 - **No shadcn / no component library.** Build primitives ourselves.
 - **shadcn-like theme:** design tokens as CSS variables, exposed to Tailwind with
   `@theme inline` so utilities like `bg-primary` and `text-muted-foreground` work. Light and
-  dark via a `.dark` class on `<html>`. Use a tinted palette (mint, a light green, by
-  default), never plain white and black. Palettes are separate files in `src/themes/`.
+  dark via a `.dark` class on `<html>`. Flat design: no gradients and no shadows; add one
+  only when it carries meaning. Use a tinted palette (green by default), never plain white
+  and black. Palettes are separate files in `src/themes/`.
 - **Never hard-code a hue in a component** (no `from-fuchsia-500`); use tokens, so every
   palette works.
 - **Reusable components** are plain function components styled with `tv()` from
@@ -76,8 +77,11 @@ that must keep running while the user navigates, live notification counts.
 
 - Every page that is not the home page has a **Back button**: history back when the user
   navigated inside the app, otherwise a fallback route.
-- A finished action (upload) shows a **distinct success view** in place of the form, with
-  next actions (watch, do it again, go home).
+- A finished action (upload) shows a **distinct success view** in place of the form: a solid
+  `bg-primary` card with white text, a bold heading, and an uppercase tracked call to action
+  with an arrow ("WATCH VIDEO →"), plus plain-link alternatives.
+- Surfaces are flat: pale card on a lighter page, bold primary-coloured headings, rounded
+  corners, a border instead of a shadow.
 - Status badges carry meaning through tone (ready is green, failed is red).
 - Equal-height cards in a grid: `h-full flex flex-col` on the card, `mt-auto` on the footer.
 - Icons are small inline SVG components; no icon library.
@@ -92,25 +96,24 @@ Vite plugin. There is no `tailwind.config.js`; theme tokens live in CSS. Gradien
 
 Each palette is one small file in `src/themes/` defining the same tokens for light
 (`:root`) and dark (`.dark`). `index.css` imports exactly one, so switching is a one-line
-change. Available: `mint` (default, light green), `ocean`, `sunset`, `forest`, `royal`.
+change. Available: `green` (default), `ocean`, `sunset`, `forest`, `royal`.
 
 A new palette is a copy of one file with new hues. Every palette defines the same tokens:
-`background`, `foreground`, `card`, `card-foreground`, `primary`, `primary-foreground`,
-`accent` (end colour of the logo gradient), `muted`, `muted-foreground`, `border`,
+`background`, `foreground`, `card`, `card-foreground`, `primary`, `primary-foreground`, `muted`, `muted-foreground`, `border`,
 `destructive`, `success`.
 
 After adding or editing a palette, run `pnpm --filter @yt/web theme:contrast`. It checks
 ten text and background pairs per mode against WCAG AA (4.5:1). Light greens are the usual
-failure: a bright primary cannot carry white button text, and a pale background can wash
-out red error text.
+failure: a bright primary (Tailwind green-500) cannot carry white text (2.3:1), so use
+green-700 for filled areas; and a pale background can wash out red error text.
 
 ### `src/index.css`
 
 ```css
 @import "tailwindcss";
 
-/* Palette: mint | ocean | sunset | forest | royal. Change this one line to switch. */
-@import "./themes/mint.css";
+/* Palette: green | ocean | sunset | forest | royal. Change this one line to switch. */
+@import "./themes/green.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -123,7 +126,6 @@ out red error text.
   --color-card: hsl(var(--card));
   --color-primary: hsl(var(--primary));
   --color-primary-foreground: hsl(var(--primary-foreground));
-  --color-accent: hsl(var(--accent));
   --color-muted: hsl(var(--muted));
   --color-border: hsl(var(--border));
   /* plus foreground, card-foreground, muted-foreground, destructive, success */
@@ -131,21 +133,20 @@ out red error text.
 }
 ```
 
-### `src/themes/mint.css` (abridged)
+### `src/themes/green.css` (abridged)
 
 ```css
 :root {
-  --background: 140 55% 95%;
-  --card: 138 45% 99%;
+  --background: 138 76% 97%;
+  --card: 141 84% 93%;
   --primary: 142 72% 29%;
   --primary-foreground: 0 0% 100%;
-  --accent: 84 62% 38%;
   /* plus the remaining tokens */
 }
 
 .dark {
-  --background: 150 30% 7%;
-  --primary: 142 70% 55%;
+  --background: 150 30% 6%;
+  --primary: 142 70% 50%;
   /* the same token names with dark values */
 }
 ```

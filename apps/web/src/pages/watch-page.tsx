@@ -33,7 +33,7 @@ export function WatchPage() {
     <article className="mx-auto max-w-4xl">
       <BackButton />
       {video.playbackUrl ? (
-        <div className="aspect-video overflow-hidden rounded-md bg-black shadow-md">
+        <div className="aspect-video overflow-hidden rounded-md bg-black">
           <ReactPlayer
             src={video.playbackUrl}
             controls

@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { BackButton } from "../components/back-button";
-import { CheckIcon } from "../components/icons";
+import { ArrowRightIcon, CheckIcon } from "../components/icons";
 import { Button, Card, Input, Label, ProgressBar, Textarea } from "../components/ui";
 import { useUploadVideo } from "../queries/videos";
 
@@ -15,33 +15,31 @@ function UploadSuccess({ videoId, title, onUploadAnother }: UploadSuccessProps) 
   return (
     <Card
       role="status"
-      className="flex flex-col items-center gap-4 border-success/40 bg-success/10 py-10 text-center"
+      className="flex flex-col gap-4 border-transparent bg-primary p-6 text-primary-foreground"
     >
-      <span className="flex size-14 items-center justify-center rounded-full bg-success text-white">
-        <CheckIcon className="size-8" />
+      <span className="flex size-10 items-center justify-center rounded-full bg-primary-foreground/20">
+        <CheckIcon className="size-6" />
       </span>
-      <div>
-        <h1 className="text-2xl font-semibold">Upload complete</h1>
-        <p className="mt-1 text-muted-foreground">
-          <span className="font-medium text-foreground">{title}</span> is now in your library.
-        </p>
-      </div>
-      <div className="flex flex-wrap justify-center gap-3">
+      <h1 className="text-3xl font-bold">Upload complete</h1>
+      <p className="text-lg">
+        <span className="font-semibold">{title}</span> is now in your library.
+      </p>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
         <Link
           to={`/watch/${videoId}`}
-          className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+          className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest hover:underline"
         >
           Watch video
+          <ArrowRightIcon />
         </Link>
-        <Button variant="outline" onClick={onUploadAnother}>
-          Upload another
-        </Button>
-        <Link
-          to="/"
-          className="inline-flex items-center rounded-md px-4 py-2 text-sm font-medium hover:bg-muted"
-        >
-          All videos
-        </Link>
+        <div className="flex gap-4 text-sm">
+          <button type="button" onClick={onUploadAnother} className="underline">
+            Upload another
+          </button>
+          <Link to="/" className="underline">
+            All videos
+          </Link>
+        </div>
       </div>
     </Card>
   );
@@ -83,7 +81,7 @@ export function UploadPage() {
         />
       ) : (
         <>
-          <h1 className="mb-4 text-2xl font-semibold">Upload a video</h1>
+          <h1 className="mb-4 text-3xl font-bold text-primary">Upload a video</h1>
           <Card>
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
