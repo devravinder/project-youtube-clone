@@ -107,12 +107,43 @@ Content-Type: application/json
 
 ?? status == 400
 
-### List videos, newest first
+### First page of videos, newest first
+# @name page1
+GET {{baseUrl}}/videos?limit=2
+
+?? status == 200
+?? js response.parsedBody.items isArray
+?? js response.parsedBody.items.length == 2
+?? js response.parsedBody.nextCursor isString
+
+### Second page continues after the first
+# @ref page1
+GET {{baseUrl}}/videos?limit=2&cursor={{page1.nextCursor}}
+
+?? status == 200
+?? js response.parsedBody.items.length == 2
+?? js response.parsedBody.items[0].id == {{page1.nextCursor}}
+
+### Default page size is 12
 GET {{baseUrl}}/videos
 
 ?? status == 200
-?? js response.parsedBody isArray
-?? js response.parsedBody[0].id isString
+?? js response.parsedBody.items.length <= 12
+
+### Reject a limit of zero
+GET {{baseUrl}}/videos?limit=0
+
+?? status == 400
+
+### Reject a limit above 50
+GET {{baseUrl}}/videos?limit=51
+
+?? status == 400
+
+### Reject a malformed cursor
+GET {{baseUrl}}/videos?cursor=not-a-uuid
+
+?? status == 400
 
 ### Uploaded video has a playback URL
 # @name detail
