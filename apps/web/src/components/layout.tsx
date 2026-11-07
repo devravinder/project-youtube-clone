@@ -32,7 +32,7 @@ export function Layout() {
           <div className="flex items-center gap-6">
             <Link
               to="/"
-              className="bg-linear-to-r from-primary to-fuchsia-500 bg-clip-text text-lg font-bold text-transparent"
+              className="bg-linear-to-r from-primary to-accent bg-clip-text text-lg font-bold text-transparent"
             >
               Mini YouTube
             </Link>

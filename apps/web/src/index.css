@@ -1,34 +1,12 @@
 @import "tailwindcss";
 
+/* Palette: mint | ocean | sunset | forest | royal. Change this one line to switch. */
+@import "./themes/mint.css";
+
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: 250 60% 97%;
-  --foreground: 248 45% 15%;
-  --card: 0 0% 100%;
-  --card-foreground: 248 45% 15%;
-  --primary: 252 83% 58%;
-  --primary-foreground: 0 0% 100%;
-  --muted: 249 40% 93%;
-  --muted-foreground: 248 18% 42%;
-  --border: 249 30% 86%;
-  --destructive: 350 78% 52%;
-  --success: 160 84% 30%;
   --radius: 0.75rem;
-}
-
-.dark {
-  --background: 250 35% 9%;
-  --foreground: 245 40% 95%;
-  --card: 250 30% 13%;
-  --card-foreground: 245 40% 95%;
-  --primary: 256 90% 72%;
-  --primary-foreground: 250 35% 9%;
-  --muted: 250 25% 18%;
-  --muted-foreground: 248 15% 68%;
-  --border: 250 22% 22%;
-  --destructive: 350 80% 62%;
-  --success: 158 64% 52%;
 }
 
 @theme inline {
@@ -38,6 +16,7 @@
   --color-card-foreground: hsl(var(--card-foreground));
   --color-primary: hsl(var(--primary));
   --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-accent: hsl(var(--accent));
   --color-muted: hsl(var(--muted));
   --color-muted-foreground: hsl(var(--muted-foreground));
   --color-border: hsl(var(--border));

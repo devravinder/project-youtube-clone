@@ -23,10 +23,12 @@ design tokens, and **tailwind-variants** for reusable styled primitives.
 ## Key rules
 
 - **No shadcn / no component library.** Build primitives ourselves.
-- **shadcn-like theme:** design tokens as CSS variables in `index.css`, exposed to Tailwind
-  with `@theme inline` so utilities like `bg-primary` and `text-muted-foreground` work.
-  Light and dark via a `.dark` class on `<html>`. Use a tinted palette (violet and indigo),
-  never plain white and black.
+- **shadcn-like theme:** design tokens as CSS variables, exposed to Tailwind with
+  `@theme inline` so utilities like `bg-primary` and `text-muted-foreground` work. Light and
+  dark via a `.dark` class on `<html>`. Use a tinted palette (mint, a light green, by
+  default), never plain white and black. Palettes are separate files in `src/themes/`.
+- **Never hard-code a hue in a component** (no `from-fuchsia-500`); use tokens, so every
+  palette works.
 - **Reusable components** are plain function components styled with `tv()` from
   tailwind-variants. Props come from `ComponentProps<"button">` plus `VariantProps`.
 - **Do not use tailwind-styled-components.** Last release was 2022, it only concatenates
@@ -86,55 +88,65 @@ Tailwind v4 is config-light: import it in CSS with `@import "tailwindcss";` and 
 Vite plugin. There is no `tailwind.config.js`; theme tokens live in CSS. Gradients are
 `bg-linear-to-r`, not `bg-gradient-to-r`.
 
-### `index.css` (token theme)
+## Theme palettes
+
+Each palette is one small file in `src/themes/` defining the same tokens for light
+(`:root`) and dark (`.dark`). `index.css` imports exactly one, so switching is a one-line
+change. Available: `mint` (default, light green), `ocean`, `sunset`, `forest`, `royal`.
+
+A new palette is a copy of one file with new hues. Every palette defines the same tokens:
+`background`, `foreground`, `card`, `card-foreground`, `primary`, `primary-foreground`,
+`accent` (end colour of the logo gradient), `muted`, `muted-foreground`, `border`,
+`destructive`, `success`.
+
+After adding or editing a palette, run `pnpm --filter @yt/web theme:contrast`. It checks
+ten text and background pairs per mode against WCAG AA (4.5:1). Light greens are the usual
+failure: a bright primary cannot carry white button text, and a pale background can wash
+out red error text.
+
+### `src/index.css`
 
 ```css
 @import "tailwindcss";
 
+/* Palette: mint | ocean | sunset | forest | royal. Change this one line to switch. */
+@import "./themes/mint.css";
+
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: 250 60% 97%;
-  --foreground: 248 45% 15%;
-  --card: 0 0% 100%;
-  --card-foreground: 248 45% 15%;
-  --primary: 252 83% 58%;
-  --primary-foreground: 0 0% 100%;
-  --muted: 249 40% 93%;
-  --muted-foreground: 248 18% 42%;
-  --border: 249 30% 86%;
-  --destructive: 350 78% 52%;
-  --success: 160 84% 30%;
   --radius: 0.75rem;
-}
-
-.dark {
-  --background: 250 35% 9%;
-  --foreground: 245 40% 95%;
-  --card: 250 30% 13%;
-  --card-foreground: 245 40% 95%;
-  --primary: 256 90% 72%;
-  --primary-foreground: 250 35% 9%;
-  --muted: 250 25% 18%;
-  --muted-foreground: 248 15% 68%;
-  --border: 250 22% 22%;
-  --destructive: 350 80% 62%;
-  --success: 158 64% 52%;
 }
 
 @theme inline {
   --color-background: hsl(var(--background));
-  --color-foreground: hsl(var(--foreground));
   --color-card: hsl(var(--card));
-  --color-card-foreground: hsl(var(--card-foreground));
   --color-primary: hsl(var(--primary));
   --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-accent: hsl(var(--accent));
   --color-muted: hsl(var(--muted));
-  --color-muted-foreground: hsl(var(--muted-foreground));
   --color-border: hsl(var(--border));
-  --color-destructive: hsl(var(--destructive));
-  --color-success: hsl(var(--success));
+  /* plus foreground, card-foreground, muted-foreground, destructive, success */
   --radius-md: var(--radius);
+}
+```
+
+### `src/themes/mint.css` (abridged)
+
+```css
+:root {
+  --background: 140 55% 95%;
+  --card: 138 45% 99%;
+  --primary: 142 72% 29%;
+  --primary-foreground: 0 0% 100%;
+  --accent: 84 62% 38%;
+  /* plus the remaining tokens */
+}
+
+.dark {
+  --background: 150 30% 7%;
+  --primary: 142 70% 55%;
+  /* the same token names with dark values */
 }
 ```
 
@@ -221,10 +233,12 @@ import ReactPlayer from "react-player";
 apps/web/
 ├── index.html
 ├── vite.config.ts
+├── scripts/               # check-theme-contrast.mjs
 ├── src/
 │   ├── main.tsx           # theme bootstrap, QueryClientProvider, render
 │   ├── App.tsx            # routes
-│   ├── index.css          # tailwind import + token theme
+│   ├── index.css          # tailwind import, one palette import, token mapping
+│   ├── themes/            # one css file per palette
 │   ├── query-client.ts    # QueryClient defaults and retry policy
 │   ├── types.ts           # API response types
 │   ├── components/        # layout, back button, cards, icons
@@ -246,6 +260,8 @@ outside the repo.
   a route change or a fetch.
 - Wait a few hundred milliseconds after a theme toggle before a screenshot; colors fade.
 - Read the screenshots. Layout flaws (ragged card heights) never fail an assertion.
+- To compare palettes, inject token overrides with `page.addStyleTag` and photograph each
+  one before editing any file.
 
 ## Testing & quality
 
