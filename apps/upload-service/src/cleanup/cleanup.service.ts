@@ -13,6 +13,8 @@ const MS_PER_MINUTE = 60_000;
 export class CleanupService {
   private readonly logger = new Logger(CleanupService.name);
 
+  private running = false;
+
   constructor(
     @Inject(STORAGE_PORT) private readonly storage: StoragePort,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
@@ -21,21 +23,45 @@ export class CleanupService {
 
   @Cron(CronExpression.EVERY_10_MINUTES)
   async removeAbandonedUploads(): Promise<number> {
-    const cutoff = new Date(Date.now() - this.config.UPLOAD_PENDING_TTL_MINUTES * MS_PER_MINUTE);
-    const abandoned = await this.prisma.video.findMany({
-      where: { status: VideoStatus.PENDING, createdAt: { lt: cutoff } },
-      take: BATCH_SIZE,
-    });
+    if (this.running) {
+      return 0;
+    }
+    this.running = true;
+    try {
+      return await this.drainAbandoned();
+    } finally {
+      this.running = false;
+    }
+  }
 
+  private async drainAbandoned(): Promise<number> {
+    const cutoff = new Date(Date.now() - this.config.UPLOAD_PENDING_TTL_MINUTES * MS_PER_MINUTE);
+    const failedIds: string[] = [];
     let removed = 0;
-    for (const video of abandoned) {
-      try {
-        // Object first: a row without an object is harmless, the reverse leaks storage.
-        await this.storage.deleteObject(video.rawBucket, video.rawKey);
-        await this.prisma.video.delete({ where: { id: video.id } });
-        removed += 1;
-      } catch (error) {
-        this.logger.error(`Could not clean up video ${video.id}`, error);
+
+    // Batches keep memory flat; looping means the backlog can never outgrow a run.
+    while (true) {
+      const batch = await this.prisma.video.findMany({
+        where: {
+          status: VideoStatus.PENDING,
+          createdAt: { lt: cutoff },
+          id: { notIn: failedIds },
+        },
+        take: BATCH_SIZE,
+      });
+      if (batch.length === 0) {
+        break;
+      }
+      for (const video of batch) {
+        try {
+          // Object first: a row without an object is harmless, the reverse leaks storage.
+          await this.storage.deleteObject(video.rawBucket, video.rawKey);
+          await this.prisma.video.delete({ where: { id: video.id } });
+          removed += 1;
+        } catch (error) {
+          failedIds.push(video.id);
+          this.logger.error(`Could not clean up video ${video.id}`, error);
+        }
       }
     }
 
