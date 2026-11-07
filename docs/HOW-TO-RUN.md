@@ -22,7 +22,7 @@ Scripts follow `start|stop:env:service`:
 | ------------------------------ | --------------------- | ----------------------------- |
 | Local infra (Postgres + MinIO) | `pnpm start:l:pods`   | ✅ available                  |
 | Upload service (NestJS)        | `pnpm start:l:upload` | ✅ available                  |
-| Web UI (React)                 | —                     | ⏳ not built yet              |
+| Web UI (React)                 | `pnpm start:l:web`    | ✅ available                  |
 | Transcoder (Spring Boot)       | —                     | ⏳ not built yet              |
 | Observability (otel-lgtm)      | `pnpm start:lo:pods`  | ⏳ compose file not added yet |
 
@@ -127,6 +127,19 @@ The slice is not playable but is enough to test uploads. Run all requests from t
 ```bash
 pnpm dlx httpyac send http/upload-service.http --all
 ```
+
+## 6. Run the web app
+
+Needs the upload service running (step 5) and MinIO and Postgres up (step 3).
+
+```bash
+pnpm start:l:web
+```
+
+Open <http://localhost:5173>. The app has three pages: **Videos** (list), **Upload** (pick a
+file, with progress), and **Watch** (plays the video). The dev server proxies `/api` to the
+upload service on port 3001, so the browser needs no CORS setup for the API. Uploads go
+straight from the browser to MinIO, which allows cross-origin requests by default.
 
 ## Local service URLs & credentials
 

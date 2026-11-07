@@ -50,7 +50,7 @@ WebSockets, queue consumers, and hexagonal DI.
 Date: 2026-11-06 · Status: Accepted
 
 React 19 + TypeScript + Vite + Tailwind v4. No shadcn, but a shadcn-like theme (CSS
-variable design tokens). Reusable components via tailwind-styled-components.
+variable design tokens). Reusable components via tailwind-variants (amended by ADR-014).
 
 ## ADR-005 — Monorepo: pnpm workspaces, no Nx
 
@@ -149,3 +149,18 @@ dropped; the CLIs inside the containers are used instead.
 Compose files use plain image names so they stay portable. Images pulled from a private
 registry are tagged to those names with `infra/retag-images.ps1`, which takes the registry
 from the `IMAGE_REGISTRY` environment variable.
+
+## ADR-014 — Reusable UI components: tailwind-variants, not tailwind-styled-components
+
+Date: 2026-11-07 · Status: Accepted (amends ADR-004)
+
+Reusable components use `tailwind-variants` with `tailwind-merge`, as plain React function
+components typed with `ComponentProps<"element">`. Video uses `react-player`, which plays MP4
+now and lazy-loads HLS and DASH support for the streaming phase.
+
+Why not tailwind-styled-components: the last release was September 2022, it only
+concatenates classes so `className` overrides are unreliable, and under React 19 it lost
+event-handler typing (three `implicit any` errors in the first build of the upload form).
+
+Alternatives considered: `react-twc` (closest template syntax, last release July 2025),
+`class-variance-authority` (stable, fewer features), `@tw-classed/react`.

@@ -200,7 +200,7 @@ we use real open-source tools instead of AWS services), fully-containerized `doc
 - **Backend (API & light services):** NestJS + TypeScript.
 - **Backend (heavy/transcoding):** Spring Boot 4.1 + Java 21.
 - **Frontend:** React 19 + TypeScript + Vite + Tailwind v4, no shadcn (shadcn-like theme),
-  tailwind-styled-components for reusable components.
+  tailwind-variants for reusable components, react-player for video.
 - **Messaging:** RabbitMQ (commands) + Kafka (events) — deliberately both, phased.
 - **Monorepo:** pnpm workspaces (no Nx — keep it simple; the goal is system design).
 - **Spec-driven:** Kiro Specs (`requirements.md` / `design.md` / `tasks.md`) per feature.

@@ -25,7 +25,7 @@ project-youtube-clone/
 │   │   ├── contracts/         # shared event/DTO types (source of truth)
 │   │   ├── config/            # zod-validated typed config
 │   │   ├── ports/             # StoragePort, QueuePort, SearchPort
-│   │   └── ui/                # tailwind-styled-components design system
+│   │   └── ui/                # tailwind-variants design system
 │   └── java/
 │       └── common/            # shared Java (events, config, ffmpeg wrapper)
 ├── infra/                     # docker-compose-{local,local-observability}.yaml, k8s (kind+helm)
