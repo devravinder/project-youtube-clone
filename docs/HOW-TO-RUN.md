@@ -26,6 +26,16 @@ Scripts follow `start|stop:env:service`:
 | Transcoder (Spring Boot)                | —                     | ⏳ not built yet              |
 | Observability (otel-lgtm)               | `pnpm start:lo:pods`  | ⏳ compose file not added yet |
 
+Web app settings live in `apps/web/.env.development` (public values only). Override any of them
+in a git-ignored `apps/web/.env.local`. Restart `pnpm start:l:web` after changing either file.
+
+| Variable              | Purpose                                  |
+| --------------------- | ---------------------------------------- |
+| `VITE_API_BASE_URL`   | API prefix used by the browser (`/api`)  |
+| `VITE_OIDC_AUTHORITY` | Keycloak realm URL                       |
+| `VITE_OIDC_CLIENT_ID` | Keycloak client (`yt-web`)               |
+| `API_PROXY_TARGET`    | Where the Vite dev proxy forwards `/api` |
+
 ## 1. Install dependencies
 
 ```bash
@@ -92,7 +102,7 @@ run `db:generate` on a fresh clone before type-checking or starting the service.
 
 ## 5. Run the upload service
 
-Needs MinIO running (step 3). Config comes from `apps/upload-service/.env.sample`. Upload endpoints need a Keycloak bearer token (`OIDC_ISSUER_URL`, `OIDC_AUDIENCE`); the web app does not log in yet, so use `http/upload-service.http`. Every 10 minutes a job deletes uploads still pending after UPLOAD_PENDING_TTL_MINUTES (default 1440).
+Needs MinIO running (step 3). Config comes from `apps/upload-service/.env.sample`. Upload endpoints need a Keycloak bearer token (`OIDC_ISSUER_URL`, `OIDC_AUDIENCE`); the web app signs in through Keycloak (code flow with PKCE) before uploading. Every 10 minutes a job deletes uploads still pending after UPLOAD_PENDING_TTL_MINUTES (default 1440).
 
 ```bash
 pnpm start:l:upload

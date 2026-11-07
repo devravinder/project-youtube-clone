@@ -1,6 +1,6 @@
+import { getAccessToken } from "../auth/user-manager";
+import { config } from "../config";
 import type { PresignRequest, PresignResponse, VideoDetail, VideoPage } from "../types";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
 
 export class ApiError extends Error {
   constructor(
@@ -25,7 +25,12 @@ async function readErrorMessage(response: Response): Promise<string> {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, init);
+  const token = await getAccessToken();
+  const headers = new Headers(init?.headers);
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+  const response = await fetch(`${config.apiBaseUrl}${path}`, { ...init, headers });
   if (!response.ok) {
     throw new ApiError(response.status, await readErrorMessage(response));
   }

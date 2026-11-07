@@ -209,3 +209,21 @@ package with no strategy layer, and it works the same way in plain Node and in o
 Rules: reads stay public; upload endpoints need a token; a video records its `ownerId`
 (the token `sub`) and only the owner can confirm it. Stateless verification means no call to
 Keycloak per request, the trade-off being that a revoked token stays valid until it expires.
+
+## ADR-018 - Web sign-in with oidc-client-ts
+
+Date: 2026-11-07 - Status: Accepted
+
+The web app signs in with `oidc-client-ts` (3.5.0) wrapped by `react-oidc-context` (3.3.1):
+authorization code flow with PKCE against the public Keycloak client `yt-web`. No client
+secret exists in the browser. Tokens live in `sessionStorage`, so they vanish with the tab.
+
+Guards: a `RequireAuth` route wrapper sends anonymous visitors of `/upload` to Keycloak and
+returns them to the page afterwards. The upload action checks for a token too, and a 401 from
+the API triggers the same redirect, so an expired session mid-flow also lands on login.
+Browsing and watching stay public. The signed-in user is read through the auth context, as
+ADR-015 anticipated; no store is added.
+
+Trade-offs: `sessionStorage` tokens are readable by any script on the page, so XSS is the
+main risk; a backend-for-frontend with cookies would avoid that and is out of scope here.
+The chosen file is lost when a redirect to login happens.

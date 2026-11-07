@@ -1,5 +1,6 @@
-import { Moon, Sun } from "lucide-react";
+import { LogIn, LogOut, Moon, Sun } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "react-oidc-context";
 import { Link, NavLink, Outlet } from "react-router-dom";
 import { Button } from "./ui";
 
@@ -25,6 +26,31 @@ function ThemeToggle() {
   );
 }
 
+function UserMenu() {
+  const auth = useAuth();
+
+  if (auth.isLoading) {
+    return null;
+  }
+  if (!auth.isAuthenticated) {
+    return (
+      <Button variant="outline" onClick={() => void auth.signinRedirect()}>
+        <LogIn className="size-4" />
+        Sign in
+      </Button>
+    );
+  }
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-sm font-medium">{auth.user?.profile.preferred_username}</span>
+      <Button variant="outline" onClick={() => void auth.signoutRedirect()}>
+        <LogOut className="size-4" />
+        Sign out
+      </Button>
+    </div>
+  );
+}
+
 export function Layout() {
   return (
     <div className="min-h-screen">
@@ -43,7 +69,10 @@ export function Layout() {
               </NavLink>
             </nav>
           </div>
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <UserMenu />
+            <ThemeToggle />
+          </div>
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-6">

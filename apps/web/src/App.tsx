@@ -1,4 +1,5 @@
 import { BrowserRouter, Link, Route, Routes } from "react-router-dom";
+import { AuthBoundary, RequireAuth } from "./auth/auth-boundary";
 import { Layout } from "./components/layout";
 import { UploadPage } from "./pages/upload-page";
 import { VideoListPage } from "./pages/video-list-page";
@@ -18,14 +19,23 @@ function NotFoundPage() {
 export function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route element={<Layout />}>
-          <Route index element={<VideoListPage />} />
-          <Route path="upload" element={<UploadPage />} />
-          <Route path="watch/:id" element={<WatchPage />} />
-          <Route path="*" element={<NotFoundPage />} />
-        </Route>
-      </Routes>
+      <AuthBoundary>
+        <Routes>
+          <Route element={<Layout />}>
+            <Route index element={<VideoListPage />} />
+            <Route
+              path="upload"
+              element={
+                <RequireAuth>
+                  <UploadPage />
+                </RequireAuth>
+              }
+            />
+            <Route path="watch/:id" element={<WatchPage />} />
+            <Route path="*" element={<NotFoundPage />} />
+          </Route>
+        </Routes>
+      </AuthBoundary>
     </BrowserRouter>
   );
 }

@@ -52,7 +52,7 @@ Concepts: object storage, presigned/multipart upload, relational modeling, ports
 - [ ] Multipart / resumable upload for large files, with abort of incomplete parts
 - [x] Keycloak in compose with an imported `youtube-clone` realm (client `yt-web`, user `alice`)
 - [x] Verify Keycloak JWTs in upload-service (`jose` guard), protect upload endpoints, record video owner
-- [ ] Login and logout in the web app (OIDC code flow with PKCE), send the bearer token
+- [x] Login and logout in the web app (OIDC code flow with PKCE), route guard, bearer token on API calls
 - [ ] Tests: Jest (service), supertest (controller), Vitest (web)
 - [x] Git hooks: Husky + lint-staged + commitlint + markdownlint
 

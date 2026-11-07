@@ -41,6 +41,9 @@ design tokens, and **tailwind-variants** for reusable styled primitives.
 - Use the native `fetch` API (no axios). Use `XMLHttpRequest` only when upload progress
   is needed.
 - Vite dev proxy for `/api` (rewrite the prefix away) so the browser needs no CORS.
+- Config comes from env files: committed `.env.development` (public `VITE_` values only),
+  git-ignored `.env.local` for overrides. Read them once in `src/config.ts`, which throws on a
+  missing value; never scatter `import.meta.env` or hardcode fallbacks. Secrets never go in `VITE_`.
 - Pin exact versions of every dependency (see `monorepo-pnpm`).
 - Restart the dev server after installing a dependency; a running Vite serves a 500 for
   files that import the new package.

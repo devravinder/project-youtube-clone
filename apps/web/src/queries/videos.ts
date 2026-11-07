@@ -1,6 +1,8 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { getAccessToken, userManager } from "../auth/user-manager";
 import {
+  ApiError,
   confirmUpload,
   createPresignedUpload,
   getVideo,
@@ -50,6 +52,9 @@ export function useUploadVideo() {
   const mutation = useMutation({
     mutationFn: async ({ file, title, description }: UploadInput) => {
       setPercent(0);
+      if (!(await getAccessToken())) {
+        throw new ApiError(401, "Please sign in to upload");
+      }
       const presign = await createPresignedUpload({
         filename: file.name,
         contentType: file.type,
@@ -61,6 +66,11 @@ export function useUploadVideo() {
       return { videoId: presign.videoId, title: title ?? file.name };
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: videoKeys.all }),
+    onError: (error) => {
+      if (error instanceof ApiError && error.status === 401) {
+        void userManager.signinRedirect({ state: { returnTo: "/upload" } });
+      }
+    },
   });
 
   return { ...mutation, percent };
