@@ -55,3 +55,8 @@ pnpm --filter <app> test:e2e       # Playwright
 # Load
 k6 run load-testing/smoke-test.js
 ```
+
+## Contract checks
+
+Run `pnpm api:check` in CI so the committed OpenAPI spec and generated client types always match the
+code. Behaviour is covered by the `http/` requests.

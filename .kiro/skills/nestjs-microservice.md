@@ -143,6 +143,12 @@ export interface StoragePort {
   ports, never on adapters directly (the ArchUnit analogue for TS).
 - Coverage gate 75% in CI/pre-commit.
 
+## API contract (OpenAPI)
+
+Every endpoint is documented with explicit Zod-backed schemas and published as OpenAPI 3.1;
+see `openapi-contracts`. Define request and response schemas in the DTO file with `.meta({ id })`,
+derive types with `z.infer`, and regenerate with `pnpm api:generate` after any API change.
+
 ## Conventions
 
 - Comments follow the `code-comments` skill.

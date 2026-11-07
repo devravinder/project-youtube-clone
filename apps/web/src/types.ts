@@ -1,33 +1,11 @@
-export interface VideoSummary {
-  readonly id: string;
-  readonly title: string;
-  readonly description: string | null;
-  readonly status: string;
-  readonly viewCount: number;
-  readonly createdAt: string;
-}
+import type { components } from "./api/schema";
 
-export interface VideoPage {
-  readonly items: VideoSummary[];
-  readonly nextCursor: string | null;
-}
+type Schemas = components["schemas"];
 
-export interface VideoDetail extends VideoSummary {
-  readonly contentType: string;
-  readonly playbackUrl: string | null;
-}
-
-export interface PresignRequest {
-  readonly filename: string;
-  readonly contentType: string;
-  readonly title?: string;
-  readonly description?: string;
-}
-
-export interface PresignResponse {
-  readonly videoId: string;
-  readonly bucket: string;
-  readonly key: string;
-  readonly uploadUrl: string;
-  readonly expiresInSeconds: number;
-}
+export type VideoSummary = Schemas["VideoSummary"];
+export type VideoPage = Schemas["VideoPage"];
+export type VideoDetail = Schemas["VideoDetail"];
+export type VideoStatus = VideoSummary["status"];
+export type PresignRequest = Schemas["PresignRequest"];
+export type PresignResponse = Schemas["PresignResponse"];
+export type ConfirmUploadResponse = Schemas["ConfirmUploadResponse"];

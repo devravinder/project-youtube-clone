@@ -53,6 +53,7 @@ Concepts: object storage, presigned/multipart upload, relational modeling, ports
 - [x] Keycloak in compose with an imported `youtube-clone` realm (client `yt-web`, user `alice`)
 - [x] Verify Keycloak JWTs in upload-service (`jose` guard), protect upload endpoints, record video owner
 - [x] Login and logout in the web app (OIDC code flow with PKCE), route guard, bearer token on API calls
+- [x] OpenAPI 3.1 from Zod (Swagger UI at `/docs`), spec in `contracts/`, web types via `openapi-typescript`
 - [ ] Tests: Jest (service), supertest (controller), Vitest (web)
 - [x] Git hooks: Husky + lint-staged + commitlint + markdownlint
 

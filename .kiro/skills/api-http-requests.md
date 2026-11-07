@@ -54,3 +54,8 @@ Content-Type: application/json
 Run the file with the CLI against the live service. For endpoints that write data, also
 compare database row counts before and after: accepted requests add rows, rejected ones add
 none.
+
+## Relation to the contract
+
+The committed OpenAPI spec in `contracts/` defines what exists; the `.http` files prove it behaves.
+When an operation is added or changed, update both (see `openapi-contracts`).

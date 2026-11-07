@@ -22,6 +22,7 @@ every task, a short git commit after you verify it (see `git-commit-convention`)
 | `doc-with-mermaid`             | Author docs in Markdown with Mermaid for architecture/design diagrams                     | ✅ Global candidate |
 | `markdown-lint`                | Author Markdown to pass markdownlint rules                                                | ✅ Global candidate |
 | `code-comments`                | Minimal, precise comments; skip when names explain; short lines                           | ✅ Global candidate |
+| `openapi-contracts`            | Generate OpenAPI from code, commit under `contracts/`, generate client types              | ✅ Global candidate |
 | `api-http-requests`            | Keep root `http/*.http` httpYac files updated for every API change                        | ✅ Global candidate |
 | `observability-otel`           | grafana/otel-lgtm + OTLP across Node/Java                                                 | ✅ Global candidate |
 | `messaging-patterns`           | RabbitMQ command-queue vs Kafka event-log, outbox, idempotency, DLQ                       | ⬜ Project-specific |

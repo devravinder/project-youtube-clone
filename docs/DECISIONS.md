@@ -227,3 +227,24 @@ ADR-015 anticipated; no store is added.
 Trade-offs: `sessionStorage` tokens are readable by any script on the page, so XSS is the
 main risk; a backend-for-frontend with cookies would avoid that and is out of scope here.
 The chosen file is lost when a redirect to login happens.
+
+## ADR-019 - OpenAPI contracts generated from Zod, types via openapi-typescript
+
+Date: 2026-11-07 - Status: Accepted
+
+Each service publishes an OpenAPI 3.1 spec generated from its own code. The Zod schemas that
+validate requests also produce the spec (`z.toJSONSchema` over schemas tagged with
+`.meta({ id })`), `@nestjs/swagger` collects routes and operations, and Swagger UI is served at
+`/docs`. The spec is committed to `contracts/` and the web app generates its API types from it
+(`pnpm api:generate`). To avoid a manual step the service rewrites the spec when it starts in a non-deployed env, the web `dev` script regenerates types from it, a pre-commit hook regenerates and stages both when service code changes, and `pnpm api:check` fails CI on drift. A generate-from-the-live-URL flow was tried and rejected: nothing reviewable in git and CI could not regenerate without a running service.
+
+Why `openapi-typescript` and not `@openapitools/openapi-generator-cli`: the latter needs a JDK
+and emits classes plus HTTP glue that must be reviewed and maintained; the former emits only
+`.d.ts` types, in pure Node. It needs the TypeScript 5 compiler API, which TypeScript 7 lacks,
+so it runs through `pnpm dlx` with a pinned version and its own TS 5.
+
+Why not `nestjs-zod`: it supports Nest up to 11 only. Why not `@nestjs/swagger` decorators on
+DTO classes: tsx emits no decorator metadata and the DTOs are Zod schemas, so classes would
+duplicate every rule. Trade-off: each endpoint needs explicit documentation decorators, and a
+forgotten one means a missing response in the spec; `api:check` plus the `http/` tests catch
+most of that.

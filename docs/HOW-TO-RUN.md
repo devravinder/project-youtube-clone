@@ -36,6 +36,27 @@ in a git-ignored `apps/web/.env.local`. Restart `pnpm start:l:web` after changin
 | `VITE_OIDC_CLIENT_ID` | Keycloak client (`yt-web`)               |
 | `API_PROXY_TARGET`    | Where the Vite dev proxy forwards `/api` |
 
+## API docs and contracts
+
+With the upload service running, Swagger UI is at <http://localhost:3001/docs> and the raw spec at
+<http://localhost:3001/docs-json>. The spec is also committed as `contracts/upload-service.openapi.json`,
+and the web app's types (`apps/web/src/api/schema.d.ts`) are generated from that file.
+
+It stays current automatically:
+
+- Starting the upload service (any non-`aws` env) rewrites the spec if the API changed.
+- `pnpm start:l:web` regenerates the web types from the spec before starting Vite.
+- A pre-commit hook runs `pnpm api:generate` when upload-service code is staged and adds the results.
+
+To do it by hand, or to check for drift (for CI):
+
+```bash
+pnpm api:generate
+pnpm api:check
+```
+
+The type generator runs through `pnpm dlx` and downloads on first use.
+
 ## 1. Install dependencies
 
 ```bash

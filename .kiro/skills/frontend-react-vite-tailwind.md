@@ -277,3 +277,8 @@ outside the repo.
 - `pnpm test` → Vitest (unit), `pnpm test:e2e` → Playwright.
 - `pnpm lint` → oxlint, `pnpm format:code` → prettier.
 - Pre-commit runs lint on changed files (see `git-hooks-conventions`).
+
+## API types
+
+Types for API payloads are generated from `contracts/*.openapi.json` with `pnpm --filter @yt/web api:types`;
+never hand-write them. Re-export named types from `src/types.ts`. See `openapi-contracts`.

@@ -83,6 +83,11 @@ Conditional beans via `@Profile` / `@ConditionalOnProperty`. Observability beans
 - Kafka for emitting/consuming events (consumer groups, offsets).
 - Idempotent consumers (see `messaging-patterns`).
 
+## API contract (OpenAPI)
+
+Expose the spec with springdoc-openapi and commit the export to `contracts/<service>.openapi.json`;
+see `openapi-contracts`.
+
 ## Conventions
 
 - Run JVMs with `-Duser.timezone=Asia/Kolkata`. Postgres 18 rejects the legacy `Asia/Calcutta`

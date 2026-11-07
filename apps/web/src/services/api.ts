@@ -1,6 +1,12 @@
 import { getAccessToken } from "../auth/user-manager";
 import { config } from "../config";
-import type { PresignRequest, PresignResponse, VideoDetail, VideoPage } from "../types";
+import type {
+  ConfirmUploadResponse,
+  PresignRequest,
+  PresignResponse,
+  VideoDetail,
+  VideoPage,
+} from "../types";
 
 export class ApiError extends Error {
   constructor(
@@ -59,7 +65,7 @@ export const createPresignedUpload = (body: PresignRequest) =>
   });
 
 export const confirmUpload = (videoId: string) =>
-  request<{ videoId: string; status: string }>(`/uploads/${videoId}/complete`, {
+  request<ConfirmUploadResponse>(`/uploads/${videoId}/complete`, {
     method: "POST",
   });
 

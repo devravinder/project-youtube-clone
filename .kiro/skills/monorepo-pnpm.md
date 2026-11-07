@@ -82,3 +82,11 @@ version` against the org registry). Current baselines: TypeScript `7.0.2`, zod `
 - Each service is independently buildable and runnable; contracts are the only shared
   coupling between languages (events/REST), never shared runtime code across Node↔Java.
 - One Dockerfile per app; multi-stage builds.
+
+## Contracts and generated files
+
+- `contracts/` at the repo root holds one committed OpenAPI file per service.
+- Root scripts: `pnpm api:generate` regenerates specs and client types; `pnpm api:check` fails on drift.
+- A tool that needs the TypeScript 5 compiler API (such as `openapi-typescript`) cannot use the
+  workspace's TypeScript 7; run it with `pnpm dlx <tool>@<pinned>` instead of adding a dependency.
+- Do not approve install scripts of telemetry packages; mark them `false` in `allowBuilds`.

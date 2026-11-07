@@ -4,10 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "pnpm api:types && vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
+    "api:types": "pnpm dlx openapi-typescript@7.13.0 ../../contracts/upload-service.openapi.json --immutable -o src/api/schema.d.ts",
     "theme:contrast": "node scripts/check-theme-contrast.mjs"
   },
   "dependencies": {
