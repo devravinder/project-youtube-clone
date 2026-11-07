@@ -48,6 +48,8 @@ Concepts: object storage, presigned/multipart upload, relational modeling, ports
 - [x] `apps/web` scaffold: React 19, Vite, Tailwind v4 theme, tailwind-variants
 - [x] `apps/web` pages: upload, video list (infinite scroll), watch (react-player), back button, themed UI
 - [x] Confirm-upload endpoint and a pending status, so unfinished uploads are not listed as uploaded
+- [x] Scheduled cleanup of abandoned pending uploads (cron, TTL `UPLOAD_PENDING_TTL_MINUTES`)
+- [ ] Multipart / resumable upload for large files, with abort of incomplete parts
 - [ ] Wire Keycloak (OIDC) — login + JWT verification
 - [ ] Tests: Jest (service), supertest (controller), Vitest (web)
 - [x] Git hooks: Husky + lint-staged + commitlint + markdownlint

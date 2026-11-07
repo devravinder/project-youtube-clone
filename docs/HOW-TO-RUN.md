@@ -79,7 +79,7 @@ run `db:generate` on a fresh clone before type-checking or starting the service.
 
 ## 5. Run the upload service
 
-Needs MinIO running (step 3). Config comes from `apps/upload-service/.env.sample`.
+Needs MinIO running (step 3). Config comes from `apps/upload-service/.env.sample`. Every 10 minutes a job deletes uploads still pending after UPLOAD_PENDING_TTL_MINUTES (default 1440).
 
 ```bash
 pnpm start:l:upload
