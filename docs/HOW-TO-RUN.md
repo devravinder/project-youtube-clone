@@ -18,13 +18,13 @@ Scripts follow `start|stop:env:service`:
 
 ## What runs today
 
-| Capability                     | How                  | Status                        |
-| ------------------------------ | -------------------- | ----------------------------- |
-| Local infra (Postgres + MinIO) | `pnpm start:l:pods`  | ✅ available                  |
-| Upload service (NestJS)        | —                    | ⏳ not built yet              |
-| Web UI (React)                 | —                    | ⏳ not built yet              |
-| Transcoder (Spring Boot)       | —                    | ⏳ not built yet              |
-| Observability (otel-lgtm)      | `pnpm start:lo:pods` | ⏳ compose file not added yet |
+| Capability                     | How                   | Status                        |
+| ------------------------------ | --------------------- | ----------------------------- |
+| Local infra (Postgres + MinIO) | `pnpm start:l:pods`   | ✅ available                  |
+| Upload service (NestJS)        | `pnpm start:l:upload` | ✅ available                  |
+| Web UI (React)                 | —                     | ⏳ not built yet              |
+| Transcoder (Spring Boot)       | —                     | ⏳ not built yet              |
+| Observability (otel-lgtm)      | `pnpm start:lo:pods`  | ⏳ compose file not added yet |
 
 ## 1. Install dependencies
 
@@ -64,13 +64,33 @@ Tail logs:
 pnpm logs:l
 ```
 
+## 4. Run the upload service
+
+Needs MinIO running (step 3). Config comes from `apps/upload-service/.env.sample`.
+
+```bash
+pnpm start:l:upload
+```
+
+Request a presigned upload URL, then PUT the file straight to storage:
+
+```bash
+curl -X POST http://localhost:3001/uploads/presign \
+  -H "Content-Type: application/json" \
+  -d '{"filename":"clip.mp4","contentType":"video/mp4"}'
+
+curl -X PUT --data-binary @clip.mp4 -H "Content-Type: video/mp4" "<uploadUrl from response>"
+```
+
 ## Local service URLs & credentials
 
-| Service       | URL                     | Credentials                                             |
-| ------------- | ----------------------- | ------------------------------------------------------- |
-| Postgres      | `localhost:5432`        | user `yt` / password `yt_password` / db `youtube_clone` |
-| MinIO S3 API  | <http://localhost:9000> | `minioadmin` / `minioadmin`                             |
-| MinIO Console | <http://localhost:9001> | `minioadmin` / `minioadmin`                             |
+| Service        | URL                     | Credentials                                             |
+| -------------- | ----------------------- | ------------------------------------------------------- |
+| Upload service | <http://localhost:3001> | none yet (auth comes with Keycloak)                     |
+| -------------  | ----------------------- | ------------------------------------------------------- |
+| Postgres       | `localhost:5432`        | user `yt` / password `yt_password` / db `youtube_clone` |
+| MinIO S3 API   | <http://localhost:9000> | `minioadmin` / `minioadmin`                             |
+| MinIO Console  | <http://localhost:9001> | `minioadmin` / `minioadmin`                             |
 
 > Credentials are local dev defaults only — never use them outside local.
 

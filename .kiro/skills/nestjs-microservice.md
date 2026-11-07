@@ -25,7 +25,13 @@ Match the pattern to the service, not the other way round (see `ADR-011`):
 - **Config as typed, validated object.** Parse `process.env` with **zod** into a typed
   config once at startup. Never read `process.env` deep in the code, never hardcode
   (the Node analogue of Spring's `AppProperties` record).
-- **DTOs validated** with `class-validator` / `class-transformer` at the boundary.
+- **DTOs validated with zod** at the controller boundary (`safeParse`, then `BadRequestException`).
+  No class-validator, so no decorator-metadata requirement.
+- **DI uses explicit `@Inject(Token)`** for every constructor dependency. Services run in dev
+  via `tsx`, which does not emit decorator metadata.
+- **One S3 adapter serves MinIO and AWS S3.** Only endpoint and credentials differ. Set
+  `requestChecksumCalculation: "WHEN_REQUIRED"` so presigned PUT URLs work on real S3.
+- **Pick ports that are free on dev machines.** Corporate agents hold some (8081 is taken).
 - **DB access via Prisma** (type-safe client + Prisma Migrate for schema).
 - **Swagger** auto-generates the OpenAPI docs.
 

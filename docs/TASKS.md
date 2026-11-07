@@ -40,7 +40,7 @@ Concepts: object storage, presigned/multipart upload, relational modeling, ports
 - [x] `infra/docker-compose-local.yaml` — Postgres + MinIO (+ consoles)
 - [x] `libs/ts/config` — zod-validated typed config
 - [x] `libs/ts/ports` — `StoragePort` interface
-- [ ] `apps/upload-service` (NestJS) — MinIO adapter + presigned-upload endpoint
+- [x] `apps/upload-service` (NestJS) — S3 adapter (MinIO) + presigned-upload endpoint
 - [ ] Prisma schema + first migration (video metadata)
 - [ ] `apps/web` (React 19 + Vite + Tailwind v4) — upload UI + plain playback
 - [ ] Wire Keycloak (OIDC) — login + JWT verification

@@ -12,6 +12,7 @@
     "prepare": "husky",
     "help": "echo 'Scripts follow start|stop:env:service — env: l=local, lo=local-observability; service: pods=containers, <app>=a service'",
     "start:l:pods": "docker compose -f infra/docker-compose-local.yaml up -d",
+    "start:l:upload": "pnpm --filter @yt/upload-service dev",
     "stop:l:pods": "docker compose -f infra/docker-compose-local.yaml down -v",
     "logs:l": "docker compose -f infra/docker-compose-local.yaml logs -f",
     "start:lo:pods": "docker compose -f infra/docker-compose-local-observability.yaml up -d",

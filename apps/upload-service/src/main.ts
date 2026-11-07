@@ -1,0 +1,9 @@
+import "reflect-metadata";
+import { NestFactory } from "@nestjs/core";
+import { AppModule } from "./app.module.js";
+import { APP_CONFIG, type AppConfig } from "./config/app.config.js";
+
+const app = await NestFactory.create(AppModule);
+const config = app.get<AppConfig>(APP_CONFIG);
+
+await app.listen(config.PORT);
