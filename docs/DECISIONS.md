@@ -164,3 +164,20 @@ event-handler typing (three `implicit any` errors in the first build of the uplo
 
 Alternatives considered: `react-twc` (closest template syntax, last release July 2025),
 `class-variance-authority` (stable, fewer features), `@tw-classed/react`.
+
+## ADR-015 — Server state with TanStack Query; no global client-state library
+
+Date: 2026-11-07 · Status: Accepted
+
+All server data in the web app goes through `@tanstack/react-query`: infinite scrolling with
+`useInfiniteQuery` over a cursor-paginated API, details with `useQuery`, and uploads with
+`useMutation` that invalidates the cached lists on success.
+
+No Redux, Zustand or similar is added. State already has natural homes: server data in the
+query cache, location in the URL, form fields in local component state, and the theme in the
+`<html>` class plus `localStorage`. The first likely triggers for a store are the signed-in
+user (a React context is enough to start), an upload that must survive navigation, and
+live notification counts from the notification service.
+
+Consequence worth remembering: presigned playback URLs differ on every fetch, so the video
+detail query uses a long `staleTime` and no focus refetch to keep the player from restarting.

@@ -1,4 +1,4 @@
-import type { PresignRequest, PresignResponse, VideoDetail, VideoSummary } from "../types";
+import type { PresignRequest, PresignResponse, VideoDetail, VideoPage } from "../types";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
 
@@ -32,7 +32,17 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
-export const listVideos = () => request<VideoSummary[]>("/videos");
+export const listVideos = (params: { cursor?: string; limit?: number } = {}) => {
+  const query = new URLSearchParams();
+  if (params.cursor) {
+    query.set("cursor", params.cursor);
+  }
+  if (params.limit) {
+    query.set("limit", String(params.limit));
+  }
+  const queryString = query.toString();
+  return request<VideoPage>(`/videos${queryString ? `?${queryString}` : ""}`);
+};
 
 export const getVideo = (id: string) => request<VideoDetail>(`/videos/${id}`);
 

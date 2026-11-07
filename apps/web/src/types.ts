@@ -7,6 +7,11 @@ export interface VideoSummary {
   readonly createdAt: string;
 }
 
+export interface VideoPage {
+  readonly items: VideoSummary[];
+  readonly nextCursor: string | null;
+}
+
 export interface VideoDetail extends VideoSummary {
   readonly contentType: string;
   readonly playbackUrl: string | null;

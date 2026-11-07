@@ -136,7 +136,7 @@ Needs the upload service running (step 5) and MinIO and Postgres up (step 3).
 pnpm start:l:web
 ```
 
-Open <http://localhost:5173>. The app has three pages: **Videos** (list), **Upload** (pick a
+Open <http://localhost:5173>. The app has three pages: **Videos** (infinite-scroll list), **Upload** (pick a
 file, with progress), and **Watch** (plays the video). The dev server proxies `/api` to the
 upload service on port 3001, so the browser needs no CORS setup for the API. Uploads go
 straight from the browser to MinIO, which allows cross-origin requests by default.
@@ -169,3 +169,4 @@ pnpm format:md   # auto-fix
 | `docker compose` not found                                                                 | Docker Desktop not running, or old Docker without Compose v2.                                                                                                                              |
 | Postgres exits with "in 18+, these Docker images are configured..."                        | Volume must mount at `/var/lib/postgresql` (not `/data`). Already fixed in compose; if it persists, run `pnpm stop:l:pods` to drop the old volume.                                         |
 | DBeaver or a Java app fails with `invalid value for parameter "TimeZone": "Asia/Calcutta"` | Postgres 18 dropped legacy zone names. Start the Java client with `-Duser.timezone=Asia/Kolkata` (DBeaver: add it under `-vmargs` in `dbeaver.ini`, then restart). Keep the server on UTC. |
+| Web page is blank and `/src/main.tsx` returns 500                                          | A dependency was installed while Vite was running. Stop `pnpm start:l:web` and start it again.                                                                                             |

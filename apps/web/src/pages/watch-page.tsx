@@ -1,35 +1,39 @@
 import ReactPlayer from "react-player";
-import { Link, useParams } from "react-router-dom";
-import { Badge } from "../components/ui";
-import { useAsync } from "../hooks/use-async";
-import { ApiError, getVideo } from "../services/api";
+import { useParams } from "react-router-dom";
+import { BackButton } from "../components/back-button";
+import { StatusBadge } from "../components/status-badge";
+import { useVideo } from "../queries/videos";
+import { ApiError } from "../services/api";
 
 export function WatchPage() {
   const { id = "" } = useParams();
-  const { data: video, error, loading } = useAsync(() => getVideo(id), [id]);
+  const { data: video, error, status } = useVideo(id);
 
-  if (loading) {
-    return <p className="text-muted-foreground">Loading video...</p>;
-  }
-  if (error) {
-    const missing = error instanceof ApiError && (error.status === 404 || error.status === 400);
+  if (status === "pending") {
     return (
-      <p role="alert" className="text-destructive">
-        {missing ? "Video not found." : `Could not load video: ${error.message}`}{" "}
-        <Link to="/" className="underline">
-          Back to videos
-        </Link>
-      </p>
+      <>
+        <BackButton />
+        <p className="text-muted-foreground">Loading video...</p>
+      </>
     );
   }
-  if (!video) {
-    return null;
+  if (status === "error") {
+    const missing = error instanceof ApiError && (error.status === 404 || error.status === 400);
+    return (
+      <>
+        <BackButton />
+        <p role="alert" className="text-destructive">
+          {missing ? "Video not found." : `Could not load video: ${error.message}`}
+        </p>
+      </>
+    );
   }
 
   return (
     <article className="mx-auto max-w-4xl">
+      <BackButton />
       {video.playbackUrl ? (
-        <div className="aspect-video overflow-hidden rounded-md bg-black">
+        <div className="aspect-video overflow-hidden rounded-md bg-black shadow-md">
           <ReactPlayer
             src={video.playbackUrl}
             controls
@@ -45,9 +49,9 @@ export function WatchPage() {
       )}
       <h1 className="mt-4 text-2xl font-semibold">{video.title}</h1>
       <div className="mt-2 flex items-center gap-3 text-sm text-muted-foreground">
-        <Badge>{video.status}</Badge>
+        <StatusBadge status={video.status} />
         <span>{video.viewCount} views</span>
-        <span>{new Date(video.createdAt).toLocaleString()}</span>
+        <time dateTime={video.createdAt}>{new Date(video.createdAt).toLocaleString()}</time>
       </div>
       {video.description && <p className="mt-4 whitespace-pre-line">{video.description}</p>}
     </article>

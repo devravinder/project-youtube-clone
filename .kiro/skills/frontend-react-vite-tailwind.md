@@ -1,6 +1,6 @@
 ---
 name: frontend-react-vite-tailwind
-description: Scaffold a React 19 + TypeScript + Vite + Tailwind v4 frontend with no shadcn but a shadcn-like token theme, using tailwind-variants and tailwind-merge for reusable components and react-player for video. Use when creating or extending a web UI.
+description: Scaffold a React 19 + TypeScript + Vite + Tailwind v4 frontend with no shadcn but a shadcn-like token theme, tailwind-variants for reusable components, TanStack Query for server state, and react-player for video. Use when creating or extending a web UI.
 ---
 
 # Frontend — React 19 + Vite + Tailwind v4 (no shadcn)
@@ -14,6 +14,7 @@ design tokens, and **tailwind-variants** for reusable styled primitives.
 - Vite (dev server + build)
 - Tailwind CSS v4 (via `@tailwindcss/vite`)
 - `tailwind-variants` + `tailwind-merge` for reusable components
+- `@tanstack/react-query` for all server state (fetching, caching, pagination, mutations)
 - `react-router-dom` for routing
 - `react-player` for video (MP4 now, HLS and DASH lazy-loaded for streaming later)
 - Vitest + Testing Library (unit), Playwright (e2e)
@@ -24,20 +25,66 @@ design tokens, and **tailwind-variants** for reusable styled primitives.
 - **No shadcn / no component library.** Build primitives ourselves.
 - **shadcn-like theme:** design tokens as CSS variables in `index.css`, exposed to Tailwind
   with `@theme inline` so utilities like `bg-primary` and `text-muted-foreground` work.
-  Light and dark via a `.dark` class on `<html>`.
+  Light and dark via a `.dark` class on `<html>`. Use a tinted palette (violet and indigo),
+  never plain white and black.
 - **Reusable components** are plain function components styled with `tv()` from
   tailwind-variants. Props come from `ComponentProps<"button">` plus `VariantProps`.
 - **Do not use tailwind-styled-components.** Last release was 2022, it only concatenates
   classes (overrides are unreliable), and it breaks event-handler typing under React 19.
+- **Server state goes through TanStack Query**, never `useEffect` plus `useState`.
+- **No global client-state library** (no Redux or Zustand) until a real need appears. See
+  "State management" below.
 - Use the native `fetch` API (no axios). Use `XMLHttpRequest` only when upload progress
   is needed.
 - Vite dev proxy for `/api` (rewrite the prefix away) so the browser needs no CORS.
 - Pin exact versions of every dependency (see `monorepo-pnpm`).
+- Restart the dev server after installing a dependency; a running Vite serves a 500 for
+  files that import the new package.
+
+## State management
+
+State has four homes, and none needs a store library today:
+
+| Kind                               | Home                               |
+| ---------------------------------- | ---------------------------------- |
+| Server data (videos, details)      | TanStack Query cache               |
+| Location (which page, which video) | URL and React Router               |
+| Form fields, toggles               | Local `useState` in the component  |
+| Theme                              | `<html>` class plus `localStorage` |
+
+Add a store only when state is shared across distant components and is not server data or
+the URL. Likely triggers: the signed-in user (use a small React context first), an upload
+that must keep running while the user navigates, live notification counts.
+
+## Data fetching patterns (TanStack Query)
+
+- One `QueryClient` in `query-client.ts`. Do not retry client errors (400, 404).
+- Query keys come from a factory (`videoKeys.list()`, `videoKeys.detail(id)`) so mutations
+  can invalidate by prefix.
+- Lists use `useInfiniteQuery` with a cursor from the API (`getNextPageParam`). Trigger the
+  next page from an `IntersectionObserver` sentinel at the end of the list (`useInView`).
+  Re-observe when the page count changes, or a sentinel that stays visible never fires again.
+- Mutations (`useMutation`) invalidate the affected keys in `onSuccess`, so the new item
+  shows up without a reload.
+- **Presigned URLs change on every fetch.** Give any query that returns one a long
+  `staleTime` (shorter than the URL's life) and `refetchOnWindowFocus: false`, or a refocus
+  swaps the URL and restarts the player.
+
+## UI conventions
+
+- Every page that is not the home page has a **Back button**: history back when the user
+  navigated inside the app, otherwise a fallback route.
+- A finished action (upload) shows a **distinct success view** in place of the form, with
+  next actions (watch, do it again, go home).
+- Status badges carry meaning through tone (ready is green, failed is red).
+- Equal-height cards in a grid: `h-full flex flex-col` on the card, `mt-auto` on the footer.
+- Icons are small inline SVG components; no icon library.
 
 ## Tailwind v4 note
 
 Tailwind v4 is config-light: import it in CSS with `@import "tailwindcss";` and use the
-Vite plugin. There is no `tailwind.config.js`; theme tokens live in CSS.
+Vite plugin. There is no `tailwind.config.js`; theme tokens live in CSS. Gradients are
+`bg-linear-to-r`, not `bg-gradient-to-r`.
 
 ### `index.css` (token theme)
 
@@ -47,37 +94,46 @@ Vite plugin. There is no `tailwind.config.js`; theme tokens live in CSS.
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: 0 0% 100%;
-  --foreground: 240 10% 4%;
-  --primary: 240 6% 10%;
-  --primary-foreground: 0 0% 98%;
-  --muted: 240 5% 96%;
-  --muted-foreground: 240 4% 46%;
-  --border: 240 6% 90%;
-  --destructive: 0 72% 51%;
-  --radius: 0.5rem;
+  --background: 250 60% 97%;
+  --foreground: 248 45% 15%;
+  --card: 0 0% 100%;
+  --card-foreground: 248 45% 15%;
+  --primary: 252 83% 58%;
+  --primary-foreground: 0 0% 100%;
+  --muted: 249 40% 93%;
+  --muted-foreground: 248 18% 42%;
+  --border: 249 30% 86%;
+  --destructive: 350 78% 52%;
+  --success: 160 84% 30%;
+  --radius: 0.75rem;
 }
 
 .dark {
-  --background: 240 10% 4%;
-  --foreground: 0 0% 98%;
-  --primary: 0 0% 98%;
-  --primary-foreground: 240 6% 10%;
-  --muted: 240 4% 16%;
-  --muted-foreground: 240 5% 65%;
-  --border: 240 4% 16%;
-  --destructive: 0 63% 45%;
+  --background: 250 35% 9%;
+  --foreground: 245 40% 95%;
+  --card: 250 30% 13%;
+  --card-foreground: 245 40% 95%;
+  --primary: 256 90% 72%;
+  --primary-foreground: 250 35% 9%;
+  --muted: 250 25% 18%;
+  --muted-foreground: 248 15% 68%;
+  --border: 250 22% 22%;
+  --destructive: 350 80% 62%;
+  --success: 158 64% 52%;
 }
 
 @theme inline {
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
   --color-primary: hsl(var(--primary));
   --color-primary-foreground: hsl(var(--primary-foreground));
   --color-muted: hsl(var(--muted));
   --color-muted-foreground: hsl(var(--muted-foreground));
   --color-border: hsl(var(--border));
   --color-destructive: hsl(var(--destructive));
+  --color-success: hsl(var(--success));
   --radius-md: var(--radius);
 }
 ```
@@ -132,6 +188,23 @@ export function Button({ variant, className, ...props }: ButtonProps) {
 - `tv({ extend: other, base: "..." })` builds one primitive on another (Input to Textarea).
 - React 19 passes `ref` as a normal prop, so no `forwardRef`.
 
+### Infinite list (TanStack Query)
+
+```tsx
+const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
+  queryKey: videoKeys.list(),
+  queryFn: ({ pageParam }) => listVideos({ cursor: pageParam, limit: 12 }),
+  initialPageParam: undefined as string | undefined,
+  getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+});
+
+const sentinel = useInView<HTMLDivElement>(
+  () => void fetchNextPage(),
+  Boolean(hasNextPage) && !isFetchingNextPage,
+  data?.pages.length,
+);
+```
+
 ### Video player (react-player)
 
 ```tsx
@@ -149,17 +222,30 @@ apps/web/
 ├── index.html
 ├── vite.config.ts
 ├── src/
-│   ├── main.tsx           # theme bootstrap + render
+│   ├── main.tsx           # theme bootstrap, QueryClientProvider, render
 │   ├── App.tsx            # routes
 │   ├── index.css          # tailwind import + token theme
+│   ├── query-client.ts    # QueryClient defaults and retry policy
 │   ├── types.ts           # API response types
-│   ├── components/        # layout and shared components
+│   ├── components/        # layout, back button, cards, icons
 │   │   └── ui/            # tailwind-variants primitives
-│   ├── hooks/             # useAsync and similar
+│   ├── hooks/             # useInView and similar
+│   ├── queries/           # TanStack Query hooks and key factories
 │   ├── pages/
 │   └── services/          # api.ts (fetch wrapper)
 └── e2e/                   # Playwright, when added
 ```
+
+## Verifying the UI
+
+Run a real browser, not only the type-checker. With `playwright-core` and the installed
+Chrome (`executablePath`), no browser download is needed. Keep the throwaway test project
+outside the repo.
+
+- `locator.isVisible()` does not wait. Use `locator.waitFor()` for content that appears after
+  a route change or a fetch.
+- Wait a few hundred milliseconds after a theme toggle before a screenshot; colors fade.
+- Read the screenshots. Layout flaws (ragged card heights) never fail an assertion.
 
 ## Testing & quality
 

@@ -3,7 +3,9 @@ import { Link, NavLink, Outlet } from "react-router-dom";
 import { Button } from "./ui";
 
 const navClass = ({ isActive }: { isActive: boolean }) =>
-  `text-sm font-medium ${isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`;
+  `text-sm font-medium transition ${
+    isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
+  }`;
 
 function ThemeToggle() {
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
@@ -25,10 +27,13 @@ function ThemeToggle() {
 export function Layout() {
   return (
     <div className="min-h-screen">
-      <header className="border-b border-border">
+      <header className="sticky top-0 z-10 border-b border-border bg-card/80 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
           <div className="flex items-center gap-6">
-            <Link to="/" className="text-lg font-semibold">
+            <Link
+              to="/"
+              className="bg-linear-to-r from-primary to-fuchsia-500 bg-clip-text text-lg font-bold text-transparent"
+            >
               Mini YouTube
             </Link>
             <nav className="flex gap-4" aria-label="Main">
