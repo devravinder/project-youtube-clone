@@ -235,6 +235,7 @@ apps/web/
 ├── index.html
 ├── vite.config.ts
 ├── scripts/               # check-theme-contrast.mjs
+├── public/                # favicon.svg, favicon-32.png, apple-touch-icon.png
 ├── src/
 │   ├── main.tsx           # theme bootstrap, QueryClientProvider, render
 │   ├── App.tsx            # routes
