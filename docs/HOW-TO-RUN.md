@@ -103,8 +103,9 @@ pnpm format:md   # auto-fix
 
 ## Troubleshooting
 
-| Issue                       | Fix                                                                                                        |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `port is already allocated` | Another service uses 5432/9000/9001. Stop it or change the host port in `infra/docker-compose-local.yaml`. |
-| MinIO buckets missing       | Check the `yt-minio-setup` container logs: `pnpm logs:l`. It runs once then exits — that is expected.      |
-| `docker compose` not found  | Docker Desktop not running, or old Docker without Compose v2.                                              |
+| Issue                                                               | Fix                                                                                                                                                |
+| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `port is already allocated`                                         | Another service uses 5432/9000/9001. Stop it or change the host port in `infra/docker-compose-local.yaml`.                                         |
+| MinIO buckets missing                                               | Check the `yt-minio-setup` container logs: `pnpm logs:l`. It runs once then exits — that is expected.                                              |
+| `docker compose` not found                                          | Docker Desktop not running, or old Docker without Compose v2.                                                                                      |
+| Postgres exits with "in 18+, these Docker images are configured..." | Volume must mount at `/var/lib/postgresql` (not `/data`). Already fixed in compose; if it persists, run `pnpm stop:l:pods` to drop the old volume. |
