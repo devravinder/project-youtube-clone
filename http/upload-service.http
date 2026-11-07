@@ -14,7 +14,7 @@ Content-Type: application/json
 ?? js response.parsedBody.key endsWith source.mp4
 
 ### Upload a real file straight to storage using the presigned URL
-# @ref presign
+# @forceRef presign
 PUT {{presign.uploadUrl}}
 Content-Type: video/mp4
 

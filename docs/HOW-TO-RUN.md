@@ -94,8 +94,12 @@ Set the file used for the upload request once:
 Copy-Item http/.env.sample http/.env
 ```
 
-Edit `VIDEO_FILE` in `http/.env` (git-ignored) to point at any local video. Your recordings
-are large (0.7 to 2 GB), so for quick checks cut a small slice into the ignored `tmp/` folder:
+Edit `VIDEO_FILE` in `http/.env` (git-ignored) to point at any local video. A relative path
+resolves from the `http/` folder, so use `../tmp/sample.mp4` or an absolute path. A wrong path
+uploads 0 bytes yet still returns 200, so check the object size in the MinIO console.
+
+Full recordings can be 0.7 to 2 GB. For quick checks, cut a small slice into the ignored
+`tmp/` folder:
 
 ```powershell
 $buf = New-Object byte[] (5MB)
