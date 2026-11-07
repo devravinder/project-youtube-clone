@@ -1,14 +1,8 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { getAccessToken, userManager } from "../auth/user-manager";
-import {
-  ApiError,
-  confirmUpload,
-  createPresignedUpload,
-  getVideo,
-  listVideos,
-  uploadToStorage,
-} from "../services/api";
+import { ApiError, getVideo, listVideos } from "../services/api";
+import { cancelUpload, uploadVideo } from "../services/upload";
 
 const PAGE_SIZE = 12;
 const PLAYBACK_URL_STALE_MS = 30 * 60 * 1000;
@@ -48,6 +42,7 @@ interface UploadInput {
 export function useUploadVideo() {
   const queryClient = useQueryClient();
   const [percent, setPercent] = useState(0);
+  const running = useRef<{ file: File; controller: AbortController } | null>(null);
 
   const mutation = useMutation({
     mutationFn: async ({ file, title, description }: UploadInput) => {
@@ -55,15 +50,19 @@ export function useUploadVideo() {
       if (!(await getAccessToken())) {
         throw new ApiError(401, "Please sign in to upload");
       }
-      const presign = await createPresignedUpload({
-        filename: file.name,
-        contentType: file.type,
-        title,
-        description,
-      });
-      await uploadToStorage(presign.uploadUrl, file, setPercent);
-      await confirmUpload(presign.videoId);
-      return { videoId: presign.videoId, title: title ?? file.name };
+      const controller = new AbortController();
+      running.current = { file, controller };
+      try {
+        return await uploadVideo({
+          file,
+          title,
+          description,
+          signal: controller.signal,
+          onProgress: setPercent,
+        });
+      } finally {
+        running.current = null;
+      }
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: videoKeys.all }),
     onError: (error) => {
@@ -73,5 +72,17 @@ export function useUploadVideo() {
     },
   });
 
-  return { ...mutation, percent };
+  // Stops the transfer and discards what was already stored.
+  const cancel = async () => {
+    const current = running.current;
+    if (!current) {
+      return;
+    }
+    current.controller.abort();
+    await cancelUpload(current.file);
+    mutation.reset();
+    setPercent(0);
+  };
+
+  return { ...mutation, percent, cancel };
 }

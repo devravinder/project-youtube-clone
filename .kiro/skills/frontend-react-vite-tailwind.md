@@ -282,3 +282,12 @@ outside the repo.
 
 Types for API payloads are generated from `contracts/*.openapi.json` with `pnpm --filter @yt/web api:types`;
 never hand-write them. Re-export named types from `src/types.ts`. See `openapi-contracts`.
+
+## Large file uploads
+
+Slice with `file.slice`, upload parts through XHR (fetch has no upload progress) with a small
+worker pool (3), retry each part with backoff, and fetch part URLs in batches shared by all workers.
+Stop handing out work after a permanent failure. Resume by asking the server which parts exist and
+skipping those whose size matches; key the saved video id by `name:size:lastModified`. Cancel must
+abort the XHRs and call the server to discard the upload. Keep this in `services/upload.ts`, not in
+components. See ADR-020.

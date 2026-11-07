@@ -4,6 +4,7 @@ import { BackButton } from "../components/back-button";
 import { ArrowRight, Check } from "lucide-react";
 import { Button, Card, Input, Label, ProgressBar, Textarea } from "../components/ui";
 import { useUploadVideo } from "../queries/videos";
+import { MULTIPART_THRESHOLD_BYTES } from "../services/upload";
 
 interface UploadSuccessProps {
   readonly videoId: string;
@@ -120,12 +121,20 @@ export function UploadPage() {
               {upload.isPending && (
                 <div className="flex flex-col gap-1.5">
                   <ProgressBar value={upload.percent} label="Upload progress" />
-                  <p className="text-sm text-muted-foreground">Uploading... {upload.percent}%</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">Uploading... {upload.percent}%</p>
+                    <Button type="button" variant="outline" onClick={() => void upload.cancel()}>
+                      Cancel
+                    </Button>
+                  </div>
                 </div>
               )}
               {upload.isError && (
                 <p role="alert" className="text-sm text-destructive">
                   {upload.error.message}
+                  {file &&
+                    file.size > MULTIPART_THRESHOLD_BYTES &&
+                    " Press Upload to resume where it stopped."}
                 </p>
               )}
 

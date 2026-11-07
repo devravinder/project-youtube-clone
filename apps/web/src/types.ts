@@ -9,3 +9,7 @@ export type VideoStatus = VideoSummary["status"];
 export type PresignRequest = Schemas["PresignRequest"];
 export type PresignResponse = Schemas["PresignResponse"];
 export type ConfirmUploadResponse = Schemas["ConfirmUploadResponse"];
+export type MultipartInitRequest = Schemas["MultipartInitRequest"];
+export type MultipartInitResponse = Schemas["MultipartInitResponse"];
+export type PartUrlsResponse = Schemas["PartUrlsResponse"];
+export type UploadedPartsResponse = Schemas["UploadedPartsResponse"];

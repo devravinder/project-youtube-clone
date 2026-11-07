@@ -59,3 +59,9 @@ none.
 
 The committed OpenAPI spec in `contracts/` defines what exists; the `.http` files prove it behaves.
 When an operation is added or changed, update both (see `openapi-contracts`).
+
+## Multipart uploads
+
+httpYac cannot slice a file, so the `.http` flow declares a size that needs one part and PUTs the
+whole sample file to part 1. Multi-part behaviour (parallelism, retries, resume, cancel) is covered
+by the browser test instead.

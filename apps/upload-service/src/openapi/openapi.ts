@@ -2,6 +2,7 @@ import type { INestApplication } from "@nestjs/common";
 import { DocumentBuilder, SwaggerModule, type OpenAPIObject } from "@nestjs/swagger";
 import { z } from "zod";
 import "./error.dto.js";
+import "../uploads/multipart.dto.js";
 import "../uploads/presign.dto.js";
 import "../videos/video.dto.js";
 

@@ -3,4 +3,5 @@ export type {
   StoredObject,
   PresignedUrlOptions,
   PutObjectOptions,
+  UploadedPart,
 } from "./storage.port.js";

@@ -123,7 +123,7 @@ run `db:generate` on a fresh clone before type-checking or starting the service.
 
 ## 5. Run the upload service
 
-Needs MinIO running (step 3). Config comes from `apps/upload-service/.env.sample`. Upload endpoints need a Keycloak bearer token (`OIDC_ISSUER_URL`, `OIDC_AUDIENCE`); the web app signs in through Keycloak (code flow with PKCE) before uploading. Every 10 minutes a job deletes uploads still pending after UPLOAD_PENDING_TTL_MINUTES (default 1440).
+Needs MinIO running (step 3). Config comes from `apps/upload-service/.env.sample`. Upload endpoints need a Keycloak bearer token (`OIDC_ISSUER_URL`, `OIDC_AUDIENCE`); the web app signs in through Keycloak (code flow with PKCE) before uploading. Files over 16 MiB upload in parts (`UPLOAD_PART_SIZE_MB`, default 8, minimum 5): the page sends 3 parts in parallel, retries failed parts, and resumes if you choose the same file and press Upload again; Cancel discards the upload. Every 10 minutes a job deletes uploads still pending after `UPLOAD_PENDING_TTL_MINUTES` (default 1440) and aborts their multipart uploads.
 
 ```bash
 pnpm start:l:upload

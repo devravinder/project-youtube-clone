@@ -248,3 +248,29 @@ DTO classes: tsx emits no decorator metadata and the DTOs are Zod schemas, so cl
 duplicate every rule. Trade-off: each endpoint needs explicit documentation decorators, and a
 forgotten one means a missing response in the spec; `api:check` plus the `http/` tests catch
 most of that.
+
+## ADR-020 - Large uploads: S3 multipart with presigned part URLs
+
+Date: 2026-11-07 - Status: Accepted
+
+Files over 16 MiB upload in parts; smaller files keep the single presigned PUT. The server
+starts a multipart upload (`POST /uploads/multipart`), stores `uploadId`, `partSize` and
+`partCount` on the video, and hands out presigned URLs per part (`POST /uploads/:id/parts`).
+The browser slices the `File`, uploads 3 parts in parallel straight to storage, retries a part up
+to 3 times with backoff (a 403 means an expired URL, so a fresh one is fetched), and then calls
+`complete`. Parts are 8 MiB (minimum 5 MiB, enforced by storage) and grow for huge files so the
+10,000-part limit is never hit.
+
+The server, not the browser, joins the parts: the S3 adapter lists the stored parts and sends
+their ETags itself. The browser never reads ETags, so no `ExposeHeaders` CORS setup is needed on
+the bucket, and `complete` fails with 409 unless every planned part is present.
+
+Resume: `GET /uploads/:id/parts` lists what storage already holds. The page remembers the video
+id per file (`name:size:lastModified`) in `localStorage`; uploading the same file again skips parts
+whose size matches. Cancel calls `DELETE /uploads/:id`, which aborts the multipart upload and
+removes the row. The abandoned-upload job also aborts expired multipart uploads, because stored
+parts are billed and invisible in normal listings.
+
+Trade-offs: parts are not checksum-verified (S3 `ChecksumSHA256` per part would add that), and
+`complete` checks the part count, not the total size. Resume relies on `localStorage`, so it works
+per browser and not across devices.

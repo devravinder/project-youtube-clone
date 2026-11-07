@@ -55,6 +55,9 @@ export class CleanupService {
       for (const video of batch) {
         try {
           // Object first: a row without an object is harmless, the reverse leaks storage.
+          if (video.uploadId) {
+            await this.storage.abortMultipartUpload(video.rawBucket, video.rawKey, video.uploadId);
+          }
           await this.storage.deleteObject(video.rawBucket, video.rawKey);
           await this.prisma.video.delete({ where: { id: video.id } });
           removed += 1;

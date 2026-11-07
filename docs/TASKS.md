@@ -49,11 +49,12 @@ Concepts: object storage, presigned/multipart upload, relational modeling, ports
 - [x] `apps/web` pages: upload, video list (infinite scroll), watch (react-player), back button, themed UI
 - [x] Confirm-upload endpoint and a pending status, so unfinished uploads are not listed as uploaded
 - [x] Scheduled cleanup of abandoned pending uploads (cron, TTL `UPLOAD_PENDING_TTL_MINUTES`)
-- [ ] Multipart / resumable upload for large files, with abort of incomplete parts
+- [x] Multipart / resumable upload: parallel parts, retries, resume, cancel, abort of incomplete parts
 - [x] Keycloak in compose with an imported `youtube-clone` realm (client `yt-web`, user `alice`)
 - [x] Verify Keycloak JWTs in upload-service (`jose` guard), protect upload endpoints, record video owner
 - [x] Login and logout in the web app (OIDC code flow with PKCE), route guard, bearer token on API calls
 - [x] OpenAPI 3.1 from Zod (Swagger UI at `/docs`), spec in `contracts/`, web types via `openapi-typescript`
+- [ ] On multipart complete, also check the stored part sizes add up to the declared file size
 - [ ] Tests: Jest (service), supertest (controller), Vitest (web)
 - [x] Git hooks: Husky + lint-staged + commitlint + markdownlint
 

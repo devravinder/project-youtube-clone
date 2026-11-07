@@ -110,6 +110,190 @@ Authorization: Bearer {{bobToken.access_token}}
 POST {{baseUrl}}/uploads/{{noUpload.videoId}}/complete
 
 ?? status == 401
+### Multipart: start an upload and get the part plan
+# @name mpInit
+# @ref token
+POST {{baseUrl}}/uploads/multipart
+Authorization: Bearer {{token.access_token}}
+Content-Type: application/json
+
+{
+  "filename": "big.mp4",
+  "contentType": "video/mp4",
+  "fileSize": 5000000,
+  "title": "Multipart video"
+}
+
+?? status == 201
+?? js response.parsedBody.partSize == 8388608
+?? js response.parsedBody.partCount == 1
+
+### Multipart: a 20 MB file needs 3 parts
+# @name mpPlan
+# @ref token
+POST {{baseUrl}}/uploads/multipart
+Authorization: Bearer {{token.access_token}}
+Content-Type: application/json
+
+{
+  "filename": "big.mp4",
+  "contentType": "video/mp4",
+  "fileSize": 20000000
+}
+
+?? status == 201
+?? js response.parsedBody.partCount == 3
+
+### Multipart: abort discards the unfinished upload
+# @ref mpPlan
+# @ref token
+DELETE {{baseUrl}}/uploads/{{mpPlan.videoId}}
+Authorization: Bearer {{token.access_token}}
+
+?? status == 204
+
+### Multipart: an aborted upload is gone
+# @ref mpPlan
+GET {{baseUrl}}/videos/{{mpPlan.videoId}}
+
+?? status == 404
+
+### Multipart: reject a zero file size
+# @ref token
+POST {{baseUrl}}/uploads/multipart
+Authorization: Bearer {{token.access_token}}
+Content-Type: application/json
+
+{
+  "filename": "big.mp4",
+  "contentType": "video/mp4",
+  "fileSize": 0
+}
+
+?? status == 400
+
+### Multipart: start requires a token
+POST {{baseUrl}}/uploads/multipart
+Content-Type: application/json
+
+{
+  "filename": "big.mp4",
+  "contentType": "video/mp4",
+  "fileSize": 5000000
+}
+
+?? status == 401
+
+### Multipart: nothing stored yet
+# @ref mpInit
+# @ref token
+GET {{baseUrl}}/uploads/{{mpInit.videoId}}/parts
+Authorization: Bearer {{token.access_token}}
+
+?? status == 200
+?? js response.parsedBody.partCount == 1
+?? js response.parsedBody.uploadedParts.length == 0
+
+### Multipart: completing without the parts is rejected
+# @ref mpInit
+# @ref token
+POST {{baseUrl}}/uploads/{{mpInit.videoId}}/complete
+Authorization: Bearer {{token.access_token}}
+
+?? status == 409
+
+### Multipart: get the URL for part 1
+# @name mpUrls
+# @ref mpInit
+# @ref token
+POST {{baseUrl}}/uploads/{{mpInit.videoId}}/parts
+Authorization: Bearer {{token.access_token}}
+Content-Type: application/json
+
+{
+  "partNumbers": [1]
+}
+
+?? status == 201
+?? js response.parsedBody.urls.length == 1
+?? js response.parsedBody.urls[0].partNumber == 1
+
+### Multipart: a part number beyond the plan is rejected
+# @ref mpInit
+# @ref token
+POST {{baseUrl}}/uploads/{{mpInit.videoId}}/parts
+Authorization: Bearer {{token.access_token}}
+Content-Type: application/json
+
+{
+  "partNumbers": [2]
+}
+
+?? status == 400
+
+### Multipart: another user cannot get part URLs
+# @ref mpInit
+# @ref bobToken
+POST {{baseUrl}}/uploads/{{mpInit.videoId}}/parts
+Authorization: Bearer {{bobToken.access_token}}
+Content-Type: application/json
+
+{
+  "partNumbers": [1]
+}
+
+?? status == 403
+
+### Multipart: PUT the bytes of part 1 straight to storage
+# @name mpPut
+# @ref mpUrls
+PUT {{mpUrls.urls[0].url}}
+
+< {{VIDEO_FILE}}
+
+?? status == 200
+
+### Multipart: the stored part is listed (for resuming)
+# @ref mpPut
+# @ref mpInit
+# @ref token
+GET {{baseUrl}}/uploads/{{mpInit.videoId}}/parts
+Authorization: Bearer {{token.access_token}}
+
+?? status == 200
+?? js response.parsedBody.uploadedParts.length == 1
+?? js response.parsedBody.uploadedParts[0].partNumber == 1
+
+### Multipart: complete joins the parts and marks the video uploaded
+# @name mpComplete
+# @ref mpPut
+# @ref token
+POST {{baseUrl}}/uploads/{{mpInit.videoId}}/complete
+Authorization: Bearer {{token.access_token}}
+
+?? status == 201
+?? js response.parsedBody.status == UPLOADED
+
+### Multipart: the finished video is playable
+# @ref mpComplete
+GET {{baseUrl}}/videos/{{mpInit.videoId}}
+
+?? status == 200
+?? js response.parsedBody.title == Multipart video
+?? js response.parsedBody.playbackUrl isString
+
+### Multipart: part URLs are refused once the upload is finished
+# @ref mpComplete
+# @ref token
+POST {{baseUrl}}/uploads/{{mpInit.videoId}}/parts
+Authorization: Bearer {{token.access_token}}
+Content-Type: application/json
+
+{
+  "partNumbers": [1]
+}
+
+?? status == 409
 ### Reject a non-video content type
 # @ref token
 POST {{baseUrl}}/uploads/presign

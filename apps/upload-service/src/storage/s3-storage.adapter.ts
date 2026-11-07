@@ -1,12 +1,23 @@
 import {
+  AbortMultipartUploadCommand,
+  CompleteMultipartUploadCommand,
+  CreateMultipartUploadCommand,
   DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
+  ListPartsCommand,
   PutObjectCommand,
   S3Client,
+  UploadPartCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import type { PresignedUrlOptions, PutObjectOptions, StoragePort, StoredObject } from "@yt/ports";
+import type {
+  PresignedUrlOptions,
+  PutObjectOptions,
+  StoragePort,
+  StoredObject,
+  UploadedPart,
+} from "@yt/ports";
 import type { AppConfig } from "../config/app.config.js";
 
 const DEFAULT_EXPIRY_SECONDS = 900;
@@ -97,6 +108,100 @@ export class S3StorageAdapter implements StoragePort {
 
   async deleteObject(bucket: string, key: string): Promise<void> {
     await this.client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+  }
+
+  async createMultipartUpload(
+    bucket: string,
+    key: string,
+    options?: PutObjectOptions,
+  ): Promise<string> {
+    const response = await this.client.send(
+      new CreateMultipartUploadCommand({
+        Bucket: bucket,
+        Key: key,
+        ContentType: options?.contentType,
+      }),
+    );
+    if (!response.UploadId) {
+      throw new Error(`Storage returned no upload id for ${bucket}/${key}`);
+    }
+    return response.UploadId;
+  }
+
+  createPresignedPartUrl(
+    bucket: string,
+    key: string,
+    uploadId: string,
+    partNumber: number,
+    options?: PresignedUrlOptions,
+  ): Promise<string> {
+    const command = new UploadPartCommand({
+      Bucket: bucket,
+      Key: key,
+      UploadId: uploadId,
+      PartNumber: partNumber,
+    });
+    return getSignedUrl(this.client, command, {
+      expiresIn: options?.expiresInSeconds ?? DEFAULT_EXPIRY_SECONDS,
+    });
+  }
+
+  async listUploadedParts(bucket: string, key: string, uploadId: string): Promise<UploadedPart[]> {
+    return (await this.listAllParts(bucket, key, uploadId)).map(({ partNumber, size }) => ({
+      partNumber,
+      size,
+    }));
+  }
+
+  async completeMultipartUpload(bucket: string, key: string, uploadId: string): Promise<void> {
+    const parts = await this.listAllParts(bucket, key, uploadId);
+    await this.client.send(
+      new CompleteMultipartUploadCommand({
+        Bucket: bucket,
+        Key: key,
+        UploadId: uploadId,
+        MultipartUpload: {
+          Parts: parts.map(({ partNumber, etag }) => ({ PartNumber: partNumber, ETag: etag })),
+        },
+      }),
+    );
+  }
+
+  async abortMultipartUpload(bucket: string, key: string, uploadId: string): Promise<void> {
+    try {
+      await this.client.send(
+        new AbortMultipartUploadCommand({ Bucket: bucket, Key: key, UploadId: uploadId }),
+      );
+    } catch (error) {
+      if ((error as { name?: string }).name !== "NoSuchUpload") {
+        throw error;
+      }
+    }
+  }
+
+  // ListParts returns at most 1000 parts per call, so follow the marker.
+  private async listAllParts(bucket: string, key: string, uploadId: string) {
+    const parts: { partNumber: number; size: number; etag: string }[] = [];
+    let marker: string | undefined;
+    do {
+      const page = await this.client.send(
+        new ListPartsCommand({
+          Bucket: bucket,
+          Key: key,
+          UploadId: uploadId,
+          PartNumberMarker: marker,
+        }),
+      );
+      for (const part of page.Parts ?? []) {
+        parts.push({
+          partNumber: part.PartNumber ?? 0,
+          size: part.Size ?? 0,
+          etag: part.ETag ?? "",
+        });
+      }
+      marker = page.IsTruncated ? page.NextPartNumberMarker : undefined;
+    } while (marker);
+    return parts;
   }
 }
 
