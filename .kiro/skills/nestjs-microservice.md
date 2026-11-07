@@ -1,6 +1,6 @@
 ---
 name: nestjs-microservice
-description: Scaffold a NestJS + TypeScript microservice with Prisma, zod-validated config, Jest + supertest, choosing layered-MVC for CRUD services and ports/adapters for infra-heavy services. Use when creating or extending a Node backend service.
+description: Scaffold a NestJS + TypeScript microservice with Prisma, zod-validated config, Vitest + supertest, choosing layered-MVC for CRUD services and ports/adapters for infra-heavy services. Use when creating or extending a Node backend service.
 ---
 
 # NestJS Microservice
@@ -61,8 +61,8 @@ Match the pattern to the service, not the other way round (see `ADR-011`):
 | Logging            | loki-logback-appender                    | `nestjs-pino` → OTLP/Loki                                              |
 | Messaging          | (RabbitMQ/Kafka clients)                 | `amqplib` (RabbitMQ) + `kafkajs` (Kafka)                               |
 | Architecture tests | ArchUnit                                 | **dependency-cruiser**                                                 |
-| Unit/integration   | JUnit 5 + Mockito + MockMvc              | **Jest** + **supertest**                                               |
-| Coverage gate      | JaCoCo (75%)                             | Jest `coverageThreshold` (75%)                                         |
+| Unit/integration   | JUnit 5 + Mockito + MockMvc              | **Vitest** + **supertest**                                             |
+| Coverage gate      | JaCoCo (75%)                             | Vitest `coverage.thresholds` (80%)                                     |
 | Formatting         | Spotless                                 | Prettier                                                               |
 | Linting            | spotless/compiler                        | oxlint / ESLint                                                        |
 | Git hooks          | Husky + lint-staged + commitlint         | Husky + lint-staged + commitlint (same)                                |
@@ -137,8 +137,16 @@ export interface StoragePort {
 
 ## Testing
 
-- **Unit:** Jest; mock ports (infra-heavy) or mock PrismaService (CRUD). Fast, no infra.
-- **Controller/e2e:** supertest against the Nest app.
+- **Unit:** Vitest (not Jest: `ts-jest` rejects TypeScript 7 and Jest needs ESM flags). Test
+  services directly with in-memory fakes of the ports and of the Prisma calls they use
+  (`src/testing/`). Fast, no infra.
+- **Controller/e2e:** `Test.createTestingModule` + supertest over real HTTP, real controllers and
+  services, fakes underneath, and a header-driven stand-in for the auth guard.
+- **Auth guard:** sign real JWTs with `jose` and serve a JWKS from a local `http` server; cover
+  expired, wrong audience, wrong issuer and unknown-key tokens. No Keycloak needed.
+- **Contract:** one test fails when `contracts/*.openapi.json` differs from what the code generates.
+- Vitest needs `oxc: { decorator: { legacy: true } }`; explicit `@Inject(token)` means no
+  decorator metadata is required.
 - **Architecture boundaries:** `dependency-cruiser` — application/use-case may depend on
   ports, never on adapters directly (the ArchUnit analogue for TS).
 - Coverage gate 75% in CI/pre-commit.

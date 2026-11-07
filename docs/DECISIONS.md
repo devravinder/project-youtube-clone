@@ -274,3 +274,24 @@ parts are billed and invisible in normal listings.
 Trade-offs: parts are not checksum-verified (S3 `ChecksumSHA256` per part would add that), and
 `complete` checks the part count, not the total size. Resume relies on `localStorage`, so it works
 per browser and not across devices.
+
+## ADR-021 - Tests: Vitest everywhere, with in-memory fakes
+
+Date: 2026-11-07 - Status: Accepted (replaces the test runner named in ADR-012)
+
+Both the backend and the web app use Vitest 5; the backend adds `@nestjs/testing` and supertest,
+the web app adds jsdom and Testing Library. ADR-012 had planned Jest for services.
+
+Why not Jest: `ts-jest` declares `typescript <7` and we are on TypeScript 7.0.2, so Jest would need
+an swc transform plus ESM flags. Vitest runs our ESM TypeScript as is, shares Vite with the web app,
+and one runner means one set of conventions. Decorators work through
+`oxc: { decorator: { legacy: true } }`; explicit `@Inject(token)` means no emitted metadata.
+
+Approach: unit and controller tests use in-memory fakes of the storage port and of the Prisma calls
+the services make, so they run in seconds without Docker. JWT verification is tested with real signed
+tokens against a local JWKS server. A test compares the committed OpenAPI file with the code. The
+`.http` suite and the browser run remain the checks against real infrastructure.
+
+Trade-off: a fake can drift from the real database or storage. `FakePrisma` implements only the
+queries the services use; if a service starts using a new query, the fake must grow with it, and the
+`.http` suite is what catches a mismatch with real Postgres.

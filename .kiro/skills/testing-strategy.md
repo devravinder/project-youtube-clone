@@ -1,6 +1,6 @@
 ---
 name: testing-strategy
-description: Apply a consistent test pyramid with coverage gates across Node (Jest/Vitest/supertest/Playwright) and Java (JUnit/MockMvc/ArchUnit/JaCoCo), plus k6 load tests. Use when adding or organizing tests.
+description: Apply a consistent test pyramid with coverage gates across Node (Vitest/supertest/Testing Library/Playwright) and Java (JUnit/MockMvc/ArchUnit/JaCoCo), plus k6 load tests. Use when adding or organizing tests.
 ---
 
 # Testing Strategy
@@ -10,15 +10,15 @@ advanced-starter. Fast tests run on build; slow/integration tests run on demand.
 
 ## Pyramid
 
-| Layer                  | Node                                                  | Java                                     |
-| ---------------------- | ----------------------------------------------------- | ---------------------------------------- |
-| Unit                   | Jest (services) / Vitest (frontend) + Testing Library | JUnit 5 + Mockito                        |
-| Component / controller | supertest against Nest app                            | MockMvc + Spring Security Test (`jwt()`) |
-| Architecture rules     | dependency-cruiser                                    | ArchUnit                                 |
-| Integration / API      | supertest against running app (tagged)                | Java `HttpClient`, `@Tag("api-test")`    |
-| E2E (browser)          | Playwright                                            | —                                        |
-| Load / performance     | k6                                                    | k6                                       |
-| Coverage gate          | Vitest/Jest threshold                                 | JaCoCo (75% min)                         |
+| Layer                  | Node                                             | Java                                     |
+| ---------------------- | ------------------------------------------------ | ---------------------------------------- |
+| Unit                   | Vitest (services and frontend) + Testing Library | JUnit 5 + Mockito                        |
+| Component / controller | supertest against Nest app                       | MockMvc + Spring Security Test (`jwt()`) |
+| Architecture rules     | dependency-cruiser                               | ArchUnit                                 |
+| Integration / API      | supertest against running app (tagged)           | Java `HttpClient`, `@Tag("api-test")`    |
+| E2E (browser)          | Playwright                                       | —                                        |
+| Load / performance     | k6                                               | k6                                       |
+| Coverage gate          | Vitest `coverage.thresholds` (80% lines)         | JaCoCo (75% min)                         |
 
 ## Rules
 
@@ -34,7 +34,25 @@ advanced-starter. Fast tests run on build; slow/integration tests run on demand.
 ## Coverage
 
 - Backend Java: JaCoCo, 75% min, enforced on `build`. Exclude DTOs/entities/mappers/config.
-- Frontend/Node: Vitest/Jest threshold, enforced on pre-commit.
+- Node: Vitest thresholds (80% lines/functions, 70% branches) on the code that holds logic. Run `pnpm test:coverage` in CI; pre-commit stays fast and does not run tests.
+
+## Node test conventions
+
+- One runner, Vitest, for backend and web: `pnpm test` (all), `pnpm test:coverage` (gates).
+- Specs sit beside the code (`*.spec.ts` backend, `*.test.ts(x)` web); shared fakes live in
+  `src/testing/` (backend). Reset shared fakes in `beforeEach`; do not hardcode ids that depend on
+  test order.
+- Fake only what the code calls (`FakeStorage`, `FakePrisma`), and make fakes behave like the real
+  thing where it matters (storage throws `NoSuchUpload` for a finished upload).
+- Use fake timers for backoff and retry tests, and separate "healthy but slow" from "failing" cases.
+- **Prove tests can fail.** After writing tests for important logic, break the code on purpose
+  (skip the owner check, drop a retry, ignore a limit) and confirm a test fails. A surviving mutation
+  means a missing test.
+- Test through the public edge: HTTP for controllers, the exported function for services; avoid
+  asserting on private helpers.
+- Web: mock the module boundary (`vi.mock("./api")`, the auth library), not `fetch` internals,
+  except in the test for the API client itself. Files under test must really cross the size
+  thresholds of the code (a "large" upload test needs a file over 16 MiB).
 
 ## Load testing (k6) — tied to scaling lessons
 

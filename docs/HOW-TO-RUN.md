@@ -36,6 +36,16 @@ in a git-ignored `apps/web/.env.local`. Restart `pnpm start:l:web` after changin
 | `VITE_OIDC_CLIENT_ID` | Keycloak client (`yt-web`)               |
 | `API_PROXY_TARGET`    | Where the Vite dev proxy forwards `/api` |
 
+## Run the tests
+
+```bash
+pnpm test             # every workspace, once
+pnpm test:coverage    # also enforces the coverage gates
+pnpm --filter @yt/web test      # one workspace
+```
+
+Tests use in-memory fakes, so they need no Docker, database or network.
+
 ## API docs and contracts
 
 With the upload service running, Swagger UI is at <http://localhost:3001/docs> and the raw spec at

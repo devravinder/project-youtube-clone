@@ -14,7 +14,7 @@ every task, a short git commit after you verify it (see `git-commit-convention`)
 | ------------------------------ | ----------------------------------------------------------------------------------------- | ------------------- |
 | `prd-generation`               | Generate a tech-free PRD for any project                                                  | ✅ Global candidate |
 | `frontend-react-vite-tailwind` | React 19 + Vite + Tailwind v4, no shadcn (shadcn-like theme), tailwind-variants           | ✅ Global candidate |
-| `nestjs-microservice`          | NestJS + TS service scaffold (ports/adapters, zod config, Jest + supertest)               | ✅ Global candidate |
+| `nestjs-microservice`          | NestJS + TS service scaffold (ports/adapters, zod config, Vitest + supertest)             | ✅ Global candidate |
 | `spring-microservice`          | Spring Boot 4.1 / Java 21 service (MapStruct, Lombok, JUnit + MockMvc + ArchUnit, JaCoCo) | ✅ Global candidate |
 | `testing-strategy`             | Test pyramid + coverage gates                                                             | ✅ Global candidate |
 | `git-hooks-conventions`        | Husky + lint-staged + commitlint                                                          | ✅ Global candidate |

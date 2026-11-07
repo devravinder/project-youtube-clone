@@ -14,6 +14,8 @@
     "start:l:pods": "docker compose -f infra/docker-compose-local.yaml up -d",
     "start:l:upload": "pnpm --filter @yt/upload-service dev",
     "start:l:web": "pnpm --filter @yt/web dev",
+    "test": "pnpm -r --if-present test",
+    "test:coverage": "pnpm -r --if-present test:coverage",
     "api:generate": "pnpm --filter @yt/upload-service openapi:generate && pnpm --filter @yt/web api:types",
     "api:check": "pnpm api:generate && git diff --exit-code contracts apps/web/src/api",
     "stop:l:pods": "docker compose -f infra/docker-compose-local.yaml down -v",
