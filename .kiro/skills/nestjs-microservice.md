@@ -136,6 +136,7 @@ export interface StoragePort {
 
 ## Conventions
 
+- Comments follow the `code-comments` skill.
 - Native `fetch` for outbound HTTP (no axios unless needed).
 - Structured logging + OpenTelemetry (see `observability-otel`).
 - Idempotent queue consumers (see `messaging-patterns`).

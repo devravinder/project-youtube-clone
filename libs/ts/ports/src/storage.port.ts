@@ -1,19 +1,9 @@
-/**
- * StoragePort — the hexagonal boundary for object storage.
- *
- * Adapters implement this: `MinioStorageAdapter` (local) and `S3StorageAdapter` (aws).
- * Application/domain code depends only on this interface, so swapping MinIO ↔ S3 is a
- * module binding + config change, never a rewrite. See ADR-001 and the `nestjs-microservice`
- * skill.
- *
- * A "bucket" is a logical store (e.g. raw-videos, hls-videos); a "key" is the object path
- * within it (e.g. `<videoId>/source.mp4`).
- */
+// Object storage boundary; MinIO and S3 adapters implement it.
+// Bucket is a logical store; key is the object path within it.
 
 export interface PresignedUrlOptions {
-  /** Seconds until the presigned URL expires. */
   readonly expiresInSeconds?: number;
-  /** Required Content-Type the client must send on upload (PUT). */
+  // Content-Type the client must send on upload.
   readonly contentType?: string;
 }
 
@@ -28,29 +18,23 @@ export interface StoredObject {
 }
 
 export interface StoragePort {
-  /**
-   * Create a time-limited URL the client uses to upload bytes directly to storage (HTTP
-   * PUT), keeping large uploads off the app server.
-   */
+  // Client uploads directly to storage, keeping bytes off the app server.
   createPresignedUploadUrl(
     bucket: string,
     key: string,
     options?: PresignedUrlOptions,
   ): Promise<string>;
 
-  /**
-   * Create a time-limited URL to read/download an object directly from storage.
-   */
   createPresignedDownloadUrl(
     bucket: string,
     key: string,
     options?: PresignedUrlOptions,
   ): Promise<string>;
 
-  /** Read an object's bytes (used by the transcoder to fetch the raw upload). */
+  // Transcoder fetches the raw upload with this.
   getObject(bucket: string, key: string): Promise<StoredObject>;
 
-  /** Write an object's bytes (used by the transcoder to store HLS segments). */
+  // Transcoder stores HLS output with this.
   putObject(
     bucket: string,
     key: string,
@@ -58,9 +42,7 @@ export interface StoragePort {
     options?: PutObjectOptions,
   ): Promise<void>;
 
-  /** Whether an object exists (e.g. confirm an upload completed). */
   objectExists(bucket: string, key: string): Promise<boolean>;
 
-  /** Remove an object. */
   deleteObject(bucket: string, key: string): Promise<void>;
 }

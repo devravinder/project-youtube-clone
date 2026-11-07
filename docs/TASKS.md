@@ -23,6 +23,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started
       doc-with-mermaid, markdown-lint
 - [x] NestJS↔Spring library mapping + pattern decision (ADR-011, ADR-012)
 - [x] `docs/TASKS.md` — this tracker
+- [x] `code-comments` skill; trimmed all existing comments to match
 - [x] `.gitattributes` — normalize line endings (silence LF/CRLF warnings)
 - [x] `README.md` — project overview + quick architecture
 - [x] `docs/architecture.md` — system architecture and flows (Mermaid)

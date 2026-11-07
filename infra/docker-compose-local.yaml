@@ -1,9 +1,5 @@
 name: youtube-clone-local
 
-# Local development infrastructure for Phase 0: Postgres + MinIO.
-# More services (RabbitMQ, Kafka, Elasticsearch, Keycloak) are added in later phases.
-# Start:  pnpm start:l:pods     Stop: pnpm stop:l:pods     Logs: pnpm logs:l
-
 services:
   postgres:
     image: postgres:latest
@@ -42,7 +38,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # One-shot job: create the buckets the app expects, then exit.
+  # One-shot: creates buckets, then exits.
   minio-setup:
     image: minio/mc:latest
     container_name: yt-minio-setup

@@ -1,12 +1,5 @@
-# Tag locally pulled images with their plain (registry-less) names so the compose files
-# stay portable. Only needed when images are pulled from a private registry/mirror.
-#
-# Usage:
-#   $env:IMAGE_REGISTRY = "<registry-host>[:port]"
-#   pwsh -File infra/retag-images.ps1
-#
-# Mapping format: "<path in your registry>" = "<plain name used in compose>"
-# Adjust the left side if your registry paths differ. See docs/IMAGES.md.
+# Tags pulled images with plain names so compose stays portable.
+# Usage: $env:IMAGE_REGISTRY = "<host[:port]>"; pwsh -File infra/retag-images.ps1
 
 param(
   [string]$Registry = $env:IMAGE_REGISTRY
@@ -17,6 +10,7 @@ if (-not $Registry) {
   exit 1
 }
 
+# Registry path = plain name used in compose.
 $map = [ordered]@{
   "postgres:latest"                       = "postgres:latest"
   "minio/minio:latest"                    = "minio/minio:latest"

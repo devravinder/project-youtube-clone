@@ -1,16 +1,6 @@
 import { z } from "zod";
 
-/**
- * Parse and validate an environment object against a zod schema.
- *
- * This is the typed-config primitive for every service — the Node analogue of the Spring
- * `AppProperties` record. Services define their own schema (composed from the building
- * blocks in ./schemas) and call this once at startup. Never read `process.env` deep in the
- * code, never hardcode.
- *
- * Throws a readable error listing every invalid/missing variable so misconfiguration fails
- * fast and loud at boot rather than at first use.
- */
+// Validates env against a schema; fails fast listing every invalid variable.
 export function loadConfig<TSchema extends z.ZodTypeAny>(
   schema: TSchema,
   env: NodeJS.ProcessEnv = process.env,

@@ -85,6 +85,7 @@ Conditional beans via `@Profile` / `@ConditionalOnProperty`. Observability beans
 
 ## Conventions
 
+- Comments follow the `code-comments` skill.
 - Internal dependencies resolve via the org Maven repo (configured in Gradle).
 - ffmpeg invoked via a thin wrapper class; keep process handling isolated and testable.
 - OpenTelemetry via Micrometer tracing → OTLP (see `observability-otel`).
