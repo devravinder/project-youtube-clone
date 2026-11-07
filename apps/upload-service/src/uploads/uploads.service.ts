@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { extname, parse } from "node:path";
-import { Inject, Injectable } from "@nestjs/common";
+import { ConflictException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { StoragePort } from "@yt/ports";
 import { APP_CONFIG, type AppConfig } from "../config/app.config.js";
+import { VideoStatus } from "../generated/prisma/enums.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { STORAGE_PORT } from "../storage/storage.module.js";
-import type { PresignRequest, PresignResponse } from "./presign.dto.js";
+import type { ConfirmUploadResponse, PresignRequest, PresignResponse } from "./presign.dto.js";
 
 const UPLOAD_URL_EXPIRY_SECONDS = 900;
 
@@ -40,6 +41,27 @@ export class UploadsService {
     });
 
     return { videoId, bucket, key, uploadUrl, expiresInSeconds: UPLOAD_URL_EXPIRY_SECONDS };
+  }
+
+  async confirmUpload(videoId: string): Promise<ConfirmUploadResponse> {
+    const video = await this.prisma.video.findUnique({ where: { id: videoId } });
+    if (!video) {
+      throw new NotFoundException(`Video ${videoId} not found`);
+    }
+    if (video.status !== VideoStatus.PENDING) {
+      return { videoId, status: video.status };
+    }
+
+    const exists = await this.storage.objectExists(video.rawBucket, video.rawKey);
+    if (!exists) {
+      throw new ConflictException("File has not been uploaded to storage yet");
+    }
+
+    const updated = await this.prisma.video.update({
+      where: { id: videoId },
+      data: { status: VideoStatus.UPLOADED },
+    });
+    return { videoId, status: updated.status };
   }
 }
 

@@ -145,9 +145,48 @@ GET {{baseUrl}}/videos?cursor=not-a-uuid
 
 ?? status == 400
 
+### Confirming before the file exists is rejected
+# @name earlyConfirm
+# @ref noUpload
+POST {{baseUrl}}/uploads/{{noUpload.videoId}}/complete
+
+?? status == 409
+
+### Pending video is hidden from the list
+# @ref noUpload
+GET {{baseUrl}}/videos?limit=50
+
+?? status == 200
+?? js !response.parsedBody.items.map(v => v.id).includes(noUpload.videoId)
+
+### Confirm marks the video as uploaded
+# @name confirm
+# @ref upload
+POST {{baseUrl}}/uploads/{{presign.videoId}}/complete
+
+?? status == 201
+?? js response.parsedBody.status == UPLOADED
+
+### Confirming twice is harmless
+# @ref presign
+POST {{baseUrl}}/uploads/{{presign.videoId}}/complete
+
+?? status == 201
+?? js response.parsedBody.status == UPLOADED
+
+### Confirm unknown video returns 404
+POST {{baseUrl}}/uploads/00000000-0000-4000-8000-000000000000/complete
+
+?? status == 404
+
+### Confirm malformed id returns 400
+POST {{baseUrl}}/uploads/not-a-uuid/complete
+
+?? status == 400
+
 ### Uploaded video has a playback URL
 # @name detail
-# @forceRef upload
+# @ref confirm
 GET {{baseUrl}}/videos/{{presign.videoId}}
 
 ?? status == 200

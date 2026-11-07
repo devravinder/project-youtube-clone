@@ -47,7 +47,7 @@ Concepts: object storage, presigned/multipart upload, relational modeling, ports
 - [x] `upload-service`: `GET /videos` and `GET /videos/:id` with playback URL (interim home)
 - [x] `apps/web` scaffold: React 19, Vite, Tailwind v4 theme, tailwind-variants
 - [x] `apps/web` pages: upload, video list (infinite scroll), watch (react-player), back button, themed UI
-- [ ] Confirm-upload endpoint and a pending status, so unfinished uploads are not listed as uploaded
+- [x] Confirm-upload endpoint and a pending status, so unfinished uploads are not listed as uploaded
 - [ ] Wire Keycloak (OIDC) — login + JWT verification
 - [ ] Tests: Jest (service), supertest (controller), Vitest (web)
 - [x] Git hooks: Husky + lint-staged + commitlint + markdownlint

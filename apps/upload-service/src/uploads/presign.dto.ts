@@ -16,3 +16,8 @@ export interface PresignResponse {
   readonly uploadUrl: string;
   readonly expiresInSeconds: number;
 }
+
+export interface ConfirmUploadResponse {
+  readonly videoId: string;
+  readonly status: string;
+}

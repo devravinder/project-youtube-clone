@@ -53,6 +53,11 @@ export const createPresignedUpload = (body: PresignRequest) =>
     body: JSON.stringify(body),
   });
 
+export const confirmUpload = (videoId: string) =>
+  request<{ videoId: string; status: string }>(`/uploads/${videoId}/complete`, {
+    method: "POST",
+  });
+
 // XHR, not fetch: fetch cannot report upload progress.
 export function uploadToStorage(
   url: string,

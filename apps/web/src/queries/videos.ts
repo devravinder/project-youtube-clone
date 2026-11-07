@@ -1,6 +1,12 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { createPresignedUpload, getVideo, listVideos, uploadToStorage } from "../services/api";
+import {
+  confirmUpload,
+  createPresignedUpload,
+  getVideo,
+  listVideos,
+  uploadToStorage,
+} from "../services/api";
 
 const PAGE_SIZE = 12;
 const PLAYBACK_URL_STALE_MS = 30 * 60 * 1000;
@@ -51,6 +57,7 @@ export function useUploadVideo() {
         description,
       });
       await uploadToStorage(presign.uploadUrl, file, setPercent);
+      await confirmUpload(presign.videoId);
       return { videoId: presign.videoId, title: title ?? file.name };
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: videoKeys.all }),

@@ -1,6 +1,7 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { StoragePort } from "@yt/ports";
 import type { Video } from "../generated/prisma/client.js";
+import { VideoStatus } from "../generated/prisma/enums.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { STORAGE_PORT } from "../storage/storage.module.js";
 import type { ListVideosQuery, VideoDetail, VideoPage, VideoSummary } from "./video.dto.js";
@@ -17,6 +18,7 @@ export class VideosService {
   async list({ limit, cursor }: ListVideosQuery): Promise<VideoPage> {
     // Fetch one extra row: it becomes the cursor that starts the next page.
     const rows = await this.prisma.video.findMany({
+      where: { status: { not: VideoStatus.PENDING } },
       take: limit + 1,
       cursor: cursor ? { id: cursor } : undefined,
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],

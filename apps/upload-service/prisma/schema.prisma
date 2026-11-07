@@ -8,6 +8,7 @@ datasource db {
 }
 
 enum VideoStatus {
+  PENDING
   UPLOADED
   PROCESSING
   READY
@@ -18,7 +19,7 @@ model Video {
   id          String      @id @default(uuid()) @db.Uuid
   title       String
   description String?
-  status      VideoStatus @default(UPLOADED)
+  status      VideoStatus @default(PENDING)
   rawBucket   String      @map("raw_bucket")
   rawKey      String      @map("raw_key")
   contentType String      @map("content_type")

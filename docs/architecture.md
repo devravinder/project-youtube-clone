@@ -1,7 +1,7 @@
 # Architecture
 
 System architecture for the Mini YouTube Clone. Diagrams use Mermaid (see the
-`doc-with-mermaid` skill). This document holds the *how*; the *what/why* is in
+`doc-with-mermaid` skill). This document holds the _how_; the _what/why_ is in
 [`PRD.md`](PRD.md) and [`LEARNING-GOALS.md`](LEARNING-GOALS.md), and decisions are logged in
 [`DECISIONS.md`](DECISIONS.md).
 
@@ -80,11 +80,11 @@ sequenceDiagram
   participant TR as transcoder
   participant K as Kafka
   C->>GW: request upload URL
-  GW->>UP: create video (status=Uploaded)
+  GW->>UP: create video (status=Pending)
   UP-->>C: presigned PUT URL
   C->>S: PUT raw bytes
   C->>GW: confirm upload
-  GW->>UP: mark uploaded + enqueue job
+  GW->>UP: mark Uploaded + enqueue job
   UP->>Q: transcode.cmd
   UP-->>C: 202 Accepted (processing)
   Q->>TR: deliver job
@@ -98,7 +98,8 @@ sequenceDiagram
 
 ```mermaid
 stateDiagram-v2
-  [*] --> Uploaded
+  [*] --> Pending
+  Pending --> Uploaded: confirm upload
   Uploaded --> Processing: job dequeued
   Processing --> Ready: HLS written + video.ready emitted
   Processing --> Failed: error
@@ -166,7 +167,7 @@ erDiagram
   }
 ```
 
-Postgres is the **source of truth**. Elasticsearch documents and Redis counts are *derived*
+Postgres is the **source of truth**. Elasticsearch documents and Redis counts are _derived_
 and rebuildable from it.
 
 ## 8. Streaming path
