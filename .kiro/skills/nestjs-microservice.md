@@ -32,7 +32,10 @@ Match the pattern to the service, not the other way round (see `ADR-011`):
 - **One S3 adapter serves MinIO and AWS S3.** Only endpoint and credentials differ. Set
   `requestChecksumCalculation: "WHEN_REQUIRED"` so presigned PUT URLs work on real S3.
 - **Pick ports that are free on dev machines.** Corporate agents hold some (8081 is taken).
-- **DB access via Prisma** (type-safe client + Prisma Migrate for schema).
+- **DB access via Prisma 7** (type-safe client + Prisma Migrate for schema). Setup notes:
+  the connection URL lives in `prisma.config.ts`, not the schema; the generator needs an
+  explicit `output` (git-ignored); connect with `@prisma/adapter-pg`; run `prisma generate`
+  yourself (migrate no longer does); approve the `prisma` and `@prisma/engines` build scripts.
 - **Swagger** auto-generates the OpenAPI docs.
 
 ## Library mapping (Spring Boot reference → NestJS)

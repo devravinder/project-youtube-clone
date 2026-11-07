@@ -2,4 +2,6 @@ packages:
   - "apps/*"
   - "libs/ts/*"
 allowBuilds:
+  "@prisma/engines": true
   esbuild: true
+  prisma: true

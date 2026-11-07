@@ -64,7 +64,20 @@ Tail logs:
 pnpm logs:l
 ```
 
-## 4. Run the upload service
+## 4. Set up the database
+
+Needs Postgres running (step 3). Run once after cloning, and again after schema changes:
+
+```bash
+pnpm --filter @yt/upload-service db:generate   # generate the Prisma client (git-ignored)
+pnpm --filter @yt/upload-service db:migrate    # create and apply a migration (dev)
+pnpm --filter @yt/upload-service db:deploy     # apply existing migrations only
+```
+
+The generated client lives in `apps/upload-service/src/generated/` and is not committed, so
+run `db:generate` on a fresh clone before type-checking or starting the service.
+
+## 5. Run the upload service
 
 Needs MinIO running (step 3). Config comes from `apps/upload-service/.env.sample`.
 

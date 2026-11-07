@@ -1,0 +1,30 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum VideoStatus {
+  UPLOADED
+  PROCESSING
+  READY
+  FAILED
+}
+
+model Video {
+  id          String      @id @default(uuid()) @db.Uuid
+  title       String
+  description String?
+  status      VideoStatus @default(UPLOADED)
+  rawBucket   String      @map("raw_bucket")
+  rawKey      String      @map("raw_key")
+  contentType String      @map("content_type")
+  viewCount   BigInt      @default(0) @map("view_count")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  @@map("videos")
+}

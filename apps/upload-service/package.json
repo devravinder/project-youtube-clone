@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "tsx watch --env-file=.env.sample src/main.ts",
     "start": "tsx --env-file=.env.sample src/main.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1156.0",
@@ -14,6 +17,8 @@
     "@nestjs/common": "12.2.0",
     "@nestjs/core": "12.2.0",
     "@nestjs/platform-express": "12.2.0",
+    "@prisma/adapter-pg": "7.10.0",
+    "@prisma/client": "7.10.1",
     "@yt/config": "workspace:*",
     "@yt/ports": "workspace:*",
     "reflect-metadata": "0.2.2",
@@ -22,6 +27,7 @@
   },
   "devDependencies": {
     "@types/node": "26.6.5",
+    "prisma": "7.10.1",
     "tsx": "4.23.15",
     "typescript": "7.0.2"
   }
