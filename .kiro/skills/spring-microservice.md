@@ -85,6 +85,8 @@ Conditional beans via `@Profile` / `@ConditionalOnProperty`. Observability beans
 
 ## Conventions
 
+- Run JVMs with `-Duser.timezone=Asia/Kolkata`. Postgres 18 rejects the legacy `Asia/Calcutta`
+  name that Java reports on Windows. Keep the database itself on UTC.
 - Comments follow the `code-comments` skill.
 - Internal dependencies resolve via the org Maven repo (configured in Gradle).
 - ffmpeg invoked via a thin wrapper class; keep process handling isolated and testable.
