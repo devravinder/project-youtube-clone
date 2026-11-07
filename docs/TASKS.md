@@ -44,7 +44,10 @@ Concepts: object storage, presigned/multipart upload, relational modeling, ports
 - [x] `http/` — httpYac request files shared by all services
 - [x] Prisma schema + first migration (video metadata)
 - [x] `upload-service`: save a `Video` row on presign (PrismaService + adapter-pg)
-- [ ] `apps/web` (React 19 + Vite + Tailwind v4) — upload UI + plain playback
+- [x] `upload-service`: `GET /videos` and `GET /videos/:id` with playback URL (interim home)
+- [ ] `apps/web` scaffold: React 19, Vite, Tailwind v4 theme, styled components
+- [ ] `apps/web` pages: upload, video list, watch (react-player)
+- [ ] Confirm-upload endpoint and a pending status, so unfinished uploads are not listed as uploaded
 - [ ] Wire Keycloak (OIDC) — login + JWT verification
 - [ ] Tests: Jest (service), supertest (controller), Vitest (web)
 - [x] Git hooks: Husky + lint-staged + commitlint + markdownlint

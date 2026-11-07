@@ -18,6 +18,7 @@ Content-Type: application/json
 ?? js response.parsedBody.expiresInSeconds == 900
 
 ### Upload a real file straight to storage using the presigned URL
+# @name upload
 # @forceRef presign
 PUT {{presign.uploadUrl}}
 Content-Type: video/mp4
@@ -27,6 +28,7 @@ Content-Type: video/mp4
 ?? status == 200
 
 ### Title defaults to the filename when omitted
+# @name noUpload
 POST {{baseUrl}}/uploads/presign
 Content-Type: application/json
 
@@ -102,5 +104,49 @@ Content-Type: application/json
   "contentType": "video/mp4",
   "title": "{{'x'.repeat(201)}}"
 }
+
+?? status == 400
+
+### List videos, newest first
+GET {{baseUrl}}/videos
+
+?? status == 200
+?? js response.parsedBody isArray
+?? js response.parsedBody[0].id isString
+
+### Uploaded video has a playback URL
+# @name detail
+# @forceRef upload
+GET {{baseUrl}}/videos/{{presign.videoId}}
+
+?? status == 200
+?? js response.parsedBody.title == My first video
+?? js response.parsedBody.status == UPLOADED
+?? js response.parsedBody.viewCount == 0
+?? js response.parsedBody.playbackUrl isString
+
+### Playback URL supports range requests (needed for seeking)
+# @ref detail
+GET {{detail.playbackUrl}}
+Range: bytes=0-99
+
+?? status == 206
+?? header content-range startsWith bytes 0-99/
+?? header accept-ranges == bytes
+
+### Video without an uploaded file has no playback URL
+# @ref noUpload
+GET {{baseUrl}}/videos/{{noUpload.videoId}}
+
+?? status == 200
+?? body contains "playbackUrl":null
+
+### Unknown video returns 404
+GET {{baseUrl}}/videos/00000000-0000-4000-8000-000000000000
+
+?? status == 404
+
+### Malformed id returns 400
+GET {{baseUrl}}/videos/not-a-uuid
 
 ?? status == 400
