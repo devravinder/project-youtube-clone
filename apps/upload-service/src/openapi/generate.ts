@@ -1,11 +1,18 @@
 import "reflect-metadata";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "../app.module.js";
+import {
+  OPENAPI_FILE,
+  TRANSCODE_COMMAND_FILE,
+  writeOpenApiFile,
+  writeTranscodeCommandFile,
+} from "../contracts/contract-files.js";
 import { buildOpenApiDocument } from "./openapi.js";
-import { OPENAPI_FILE, writeOpenApiFile } from "./openapi-file.js";
 
-// Preview mode needs no database, storage or Keycloak.
+// Preview mode needs no database, storage, broker or Keycloak.
 const app = await NestFactory.create(AppModule, { preview: true, logger: false });
-const changed = await writeOpenApiFile(buildOpenApiDocument(app));
+const openApiChanged = await writeOpenApiFile(buildOpenApiDocument(app));
 await app.close();
-console.log(`${changed ? "Wrote" : "Unchanged"} ${OPENAPI_FILE}`);
+const commandChanged = await writeTranscodeCommandFile();
+console.log(`${openApiChanged ? "Wrote" : "Unchanged"} ${OPENAPI_FILE}`);
+console.log(`${commandChanged ? "Wrote" : "Unchanged"} ${TRANSCODE_COMMAND_FILE}`);

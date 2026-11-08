@@ -5,3 +5,4 @@ export type {
   PutObjectOptions,
   UploadedPart,
 } from "./storage.port.js";
+export type { TranscodeCommand, TranscodeQueuePort } from "./transcode.port.js";

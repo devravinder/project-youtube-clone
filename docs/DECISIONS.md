@@ -389,3 +389,39 @@ Versions are pinned in the catalog: Spotless plugin 8.11.0, google-java-format 2
 Rejected: palantir-java-format (4-space indent and 120 columns, but the reference uses Google style and one style across repos
 is simpler to keep). Google style means 2-space indentation and 100 columns, so the first run reformatted all
 sources with whitespace and line-wrap changes only.
+
+google-java-format 2.x needs the Gradle daemon on Java 21, so `gradle/gradle-daemon-jvm.properties` sets
+`toolchainVersion=21`. Gradle then starts its daemon on an installed JDK 21 even when `JAVA_HOME` is older.
+No download URLs are configured, so it never fetches a JDK.
+
+## ADR-026 - Transcode command over RabbitMQ
+
+Date: 2026-11-08 - Status: Accepted (extends ADR-002)
+
+`POST /uploads/:videoId/complete` publishes a `TranscodeCommand`; the transcoder consumes it.
+
+- Topology: direct exchange `yt.transcode`, routing key `transcode.cmd`, quorum queue
+  `transcoder.transcode-video` dead-lettering to `yt.transcode.dlx` → quorum queue
+  `transcoder.transcode-video.dlq`. Both services declare it with identical arguments, so either can start
+  first and commands sent before the transcoder's first start are kept. Tests on both sides pin the arguments.
+- Quorum queues over classic: replicated and durable, and they support a delivery limit, which the retry task
+  will use.
+- Publish, then mark `UPLOADED`. The publish waits for the publisher confirm. A broker failure returns 503 and
+  leaves the video `PENDING` for a retry; a database failure after the publish causes a duplicate command on
+  retry. Delivery is therefore at least once, and the consumer must dedupe by `videoId` (idempotency task).
+  The transactional outbox task removes the 503 by making the publish asynchronous.
+- Wire format: JSON (`messageId`, `videoId`, `sourceBucket`, `sourceKey`, `contentType`, `requestedAt`).
+  The Zod schema generates `contracts/transcode-command.schema.json`; a Java test checks the
+  `TranscodeCommandMessage` record against it. AMQP properties carry `messageId`, `type`
+  (`transcode.command.v1`), `contentType` and persistence.
+- Node client: `amqplib` 2.2.0, which ships its own types and has opt-in connection recovery. Channels are not
+  recovered, so the adapter reopens its confirm channel and redeclares the topology on every reconnect. The
+  API starts even when the broker is down (`waitForConnect: false`).
+- Consumer: `@RabbitListener` with prefetch 1 and `default-requeue-rejected: false`; any exception sends the
+  message to the DLQ. Retries with backoff come with the idempotent-consumer task.
+- Until the storage and ffmpeg adapters exist, the `TranscodeVideo` bean is a placeholder that logs and
+  returns no renditions.
+
+Rejected: `amqp-connection-manager` (amqplib 2 now recovers connections itself), `@golevelup/nestjs-rabbitmq`
+(a framework layer the single publisher does not need), and a `definitions.json` loaded by the broker (it
+replaces the default user setup and does not apply to a managed broker in AWS).

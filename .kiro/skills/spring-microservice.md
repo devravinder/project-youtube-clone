@@ -110,7 +110,14 @@ Conditional beans via `@Profile` / `@ConditionalOnProperty`. Observability beans
 
 ## Messaging
 
-- RabbitMQ consumer for commands (manual ack, DLQ, prefetch for back-pressure).
+- RabbitMQ consumer for commands: `spring-boot-starter-amqp`, a `@RabbitListener` in `adapter/in/messaging`
+  that maps the message record to a domain object with MapStruct and calls the in-port. Declare topology as a
+  `Declarables` bean; use `JacksonJsonMessageConverter` (Jackson 3). The listener infers the payload type from
+  its parameter, so Node producers need no `__TypeId__` header.
+- `spring.rabbitmq.listener.simple.prefetch: 1` for heavy jobs and `default-requeue-rejected: false` so
+  failures go to the DLQ.
+- Full-context tests run without a broker: `spring.rabbitmq.listener.simple.auto-startup=false` and
+  `management.health.rabbit.enabled=false`.
 - Kafka for emitting/consuming events (consumer groups, offsets).
 - Idempotent consumers (see `messaging-patterns`).
 

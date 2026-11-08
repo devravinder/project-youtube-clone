@@ -6,13 +6,16 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
+  ServiceUnavailableException,
 } from "@nestjs/common";
-import type { StoragePort, UploadedPart } from "@yt/ports";
+import type { StoragePort, TranscodeQueuePort, UploadedPart } from "@yt/ports";
 import type { AuthUser } from "../auth/auth-user.js";
 import { APP_CONFIG, type AppConfig } from "../config/app.config.js";
 import { VideoStatus } from "../generated/prisma/enums.js";
 import type { Video } from "../generated/prisma/client.js";
+import { TRANSCODE_QUEUE_PORT } from "../messaging/messaging.module.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { STORAGE_PORT } from "../storage/storage.module.js";
 import {
@@ -30,10 +33,13 @@ const BYTES_PER_MB = 1024 * 1024;
 
 @Injectable()
 export class UploadsService {
+  private readonly logger = new Logger(UploadsService.name);
+
   constructor(
     @Inject(STORAGE_PORT) private readonly storage: StoragePort,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
     @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(TRANSCODE_QUEUE_PORT) private readonly transcodeQueue: TranscodeQueuePort,
   ) {}
 
   async createPresignedUpload(request: PresignRequest, user: AuthUser): Promise<PresignResponse> {
@@ -166,11 +172,29 @@ export class UploadsService {
       throw new ConflictException("File has not been uploaded to storage yet");
     }
 
+    // Queue before marking UPLOADED: a failed step then repeats on retry instead of losing the job.
+    await this.requestTranscode(video);
     const updated = await this.prisma.video.update({
       where: { id: videoId },
       data: { status: VideoStatus.UPLOADED },
     });
     return { videoId, status: updated.status };
+  }
+
+  private async requestTranscode(video: Video): Promise<void> {
+    try {
+      await this.transcodeQueue.requestTranscode({
+        messageId: randomUUID(),
+        videoId: video.id,
+        sourceBucket: video.rawBucket,
+        sourceKey: video.rawKey,
+        contentType: video.contentType,
+        requestedAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      this.logger.error(`Could not queue video ${video.id}: ${(error as Error).message}`);
+      throw new ServiceUnavailableException("Could not queue the video for transcoding; retry");
+    }
   }
 
   private async completeMultipart(video: Video): Promise<void> {

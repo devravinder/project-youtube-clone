@@ -9,6 +9,7 @@ import { Test } from "@nestjs/testing";
 import request from "supertest";
 import { AuthGuard } from "../auth/auth.guard.js";
 import { APP_CONFIG } from "../config/app.config.js";
+import { TRANSCODE_QUEUE_PORT } from "../messaging/messaging.module.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { STORAGE_PORT } from "../storage/storage.module.js";
 import { UploadsController } from "../uploads/uploads.controller.js";
@@ -17,6 +18,7 @@ import { VideosController } from "../videos/videos.controller.js";
 import { VideosService } from "../videos/videos.service.js";
 import { FakePrisma } from "./fake-prisma.js";
 import { FakeStorage } from "./fake-storage.js";
+import { FakeTranscodeQueue } from "./fake-transcode-queue.js";
 import { alice, bob, testConfig } from "./test-data.js";
 
 const USERS = { alice, bob } as const;
@@ -43,6 +45,7 @@ export interface TestApp {
   readonly app: INestApplication;
   readonly storage: FakeStorage;
   readonly prisma: FakePrisma;
+  readonly queue: FakeTranscodeQueue;
   readonly http: () => ReturnType<typeof request>;
   readonly as: (user: TestUser) => {
     readonly [method in "get" | "post" | "delete"]: (url: string) => request.Test;
@@ -53,6 +56,7 @@ export interface TestApp {
 export async function createTestApp(): Promise<TestApp> {
   const storage = new FakeStorage();
   const prisma = new FakePrisma();
+  const queue = new FakeTranscodeQueue();
   const moduleRef = await Test.createTestingModule({
     controllers: [UploadsController, VideosController],
     providers: [
@@ -61,13 +65,14 @@ export async function createTestApp(): Promise<TestApp> {
       { provide: STORAGE_PORT, useValue: storage },
       { provide: PrismaService, useValue: prisma },
       { provide: APP_CONFIG, useValue: testConfig },
+      { provide: TRANSCODE_QUEUE_PORT, useValue: queue },
     ],
   })
     .overrideGuard(AuthGuard)
     .useClass(HeaderAuthGuard)
     .compile();
 
-  const app = moduleRef.createNestApplication();
+  const app = moduleRef.createNestApplication({ logger: false });
   await app.init();
 
   const http = () => request(app.getHttpServer());
@@ -76,5 +81,5 @@ export async function createTestApp(): Promise<TestApp> {
     post: (url: string) => http().post(url).set("x-test-user", user),
     delete: (url: string) => http().delete(url).set("x-test-user", user),
   });
-  return { app, storage, prisma, http, as };
+  return { app, storage, prisma, queue, http, as };
 }

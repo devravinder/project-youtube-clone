@@ -19,13 +19,13 @@ Scripts follow `start|stop:env:service`:
 
 ## What runs today
 
-| Capability                                        | How                       | Status                        |
-| ------------------------------------------------- | ------------------------- | ----------------------------- |
-| Local infra (Postgres, MinIO, Keycloak, RabbitMQ) | `pnpm start:l:pods`       | ✅ available                  |
-| Upload service (NestJS)                           | `pnpm start:l:upload`     | ✅ available                  |
-| Web UI (React)                                    | `pnpm start:l:web`        | ✅ available                  |
-| Transcoder (Spring Boot)                          | `pnpm start:l:transcoder` | ✅ skeleton (health only)     |
-| Observability (otel-lgtm)                         | `pnpm start:lo:pods`      | ⏳ compose file not added yet |
+| Capability                                        | How                       | Status                                         |
+| ------------------------------------------------- | ------------------------- | ---------------------------------------------- |
+| Local infra (Postgres, MinIO, Keycloak, RabbitMQ) | `pnpm start:l:pods`       | ✅ available                                   |
+| Upload service (NestJS)                           | `pnpm start:l:upload`     | ✅ available                                   |
+| Web UI (React)                                    | `pnpm start:l:web`        | ✅ available                                   |
+| Transcoder (Spring Boot)                          | `pnpm start:l:transcoder` | ✅ consumes transcode commands (no ffmpeg yet) |
+| Observability (otel-lgtm)                         | `pnpm start:lo:pods`      | ⏳ compose file not added yet                  |
 
 Web app settings live in `apps/web/.env.development` (public values only). Override any of them
 in a git-ignored `apps/web/.env.local`. Restart `pnpm start:l:web` after changing either file.
@@ -52,6 +52,10 @@ Tests use in-memory fakes, so they need no Docker, database or network. `pnpm te
 With the upload service running, Swagger UI is at <http://localhost:3001/docs> and the raw spec at
 <http://localhost:3001/docs-json>. The spec is also committed as `contracts/upload-service.openapi.json`,
 and the web app's types (`apps/web/src/api/schema.d.ts`) are generated from that file.
+
+The RabbitMQ message is a contract too: `contracts/transcode-command.schema.json` is generated from the Zod
+schema in `apps/upload-service/src/messaging/transcode-command.ts` by the same `pnpm api:generate`. A
+transcoder test reads it and fails if the Java record `TranscodeCommandMessage` drifts from it.
 
 It stays current automatically:
 
@@ -105,11 +109,17 @@ The import only runs when the realm does not exist yet. Change the JSON, then ru
 
 RabbitMQ carries the transcode commands:
 
-| Item          | Value                                                            |
-| ------------- | ---------------------------------------------------------------- |
-| Management UI | <http://localhost:15672> (`yt` / `yt_password`)                  |
-| AMQP URL      | `amqp://yt:yt_password@localhost:5672` (`RABBITMQ_URL`)          |
-| Storage       | Named volume `rabbitmq-data`; queues survive a container restart |
+| Item          | Value                                                                           |
+| ------------- | ------------------------------------------------------------------------------- |
+| Management UI | <http://localhost:15672> (`yt` / `yt_password`)                                 |
+| AMQP URL      | `amqp://yt:yt_password@localhost:5672` (`RABBITMQ_URL`)                         |
+| Storage       | Named volume `rabbitmq-data`; queues survive a container restart                |
+| Exchange      | `yt.transcode` (direct), routing key `transcode.cmd`                            |
+| Work queue    | `transcoder.transcode-video` (quorum); failed messages go to `yt.transcode.dlx` |
+| Dead letters  | `transcoder.transcode-video.dlq` (quorum); inspect with `http/rabbitmq.http`    |
+
+Both services declare this topology on connect, so either can start first. The queue arguments must be
+identical on both sides, or RabbitMQ closes the channel with `PRECONDITION_FAILED`.
 
 ```bash
 pnpm start:l:pods
@@ -159,7 +169,9 @@ pnpm start:l:upload
 
 Request a presigned upload URL, then PUT the file straight to storage. `title` and
 `description` are optional; the title defaults to the filename. Each presign saves a `videos`
-row with status `UPLOADED`:
+row with status `PENDING`. `POST /uploads/:videoId/complete` then queues a transcode command on
+RabbitMQ and marks the video `UPLOADED`. If RabbitMQ is down it answers 503 and the video stays
+`PENDING`, so the same request can be retried; the connection recovers by itself.
 
 ```bash
 curl -X POST http://localhost:3001/uploads/presign \
@@ -222,9 +234,11 @@ minutes.
 pnpm start:l:transcoder
 ```
 
-It listens on port 3002. So far it only exposes health probes (`/actuator/health`, `/actuator/health/liveness`,
-`/actuator/health/readiness`); queue consumption, storage and ffmpeg arrive in the next tasks. Run its checks
-without starting it: `pnpm --filter @yt/transcoder-service build` (compile, 31 tests, coverage gate).
+It listens on port 3002 and consumes `transcoder.transcode-video`: each command is mapped to a `TranscodeJob`
+and handed to the use case, which for now only logs "Accepted job for video ...". The storage and ffmpeg
+adapters arrive with the next task. A message that fails (for example a blank `videoId`) is not retried yet; it
+goes straight to the dead-letter queue. `/actuator/health` includes the RabbitMQ connection. Run its checks
+without starting it: `pnpm --filter @yt/transcoder-service build` (compile, 47 tests, coverage gate).
 
 ### From IntelliJ
 
@@ -244,8 +258,8 @@ configuration inside to `TranscoderServiceApplication`. Add any new variable to 
 | `STORAGE_RAW_BUCKET`, `STORAGE_HLS_BUCKET`             | `raw-videos`, `hls-videos`           | `AppProperties`                            |
 | `STORAGE_FORCE_PATH_STYLE` (optional)                  | `true` in `local`, `false` otherwise | `AppProperties`                            |
 | `TRANSCODE_WORK_DIR` (optional)                        | `<temp>/yt-transcoder`               | `AppProperties` (`app.transcode.work-dir`) |
-| `SPRING_RABBITMQ_HOST`, `SPRING_RABBITMQ_PORT`         | `localhost`, `5672`                  | Spring AMQP (RabbitMQ task)                |
-| `SPRING_RABBITMQ_USERNAME`, `SPRING_RABBITMQ_PASSWORD` | `yt` / `yt_password`                 | Spring AMQP (RabbitMQ task)                |
+| `SPRING_RABBITMQ_HOST`, `SPRING_RABBITMQ_PORT`         | `localhost`, `5672`                  | Spring AMQP (Boot defaults)                |
+| `SPRING_RABBITMQ_USERNAME`, `SPRING_RABBITMQ_PASSWORD` | `yt` / `yt_password`                 | Spring AMQP; `application-local.yaml`      |
 
 Profiles live in `src/main/resources/application-<profile>.yaml`. `local` supplies the MinIO defaults,
 `local-observability` adds metrics and also activates `local`, and `aws` takes every storage value from the
@@ -296,4 +310,7 @@ In IntelliJ, install the google-java-format plugin and enable it, so the editor 
 | DBeaver or a Java app fails with `invalid value for parameter "TimeZone": "Asia/Calcutta"`     | Postgres 18 dropped legacy zone names. Start the Java client with `-Duser.timezone=Asia/Kolkata` (DBeaver: add it under `-vmargs` in `dbeaver.ini`, then restart). Keep the server on UTC.                                                                                                                               |
 | Web page is blank and `/src/main.tsx` returns 500                                              | A dependency was installed while Vite was running. Stop `pnpm start:l:web` and start it again.                                                                                                                                                                                                                           |
 | Gradle: `Cannot invoke "org.gradle.cache.FileLock.writeFile..." ... is null` (CLI or IntelliJ) | Gradle daemons started on different JDKs are fighting over the cache. Run `apps/transcoder-service/gradlew --stop`, make sure `JAVA_HOME` points to JDK 21 (open a new terminal after changing it), and in IntelliJ set **Settings > Build Tools > Gradle > Gradle JVM** to that JDK 21, then reload the Gradle project. |
-| Gradle says it cannot find a Java 21 toolchain                                                 | Install a JDK 21 (not a JRE); Gradle detects installed JDKs, or point `JAVA_HOME` at one. A `JAVA_HOME` that points to a JRE is fine as long as a JDK 21 is installed.                                                                                                                                                   |
+| Gradle says it cannot find a Java 21 toolchain                                                 | Install a JDK 21 (not a JRE); Gradle detects installed JDKs, or point `JAVA_HOME` at one. `gradle/gradle-daemon-jvm.properties` makes the Gradle daemon itself run on that JDK 21, so a `JAVA_HOME` that points to an older JRE still works.                                                                             |
+| `You are running Spotless on JVM 17, which limits you to google-java-format 1.28.0`            | The Gradle daemon is not on Java 21. Check that `apps/transcoder-service/gradle/gradle-daemon-jvm.properties` exists, run `gradlew --stop`, and in IntelliJ set **Gradle JVM** to JDK 21 (or "Daemon JVM criteria").                                                                                                     |
+| Upload confirm returns 503 "Could not queue the video for transcoding"                         | RabbitMQ is down or unreachable. Check `docker ps` for `yt-rabbitmq` and `RABBITMQ_URL`. The video stays `PENDING`; retry the confirm once the broker is back.                                                                                                                                                           |
+| RabbitMQ log or app log shows `PRECONDITION_FAILED - inequivalent arg`                         | The queue exists with other arguments than the code declares. Keep `transcode-topology.ts` and `MessagingConfig.java` identical; locally, delete the queue in the management UI (or `pnpm stop:l:pods`) to recreate it.                                                                                                  |

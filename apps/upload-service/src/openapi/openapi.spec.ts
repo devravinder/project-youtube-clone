@@ -2,8 +2,8 @@ import { readFile } from "node:fs/promises";
 import { NestFactory } from "@nestjs/core";
 import { describe, expect, it } from "vitest";
 import { AppModule } from "../app.module.js";
+import { OPENAPI_FILE } from "../contracts/contract-files.js";
 import { buildOpenApiDocument } from "./openapi.js";
-import { OPENAPI_FILE } from "./openapi-file.js";
 
 describe("OpenAPI contract", () => {
   it("matches the committed contracts/upload-service.openapi.json", async () => {

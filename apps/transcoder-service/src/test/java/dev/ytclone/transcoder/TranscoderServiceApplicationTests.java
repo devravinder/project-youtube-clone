@@ -10,7 +10,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.web.servlet.MockMvc;
 
-@SpringBootTest
+// No broker in tests: the listener stays stopped and the rabbit health check is off.
+@SpringBootTest(
+    properties = {
+      "spring.rabbitmq.listener.simple.auto-startup=false",
+      "management.health.rabbit.enabled=false"
+    })
 @AutoConfigureMockMvc
 class TranscoderServiceApplicationTests {
 

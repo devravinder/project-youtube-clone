@@ -1,0 +1,47 @@
+# RabbitMQ management API (local compose). Same login as the UI at http://localhost:15672.
+@rabbit = http://localhost:15672/api
+@auth = Basic yt:yt_password
+
+### Work queue: depth, consumers and type (expect quorum, 1 consumer while the transcoder runs)
+GET {{rabbit}}/queues/%2F/transcoder.transcode-video
+Authorization: {{auth}}
+
+?? status == 200
+?? js response.parsedBody.type == quorum
+?? js response.parsedBody.arguments["x-dead-letter-exchange"] == yt.transcode.dlx
+
+### Dead-letter queue depth
+GET {{rabbit}}/queues/%2F/transcoder.transcode-video.dlq
+Authorization: {{auth}}
+
+?? status == 200
+
+### Peek at dead-lettered messages without removing them
+POST {{rabbit}}/queues/%2F/transcoder.transcode-video.dlq/get
+Authorization: {{auth}}
+Content-Type: application/json
+
+{ "count": 5, "ackmode": "ack_requeue_true", "encoding": "auto" }
+
+?? status == 200
+
+### Publish an invalid command (blank videoId); the transcoder rejects it into the DLQ
+POST {{rabbit}}/exchanges/%2F/yt.transcode/publish
+Authorization: {{auth}}
+Content-Type: application/json
+
+{
+  "properties": { "content_type": "application/json" },
+  "routing_key": "transcode.cmd",
+  "payload": "{\"messageId\":\"manual-1\",\"videoId\":\" \",\"sourceBucket\":\"raw-videos\",\"sourceKey\":\"x/source.mp4\",\"contentType\":\"video/mp4\",\"requestedAt\":\"2026-11-08T10:00:00Z\"}",
+  "payload_encoding": "string"
+}
+
+?? status == 200
+?? js response.parsedBody.routed == true
+
+### Empty the dead-letter queue (local only)
+DELETE {{rabbit}}/queues/%2F/transcoder.transcode-video.dlq/contents
+Authorization: {{auth}}
+
+?? status == 204

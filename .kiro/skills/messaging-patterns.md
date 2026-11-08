@@ -9,9 +9,9 @@ Use the right tool for the right job. The two are **not** interchangeable.
 
 ## Decision rule
 
-| Job | Semantics | Tool |
-|-----|-----------|------|
-| "Do this work" (one job → one worker) | work queue: ack, retry, DLQ, prefetch | **RabbitMQ** |
+| Job                                                      | Semantics                                       | Tool             |
+| -------------------------------------------------------- | ----------------------------------------------- | ---------------- |
+| "Do this work" (one job → one worker)                    | work queue: ack, retry, DLQ, prefetch           | **RabbitMQ**     |
 | "This happened" (one event → many consumers, replayable) | event log: partitions, offsets, consumer groups | **Apache Kafka** |
 
 In this project: RabbitMQ carries the **transcode command**; Kafka carries the
@@ -19,10 +19,28 @@ In this project: RabbitMQ carries the **transcode command**; Kafka carries the
 
 ## RabbitMQ (command queue)
 
-- **Manual ack** after success; `nack`/reject → retry or route to **DLQ**.
-- **Prefetch** limits in-flight messages per consumer = back-pressure.
+- **Ack after success**; reject → retry or route to **DLQ**. In Spring, `AcknowledgeMode.AUTO` acks when the
+  listener returns and rejects when it throws; set `default-requeue-rejected: false` so a poison message is
+  dead-lettered instead of redelivered forever.
+- **Prefetch** limits in-flight messages per consumer = back-pressure (1 for heavy jobs like transcoding).
 - One queue, **competing consumers** = horizontal scale.
 - Scale worker count (or k8s replicas via HPA) by queue depth.
+- Prefer **quorum queues** (replicated, durable, support delivery limits) over classic queues.
+- **Publisher confirms**: a publish is done only after the broker confirms it (`createConfirmChannel` in
+  amqplib). Without confirms a "successful" publish can still be lost.
+- **Topology on both sides**: producer and consumer declare the same exchange, queue and bindings with
+  identical arguments, so either can start first. Different arguments → `PRECONDITION_FAILED`; pin them with a
+  test on each side.
+
+### Before the outbox exists
+
+Publish **first**, then update the row. A failed publish leaves the row unchanged so the client can retry
+(the API answers 503); a failed update after a publish leads to a duplicate on retry, which an idempotent
+consumer absorbs. The reverse order (update, then publish) silently loses jobs.
+
+In this project: exchange `yt.transcode` (direct), routing key `transcode.cmd`, queue
+`transcoder.transcode-video`, DLX `yt.transcode.dlx`, DLQ `transcoder.transcode-video.dlq`. Names live in
+`apps/upload-service/src/messaging/transcode-topology.ts` and `adapter/in/messaging/TranscodeTopology.java`.
 
 ```mermaid
 flowchart LR
@@ -81,6 +99,8 @@ Every consumer must be idempotent:
 
 ## Contracts
 
-- Document events with **AsyncAPI** (`@asyncapi/cli`) — "OpenAPI for queues".
-- Keep event schemas in the shared `libs/ts/contracts` (and a Java mirror) so Node and Java
-  services agree on the wire format.
+- Generate the message JSON Schema from the producer's Zod schema into `contracts/<message>.schema.json`
+  (same `pnpm api:generate` as OpenAPI). The Java side tests its record against that file, so drift on either
+  side fails a build. Example: `contracts/transcode-command.schema.json`.
+- Give every message a `messageId` and an ISO timestamp; set them as AMQP properties too.
+- AsyncAPI (`@asyncapi/cli`) is the next step once there are several channels.

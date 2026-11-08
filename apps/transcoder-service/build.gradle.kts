@@ -21,6 +21,7 @@ repositories {
 
 dependencies {
     implementation(libs.spring.boot.starter.actuator)
+    implementation(libs.spring.boot.starter.amqp)
     implementation(libs.spring.boot.starter.validation)
     implementation(libs.spring.boot.starter.webmvc)
 
@@ -36,6 +37,7 @@ dependencies {
     annotationProcessor(libs.lombok.mapstruct.binding)
 
     testImplementation(libs.spring.boot.starter.actuator.test)
+    testImplementation(libs.spring.boot.starter.amqp.test)
     testImplementation(libs.spring.boot.starter.validation.test)
     testImplementation(libs.spring.boot.starter.webmvc.test)
     testImplementation(libs.archunit)

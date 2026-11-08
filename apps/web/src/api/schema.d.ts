@@ -73,7 +73,7 @@ export interface paths {
         put?: never;
         /**
          * Confirm that the file reached storage
-         * @description Marks a pending video as uploaded. For multipart uploads it first joins the parts. Only the uploader may confirm. Idempotent.
+         * @description Marks a pending video as uploaded and queues it for transcoding. For multipart uploads it first joins the parts. Only the uploader may confirm. Idempotent.
          */
         post: operations["confirmUpload"];
         delete?: never;
@@ -520,6 +520,15 @@ export interface operations {
             };
             /** @description The file or some parts have not reached storage, or part sizes do not match the plan */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The transcode queue is unavailable; the video stays pending, so retry */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

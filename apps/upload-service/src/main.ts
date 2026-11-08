@@ -3,8 +3,8 @@ import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module.js";
 import { SwaggerModule } from "@nestjs/swagger";
 import { APP_CONFIG, type AppConfig } from "./config/app.config.js";
+import { writeOpenApiFile, writeTranscodeCommandFile } from "./contracts/contract-files.js";
 import { buildOpenApiDocument } from "./openapi/openapi.js";
-import { writeOpenApiFile } from "./openapi/openapi-file.js";
 
 const app = await NestFactory.create(AppModule);
 app.enableShutdownHooks();
@@ -14,6 +14,7 @@ SwaggerModule.setup("docs", app, document);
 // Keep contracts/ current in development.
 if (config.APP_ENV !== "aws") {
   await writeOpenApiFile(document);
+  await writeTranscodeCommandFile();
 }
 
 await app.listen(config.PORT);

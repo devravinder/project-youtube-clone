@@ -5,6 +5,14 @@ spring:
     active: ${SPRING_PROFILES_ACTIVE:local}
     group:
       local-observability: local
+  # Host, port and credentials come from SPRING_RABBITMQ_* variables.
+  rabbitmq:
+    listener:
+      simple:
+        # Transcoding is heavy: one message in flight per consumer.
+        prefetch: 1
+        # A failed message goes to the dead-letter queue instead of looping.
+        default-requeue-rejected: false
 
 server:
   port: ${SERVER_PORT:3002}

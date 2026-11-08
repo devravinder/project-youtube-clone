@@ -12,6 +12,7 @@ afterAll(() => t.app.close());
 beforeEach(() => {
   t.prisma.reset();
   t.storage.reset();
+  t.queue.reset();
 });
 
 describe("authentication", () => {
@@ -96,6 +97,26 @@ describe("single-PUT flow", () => {
     expect((await t.as("alice").post(`/uploads/${UNKNOWN_ID}/complete`)).status).toBe(404);
     expect((await t.as("alice").post("/uploads/not-a-uuid/complete")).status).toBe(400);
   });
+
+  it("answers 503 while the queue is down and stays hidden until a retry succeeds", async () => {
+    const { videoId, bucket, key } = (
+      await t
+        .as("alice")
+        .post("/uploads/presign")
+        .send({ filename: "a.mp4", contentType: "video/mp4" })
+    ).body;
+    t.storage.simulatePut(bucket, key, 10);
+    t.queue.failWith = new Error("connection refused");
+
+    const failed = await t.as("alice").post(`/uploads/${videoId}/complete`);
+    expect(failed.status).toBe(503);
+    expect(failed.body.message).toContain("retry");
+    expect((await t.http().get("/videos")).body.items).toHaveLength(0);
+
+    t.queue.failWith = null;
+    expect((await t.as("alice").post(`/uploads/${videoId}/complete`)).status).toBe(201);
+    expect(t.queue.commands.map((c) => c.videoId)).toEqual([videoId]);
+  });
 });
 
 describe("multipart flow", () => {
@@ -154,6 +175,7 @@ describe("multipart flow", () => {
     t.storage.simulatePartPut("upload-1", 4, 4_834_176);
     const done = await t.as("alice").post(`/uploads/${videoId}/complete`);
     expect(done.body.status).toBe("UPLOADED");
+    expect(t.queue.commands).toHaveLength(1);
 
     expect((await t.http().get(`/videos/${videoId}`)).body.playbackUrl).toBeTypeOf("string");
     expect(

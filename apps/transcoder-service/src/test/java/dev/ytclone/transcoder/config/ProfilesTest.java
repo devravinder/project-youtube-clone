@@ -17,6 +17,8 @@ class ProfilesTest {
   private static ConfigurableApplicationContext start(String... args) {
     return new SpringApplicationBuilder(TranscoderServiceApplication.class)
         .web(WebApplicationType.NONE)
+        // No broker in tests.
+        .properties("spring.rabbitmq.listener.simple.auto-startup=false")
         .run(args);
   }
 
@@ -29,6 +31,20 @@ class ProfilesTest {
       assertThat(properties.storage().endpoint()).isEqualTo("http://localhost:9000");
       assertThat(properties.storage().accessKey()).isEqualTo("minioadmin");
       assertThat(properties.storage().forcePathStyle()).isTrue();
+      assertThat(context.getEnvironment().getProperty("spring.rabbitmq.username")).isEqualTo("yt");
+    }
+  }
+
+  @Test
+  void listenerDeadLettersFailuresAndTakesOneMessageAtATime() {
+    try (var context = start()) {
+      assertThat(
+              context
+                  .getEnvironment()
+                  .getProperty("spring.rabbitmq.listener.simple.default-requeue-rejected"))
+          .isEqualTo("false");
+      assertThat(context.getEnvironment().getProperty("spring.rabbitmq.listener.simple.prefetch"))
+          .isEqualTo("1");
     }
   }
 

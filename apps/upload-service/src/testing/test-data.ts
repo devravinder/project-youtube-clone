@@ -17,6 +17,7 @@ export const testConfig = {
   OIDC_AUDIENCE: "yt-api",
   UPLOAD_PENDING_TTL_MINUTES: 1440,
   UPLOAD_PART_SIZE_MB: 8,
+  RABBITMQ_URL: "amqp://unused",
 } as unknown as AppConfig;
 
 export const alice = { id: "user-alice", username: "alice" };

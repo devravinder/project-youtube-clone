@@ -84,9 +84,10 @@ sequenceDiagram
   UP-->>C: presigned PUT URL
   C->>S: PUT raw bytes
   C->>GW: confirm upload
-  GW->>UP: mark Uploaded + enqueue job
-  UP->>Q: transcode.cmd
-  UP-->>C: 202 Accepted (processing)
+  GW->>UP: confirm upload
+  UP->>Q: transcode.cmd (waits for publisher confirm)
+  UP->>UP: mark Uploaded (only after the broker confirmed)
+  UP-->>C: 201 Uploaded (503 and still Pending if the broker is down)
   Q->>TR: deliver job
   TR->>S: read raw
   TR->>S: write HLS renditions

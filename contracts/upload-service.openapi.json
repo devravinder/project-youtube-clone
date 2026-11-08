@@ -301,7 +301,7 @@
     },
     "/uploads/{videoId}/complete": {
       "post": {
-        "description": "Marks a pending video as uploaded. For multipart uploads it first joins the parts. Only the uploader may confirm. Idempotent.",
+        "description": "Marks a pending video as uploaded and queues it for transcoding. For multipart uploads it first joins the parts. Only the uploader may confirm. Idempotent.",
         "operationId": "confirmUpload",
         "parameters": [
           {
@@ -367,6 +367,16 @@
           },
           "409": {
             "description": "The file or some parts have not reached storage, or part sizes do not match the plan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The transcode queue is unavailable; the video stays pending, so retry",
             "content": {
               "application/json": {
                 "schema": {

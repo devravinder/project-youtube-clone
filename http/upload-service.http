@@ -524,7 +524,9 @@ GET {{baseUrl}}/videos?limit=50
 ?? status == 200
 ?? js !response.parsedBody.items.map(v => v.id).includes(noUpload.videoId)
 
-### Confirm marks the video as uploaded
+### Confirm marks the video as uploaded and queues a transcode command
+# Returns 503 (video stays PENDING) while RabbitMQ is down; send it again once the broker is back.
+# Check the transcoder log, or `http/rabbitmq.http`, for the command.
 # @name confirm
 # @ref upload
 # @ref token
@@ -534,7 +536,7 @@ Authorization: Bearer {{token.access_token}}
 ?? status == 201
 ?? js response.parsedBody.status == UPLOADED
 
-### Confirming twice is harmless
+### Confirming twice is harmless (and queues nothing new)
 # @ref presign
 # @ref token
 POST {{baseUrl}}/uploads/{{presign.videoId}}/complete

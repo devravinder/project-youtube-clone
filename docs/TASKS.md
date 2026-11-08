@@ -69,8 +69,8 @@ Concepts: async processing, work-queue semantics, outbox, idempotency, polyglot 
 - [x] `apps/transcoder-service` skeleton (Spring Boot 4.1 / Java 21): domain, ports, `TranscodeService`, ArchUnit rules, JaCoCo gate, health probes
 - [x] Java formatting: Spotless + google-java-format (as in the reference starter), formats on compile, lint-staged entry
 - [x] Transcoder conventions from the reference starter: version catalog, `AppProperties` record (`@ConfigurationProperties`), YAML per profile (`local`, `local-observability`, `aws`), Lombok, SLF4J, MapStruct
-- [ ] RabbitMQ command producer (upload-service) + consumer (transcoder)
-- [ ] ffmpeg adapter — produce renditions
+- [x] RabbitMQ command producer (upload-service) + consumer (transcoder): `yt.transcode` → quorum queue + DLQ, publisher confirms, 503 + stays `PENDING` when the broker is down, JSON Schema contract in `contracts/`
+- [ ] Storage (MinIO) + ffmpeg adapters — produce renditions; replace the placeholder `TranscodeVideo` bean with `TranscodeService`
 - [ ] Transactional outbox in Postgres
 - [ ] Idempotent consumer + DLQ + retries
 - [ ] Upload status polling in the UI

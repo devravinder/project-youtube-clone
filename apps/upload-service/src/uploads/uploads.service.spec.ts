@@ -3,10 +3,13 @@ import {
   ConflictException,
   ForbiddenException,
   NotFoundException,
+  ServiceUnavailableException,
 } from "@nestjs/common";
 import { beforeEach, describe, expect, it } from "vitest";
+import { transcodeCommandSchema } from "../messaging/transcode-command.js";
 import { FakePrisma } from "../testing/fake-prisma.js";
 import { FakeStorage } from "../testing/fake-storage.js";
+import { FakeTranscodeQueue } from "../testing/fake-transcode-queue.js";
 import { alice, bob, testConfig } from "../testing/test-data.js";
 import { UploadsService } from "./uploads.service.js";
 
@@ -17,12 +20,14 @@ const COMPLETE_SIZES = [8 * MiB, 8 * MiB, 8 * MiB, 4_834_176];
 
 let storage: FakeStorage;
 let prisma: FakePrisma;
+let queue: FakeTranscodeQueue;
 let service: UploadsService;
 
 beforeEach(() => {
   storage = new FakeStorage();
   prisma = new FakePrisma();
-  service = new UploadsService(storage, testConfig, prisma.asPrismaService());
+  queue = new FakeTranscodeQueue();
+  service = new UploadsService(storage, testConfig, prisma.asPrismaService(), queue);
 });
 
 const onlyRow = () => [...prisma.rows.values()][0];
@@ -218,6 +223,77 @@ describe("confirmUpload (single PUT)", () => {
     await expect(
       service.confirmUpload("00000000-0000-4000-8000-000000000000", alice),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+});
+
+describe("confirmUpload (transcode command)", () => {
+  const uploaded = async () => {
+    const created = await service.createPresignedUpload(
+      { filename: "a.mp4", contentType: "video/mp4" },
+      alice,
+    );
+    storage.simulatePut(created.bucket, created.key, 100);
+    return created;
+  };
+
+  it("queues one command that matches the wire contract", async () => {
+    const { videoId, bucket, key } = await uploaded();
+    await service.confirmUpload(videoId, alice);
+
+    expect(queue.commands).toHaveLength(1);
+    const [command] = queue.commands;
+    expect(transcodeCommandSchema.parse(command)).toEqual(command);
+    expect(command).toMatchObject({
+      videoId,
+      sourceBucket: bucket,
+      sourceKey: key,
+      contentType: "video/mp4",
+    });
+  });
+
+  it("does not queue again when the video is already uploaded", async () => {
+    const { videoId } = await uploaded();
+    await service.confirmUpload(videoId, alice);
+    await service.confirmUpload(videoId, alice);
+
+    expect(queue.commands).toHaveLength(1);
+  });
+
+  it("does not queue before the file is in storage", async () => {
+    const { videoId } = await service.createPresignedUpload(
+      { filename: "a.mp4", contentType: "video/mp4" },
+      alice,
+    );
+    await expect(service.confirmUpload(videoId, alice)).rejects.toBeInstanceOf(ConflictException);
+
+    expect(queue.commands).toHaveLength(0);
+  });
+
+  it("answers 503 and keeps the video pending when the broker is down, so a retry works", async () => {
+    const { videoId } = await uploaded();
+    queue.failWith = new Error("connection refused");
+
+    await expect(service.confirmUpload(videoId, alice)).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
+    expect(onlyRow().status).toBe("PENDING");
+
+    queue.failWith = null;
+    expect(await service.confirmUpload(videoId, alice)).toEqual({ videoId, status: "UPLOADED" });
+    expect(queue.commands).toHaveLength(1);
+  });
+
+  it("sends a new command id on each attempt", async () => {
+    const { videoId } = await uploaded();
+    const originalUpdate = prisma.video.update;
+    prisma.video.update = () => Promise.reject(new Error("db blip"));
+    await expect(service.confirmUpload(videoId, alice)).rejects.toThrow("db blip");
+    prisma.video.update = originalUpdate;
+    await service.confirmUpload(videoId, alice);
+
+    // At-least-once: the consumer must dedupe by videoId, not messageId.
+    expect(queue.commands.map((c) => c.videoId)).toEqual([videoId, videoId]);
+    expect(queue.commands[0]?.messageId).not.toBe(queue.commands[1]?.messageId);
   });
 });
 

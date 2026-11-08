@@ -6,6 +6,11 @@ app:
     secret-key: ${STORAGE_SECRET_KEY:minioadmin}
     force-path-style: ${STORAGE_FORCE_PATH_STYLE:true}
 
+spring:
+  rabbitmq:
+    username: yt
+    password: yt_password
+
 logging:
   level:
     dev.ytclone: DEBUG
