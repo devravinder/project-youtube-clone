@@ -128,16 +128,25 @@ pnpm logs:l
 
 ## 4. Set up the database
 
-Needs Postgres running (step 3). Run once after cloning, and again after schema changes:
+Needs Postgres running (step 3). Run these from the repo root:
 
-```bash
-pnpm --filter @yt/upload-service db:generate   # generate the Prisma client (git-ignored)
-pnpm --filter @yt/upload-service db:migrate    # create and apply a migration (dev)
-pnpm --filter @yt/upload-service db:deploy     # apply existing migrations only
-```
+| Script             | What it does                                                                                     |
+| ------------------ | ------------------------------------------------------------------------------------------------ |
+| `pnpm db:generate` | Generate the Prisma client (git-ignored) for every service with a database                       |
+| `pnpm db:migrate`  | Dev: create a migration from schema changes and apply it; applies existing ones on a fresh clone |
+| `pnpm db:reset`    | **Destructive.** Drop all data and re-apply every migration                                      |
 
-The generated client lives in `apps/upload-service/src/generated/` and is not committed, so
-run `db:generate` on a fresh clone before type-checking or starting the service.
+On a fresh clone run `pnpm db:generate` and then `pnpm db:migrate`. After editing
+`apps/upload-service/prisma/schema.prisma`, run `pnpm db:migrate --name <what-changed>` and commit the
+new folder under `prisma/migrations/`.
+
+The generated client lives in `apps/upload-service/src/generated/` and is not committed, so run
+`db:generate` before type-checking or starting the service.
+
+`db:reset` first runs `scripts/assert-local-db.mjs`, which refuses to continue unless the database host
+in `DATABASE_URL` is `localhost` or `127.0.0.1`. `db:migrate` is for local development only; a shared
+or production database gets `prisma migrate deploy`, which applies existing migrations and never
+creates or resets anything.
 
 ## 5. Run the upload service
 

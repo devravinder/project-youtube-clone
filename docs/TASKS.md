@@ -56,6 +56,7 @@ Concepts: object storage, presigned/multipart upload, relational modeling, ports
 - [x] OpenAPI 3.1 from Zod (Swagger UI at `/docs`), spec in `contracts/`, web types via `openapi-typescript`
 - [x] On multipart complete, check every part size against the plan, so the total equals the declared file size
 - [x] Tests: Vitest + supertest for upload-service (75), Vitest + Testing Library for web (51)
+- [x] Root DB scripts: `db:generate`, `db:migrate`, `db:reset` (reset refuses non-local databases)
 - [x] Git hooks: Husky + lint-staged + commitlint + markdownlint
 
 ## Stage 2 — Phase 1: Async transcoding (RabbitMQ + ffmpeg)

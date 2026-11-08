@@ -173,3 +173,12 @@ multipart uploads in the cleanup job. See ADR-020.
 - Structured logging + OpenTelemetry (see `observability-otel`).
 - Idempotent queue consumers (see `messaging-patterns`).
 - Internal packages resolve via the org registry (developer's npm settings; not committed).
+
+## Database scripts
+
+Keep the set small. Each service with a database defines `db:generate`, `db:migrate` and `db:reset`
+in its own `package.json`, and the root runs them for every service with
+`pnpm -r --if-present db:<action>`. `db:reset` must call `scripts/assert-local-db.mjs` first so it
+can never run against a remote database. Outside local development use `prisma migrate deploy`
+directly (for example in a Kubernetes job), never `db:migrate`. Add another script only when it is
+used often.

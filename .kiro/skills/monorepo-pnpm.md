@@ -90,3 +90,10 @@ version` against the org registry). Current baselines: TypeScript `7.0.2`, zod `
 - A tool that needs the TypeScript 5 compiler API (such as `openapi-typescript`) cannot use the
   workspace's TypeScript 7; run it with `pnpm dlx <tool>@<pinned>` instead of adding a dependency.
 - Do not approve install scripts of telemetry packages; mark them `false` in `allowBuilds`.
+
+## Database utility scripts
+
+Root `package.json` carries three shared database scripts: `db:generate`, `db:migrate` and
+`db:reset`. They use `pnpm -r --if-present`, so a service without a database is skipped. The
+destructive one goes through `scripts/assert-local-db.mjs`. Shared helper scripts live in the root
+`scripts/` folder.

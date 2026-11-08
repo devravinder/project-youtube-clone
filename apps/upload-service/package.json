@@ -12,7 +12,7 @@
     "openapi:generate": "tsx --env-file=.env.sample src/openapi/generate.ts",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:deploy": "prisma migrate deploy"
+    "db:reset": "node ../../scripts/assert-local-db.mjs && prisma migrate reset --force"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1156.0",
