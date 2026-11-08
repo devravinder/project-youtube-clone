@@ -1,5 +1,6 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { StoragePort } from "@yt/ports";
+import { APP_CONFIG, type AppConfig } from "../config/app.config.js";
 import type { Video } from "../generated/prisma/client.js";
 import { VideoStatus } from "../generated/prisma/enums.js";
 import { PrismaService } from "../prisma/prisma.service.js";
@@ -13,6 +14,7 @@ export class VideosService {
   constructor(
     @Inject(STORAGE_PORT) private readonly storage: StoragePort,
     @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
   async list({ limit, cursor }: ListVideosQuery): Promise<VideoPage> {
@@ -36,15 +38,51 @@ export class VideosService {
       throw new NotFoundException(`Video ${id} not found`);
     }
 
-    const uploaded = await this.storage.objectExists(video.rawBucket, video.rawKey);
-    const playbackUrl = uploaded
-      ? await this.storage.createPresignedDownloadUrl(video.rawBucket, video.rawKey, {
-          expiresInSeconds: PLAYBACK_URL_EXPIRY_SECONDS,
-        })
-      : null;
+    const sign = { expiresInSeconds: PLAYBACK_URL_EXPIRY_SECONDS };
+    const renditions =
+      video.status === VideoStatus.READY
+        ? await Promise.all(
+            storedRenditions(video.renditions).map(async ({ name, key }) => ({
+              name,
+              height: Number.parseInt(name, 10),
+              playbackUrl: await this.storage.createPresignedDownloadUrl(
+                this.config.STORAGE_HLS_BUCKET,
+                key,
+                sign,
+              ),
+            })),
+          )
+        : [];
+    renditions.sort((a, b) => b.height - a.height);
 
-    return { ...toSummary(video), contentType: video.contentType, playbackUrl };
+    let playbackUrl = renditions[0]?.playbackUrl ?? null;
+    if (!playbackUrl && (await this.storage.objectExists(video.rawBucket, video.rawKey))) {
+      playbackUrl = await this.storage.createPresignedDownloadUrl(
+        video.rawBucket,
+        video.rawKey,
+        sign,
+      );
+    }
+
+    return {
+      ...toSummary(video),
+      contentType: video.contentType,
+      playbackUrl,
+      renditions,
+      failureReason: video.failureReason,
+    };
   }
+}
+
+// The column is written only from validated status events, but old or edited rows may differ.
+function storedRenditions(value: unknown): { name: string; key: string }[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.filter(
+    (r): r is { name: string; key: string } =>
+      typeof r?.name === "string" && /^\d+p$/.test(r.name) && typeof r?.key === "string",
+  );
 }
 
 // JSON cannot carry BigInt, so view counts go out as numbers.

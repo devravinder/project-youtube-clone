@@ -7,6 +7,8 @@ spring:
       local-observability: local
   # Host, port and credentials come from SPRING_RABBITMQ_* variables.
   rabbitmq:
+    # Lets publishers wait for the broker's confirm (status events, retries).
+    publisher-confirm-type: simple
     listener:
       simple:
         # Transcoding is heavy: one message in flight per consumer.

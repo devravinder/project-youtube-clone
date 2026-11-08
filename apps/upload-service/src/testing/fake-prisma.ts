@@ -82,6 +82,8 @@ export class FakePrisma {
         partSize: null,
         partCount: null,
         fileSize: null,
+        renditions: null,
+        failureReason: null,
         createdAt: now,
         updatedAt: now,
         ...data,
@@ -113,11 +115,16 @@ export class FakePrisma {
       where,
       data,
     }: {
-      where: { id: string; status?: string };
+      where: { id: string; status?: string | { in: string[] } };
       data: Partial<Row>;
     }): Promise<{ count: number }> => {
       const row = this.rows.get(where.id);
-      if (!row || (where.status !== undefined && row.status !== where.status)) {
+      const allowed =
+        where.status === undefined ||
+        (typeof where.status === "string"
+          ? row?.status === where.status
+          : where.status.in.includes(row?.status ?? ""));
+      if (!row || !allowed) {
         return Promise.resolve({ count: 0 });
       }
       this.rows.set(where.id, { ...row, ...data, updatedAt: new Date() });
@@ -160,6 +167,8 @@ export class FakePrisma {
       partSize: null,
       partCount: null,
       fileSize: null,
+      renditions: null,
+      failureReason: null,
       createdAt: now,
       updatedAt: now,
     } as Row;

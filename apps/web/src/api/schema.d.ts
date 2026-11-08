@@ -211,6 +211,13 @@ export interface components {
             /** @description Pass back as `cursor` to fetch the next page; null on the last page */
             nextCursor: string | null;
         };
+        Rendition: {
+            /** @description For example 720p */
+            name: string;
+            height: number;
+            /** Format: uri */
+            playbackUrl: string;
+        };
         VideoDetail: {
             /** Format: uuid */
             id: string;
@@ -222,8 +229,12 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             contentType: string;
-            /** @description Null until the file has actually been uploaded */
+            /** @description The highest rendition once READY, before that the original file; null until it is uploaded */
             playbackUrl: string | null;
+            /** @description Transcoded versions, highest first; empty until READY */
+            renditions: components["schemas"]["Rendition"][];
+            /** @description Why transcoding failed when FAILED */
+            failureReason: string | null;
         };
         /** @description Error body returned by every failing request */
         ErrorResponse: {

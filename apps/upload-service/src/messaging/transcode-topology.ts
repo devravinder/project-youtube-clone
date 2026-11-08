@@ -30,3 +30,29 @@ export async function declareTranscodeTopology(channel: Channel): Promise<void> 
   await channel.bindQueue(TRANSCODE_QUEUE, TRANSCODE_EXCHANGE, TRANSCODE_ROUTING_KEY);
   await channel.bindQueue(TRANSCODE_DLQ, TRANSCODE_DLX, TRANSCODE_ROUTING_KEY);
 }
+
+// Status events flow back; the transcoder only declares the exchange (StatusTopology.java).
+export const STATUS_EXCHANGE = "yt.video-status";
+export const STATUS_ROUTING_KEY = "video.status";
+export const STATUS_QUEUE = "upload-service.video-status";
+export const STATUS_DLX = "yt.video-status.dlx";
+export const STATUS_DLQ = "upload-service.video-status.dlq";
+
+export async function declareStatusTopology(channel: Channel): Promise<void> {
+  await channel.assertExchange(STATUS_EXCHANGE, "direct", { durable: true });
+  await channel.assertExchange(STATUS_DLX, "direct", { durable: true });
+  await channel.assertQueue(STATUS_QUEUE, {
+    durable: true,
+    arguments: {
+      "x-queue-type": "quorum",
+      "x-dead-letter-exchange": STATUS_DLX,
+      "x-dead-letter-routing-key": STATUS_ROUTING_KEY,
+    },
+  });
+  await channel.assertQueue(STATUS_DLQ, {
+    durable: true,
+    arguments: { "x-queue-type": "quorum" },
+  });
+  await channel.bindQueue(STATUS_QUEUE, STATUS_EXCHANGE, STATUS_ROUTING_KEY);
+  await channel.bindQueue(STATUS_DLQ, STATUS_DLX, STATUS_ROUTING_KEY);
+}

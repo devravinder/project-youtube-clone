@@ -97,6 +97,8 @@ Every consumer must be idempotent:
 
 - Dedupe by a stable key (messageId / eventId) stored in a processed-ids table, or
 - Make the operation naturally idempotent (upsert by videoId, not insert).
+- For status events: allow only forward transitions with a conditional update
+  (`UPDATE ... WHERE status IN (allowed previous states)`); duplicates and late events then change nothing.
 
 ## Retries & DLQ
 

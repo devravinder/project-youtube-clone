@@ -916,6 +916,30 @@
         ],
         "additionalProperties": false
       },
+      "Rendition": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "For example 720p"
+          },
+          "height": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "playbackUrl": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "required": [
+          "name",
+          "height",
+          "playbackUrl"
+        ],
+        "additionalProperties": false
+      },
       "VideoDetail": {
         "type": "object",
         "properties": {
@@ -966,7 +990,21 @@
                 "type": "null"
               }
             ],
-            "description": "Null until the file has actually been uploaded"
+            "description": "The highest rendition once READY, before that the original file; null until it is uploaded"
+          },
+          "renditions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Rendition"
+            },
+            "description": "Transcoded versions, highest first; empty until READY"
+          },
+          "failureReason": {
+            "description": "Why transcoding failed when FAILED",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -977,7 +1015,9 @@
           "viewCount",
           "createdAt",
           "contentType",
-          "playbackUrl"
+          "playbackUrl",
+          "renditions",
+          "failureReason"
         ],
         "additionalProperties": false
       },

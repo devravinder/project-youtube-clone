@@ -30,6 +30,7 @@ class TranscodeCommandListenerTest {
 
   private final List<TranscodeJob> jobs = new ArrayList<>();
   private final List<Integer> retries = new ArrayList<>();
+  private final List<String> failures = new ArrayList<>();
   private Consumer<TranscodeJob> behaviour = job -> {};
 
   private final TranscodeVideo useCase =
@@ -49,7 +50,11 @@ class TranscodeCommandListenerTest {
 
   private final TranscodeCommandListener listener =
       new TranscodeCommandListener(
-          Mappers.getMapper(TranscodeCommandMapper.class), useCase, retryScheduler, PROPERTIES);
+          Mappers.getMapper(TranscodeCommandMapper.class),
+          useCase,
+          (videoId, reason) -> failures.add(videoId + ": " + reason),
+          retryScheduler,
+          PROPERTIES);
 
   private static TranscodeCommandMessage message(String videoId) {
     return new TranscodeCommandMessage(
@@ -71,6 +76,7 @@ class TranscodeCommandListenerTest {
         .hasRootCauseInstanceOf(IllegalArgumentException.class);
     assertThat(jobs).isEmpty();
     assertThat(retries).isEmpty();
+    assertThat(failures).isEmpty();
   }
 
   @Test
@@ -84,6 +90,7 @@ class TranscodeCommandListenerTest {
         .isInstanceOf(AmqpRejectAndDontRequeueException.class)
         .hasRootCauseMessage("not a video");
     assertThat(retries).isEmpty();
+    assertThat(failures).containsExactly("vid-2: not a video");
   }
 
   @Test
@@ -97,6 +104,7 @@ class TranscodeCommandListenerTest {
     listener.onTranscodeCommand(message("vid-3"), 2);
 
     assertThat(retries).containsExactly(2, 3);
+    assertThat(failures).isEmpty();
   }
 
   @Test
@@ -110,5 +118,6 @@ class TranscodeCommandListenerTest {
         .isInstanceOf(AmqpRejectAndDontRequeueException.class)
         .hasMessage("Retries exhausted");
     assertThat(retries).isEmpty();
+    assertThat(failures).containsExactly("vid-4: Gave up after 3 attempts: storage unavailable");
   }
 }

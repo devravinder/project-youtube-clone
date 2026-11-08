@@ -3,9 +3,16 @@ import { useRef, useState } from "react";
 import { getAccessToken, userManager } from "../auth/user-manager";
 import { ApiError, getVideo, listVideos } from "../services/api";
 import { cancelUpload, uploadVideo } from "../services/upload";
+import type { VideoStatus } from "../types";
 
 const PAGE_SIZE = 12;
 const PLAYBACK_URL_STALE_MS = 30 * 60 * 1000;
+export const STATUS_POLL_MS = 2000;
+
+// Transcoding has not finished yet, so the detail is worth asking for again.
+export function isProcessing(status: VideoStatus | undefined): boolean {
+  return status === "UPLOADED" || status === "PROCESSING";
+}
 
 export const videoKeys = {
   all: ["videos"] as const,
@@ -29,6 +36,8 @@ export function useVideo(id: string) {
     // Each fetch signs a new URL, so refetching would restart the player.
     staleTime: PLAYBACK_URL_STALE_MS,
     refetchOnWindowFocus: false,
+    // Poll only until transcoding ends; nothing plays meanwhile, so new URLs do no harm.
+    refetchInterval: (query) => (isProcessing(query.state.data?.status) ? STATUS_POLL_MS : false),
   });
 }
 

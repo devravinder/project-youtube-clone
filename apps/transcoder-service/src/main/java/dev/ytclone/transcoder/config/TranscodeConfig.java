@@ -5,9 +5,9 @@ import dev.ytclone.transcoder.adapter.out.ffmpeg.FfmpegLauncher;
 import dev.ytclone.transcoder.adapter.out.ffmpeg.FfmpegTranscoder;
 import dev.ytclone.transcoder.adapter.out.ffmpeg.SystemProcessRunner;
 import dev.ytclone.transcoder.adapter.out.storage.S3StorageAdapter;
-import dev.ytclone.transcoder.application.port.in.TranscodeVideo;
 import dev.ytclone.transcoder.application.port.out.StoragePort;
 import dev.ytclone.transcoder.application.port.out.TranscoderPort;
+import dev.ytclone.transcoder.application.port.out.VideoStatusPort;
 import dev.ytclone.transcoder.application.service.TranscodeService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
@@ -47,9 +47,16 @@ class TranscodeConfig {
   }
 
   @Bean
-  TranscodeVideo transcodeVideo(
-      StoragePort storage, TranscoderPort transcoder, AppProperties properties) {
+  TranscodeService transcodeService(
+      StoragePort storage,
+      TranscoderPort transcoder,
+      VideoStatusPort status,
+      AppProperties properties) {
     return new TranscodeService(
-        storage, transcoder, properties.transcode().workDir(), properties.storage().hlsBucket());
+        storage,
+        transcoder,
+        properties.transcode().workDir(),
+        properties.storage().hlsBucket(),
+        status);
   }
 }

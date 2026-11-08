@@ -2,6 +2,7 @@ package dev.ytclone.transcoder.adapter.in.messaging;
 
 import dev.ytclone.transcoder.AppProperties;
 import dev.ytclone.transcoder.application.PermanentFailureException;
+import dev.ytclone.transcoder.application.port.in.ReportTranscodeFailure;
 import dev.ytclone.transcoder.application.port.in.TranscodeVideo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +18,7 @@ public class TranscodeCommandListener {
 
   private final TranscodeCommandMapper mapper;
   private final TranscodeVideo transcodeVideo;
+  private final ReportTranscodeFailure failures;
   private final RetryScheduler retryScheduler;
   private final AppProperties properties;
 
@@ -38,8 +40,13 @@ public class TranscodeCommandListener {
         maxAttempts);
     try {
       transcodeVideo.transcode(mapper.toJob(message));
-    } catch (IllegalArgumentException | PermanentFailureException e) {
+    } catch (IllegalArgumentException e) {
+      // Invalid command: there may be no usable videoId to report on.
+      log.error("Invalid transcode command {}: {}", message.messageId(), e.getMessage());
+      throw new AmqpRejectAndDontRequeueException("Invalid command", e);
+    } catch (PermanentFailureException e) {
       log.error("Video {} cannot be transcoded: {}", message.videoId(), e.getMessage());
+      giveUp(message, e.getMessage());
       throw new AmqpRejectAndDontRequeueException("Permanent failure", e);
     } catch (RuntimeException e) {
       if (attempt >= maxAttempts) {
@@ -48,6 +55,7 @@ public class TranscodeCommandListener {
             message.videoId(),
             attempt,
             e.getMessage());
+        giveUp(message, "Gave up after " + attempt + " attempts: " + e.getMessage());
         throw new AmqpRejectAndDontRequeueException("Retries exhausted", e);
       }
       log.warn(
@@ -57,6 +65,15 @@ public class TranscodeCommandListener {
           properties.transcode().retry().delay(),
           e.getMessage());
       retryScheduler.schedule(message, attempt + 1);
+    }
+  }
+
+  // The command still goes to the DLQ when the report itself fails (e.g. broker trouble).
+  private void giveUp(TranscodeCommandMessage message, String reason) {
+    try {
+      failures.reportFailure(message.videoId(), reason);
+    } catch (RuntimeException e) {
+      log.error("Could not report failure of video {}: {}", message.videoId(), e.getMessage());
     }
   }
 }

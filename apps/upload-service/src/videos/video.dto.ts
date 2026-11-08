@@ -33,10 +33,27 @@ export const videoPageSchema = z
 
 export type VideoPage = z.infer<typeof videoPageSchema>;
 
+export const renditionSchema = z
+  .object({
+    name: z.string().describe("For example 720p"),
+    height: z.number().int(),
+    playbackUrl: z.url(),
+  })
+  .meta({ id: "Rendition" });
+
 export const videoDetailSchema = videoSummarySchema
   .extend({
     contentType: z.string(),
-    playbackUrl: z.url().nullable().describe("Null until the file has actually been uploaded"),
+    playbackUrl: z
+      .url()
+      .nullable()
+      .describe(
+        "The highest rendition once READY, before that the original file; null until it is uploaded",
+      ),
+    renditions: z
+      .array(renditionSchema)
+      .describe("Transcoded versions, highest first; empty until READY"),
+    failureReason: z.string().nullable().describe("Why transcoding failed when FAILED"),
   })
   .meta({ id: "VideoDetail" });
 

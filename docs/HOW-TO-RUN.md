@@ -122,6 +122,12 @@ RabbitMQ carries the transcode commands:
 Both services declare this topology on connect, so either can start first. The queue arguments must be
 identical on both sides, or RabbitMQ closes the channel with `PRECONDITION_FAILED`.
 
+Status flows back the other way: the transcoder publishes `PROCESSING`, `READY` (with the renditions) and
+`FAILED` (with a reason) to the `yt.video-status` exchange, routing key `video.status`. The upload service
+consumes them from `upload-service.video-status` (quorum; malformed events go to
+`upload-service.video-status.dlq`) and only moves a video forward, so late or duplicate events are ignored.
+The message schema is `contracts/video-status.schema.json`.
+
 ```bash
 pnpm start:l:pods
 ```
@@ -176,6 +182,11 @@ the upload service publishes due outbox rows to RabbitMQ every `OUTBOX_POLL_INTE
 If RabbitMQ is down, the rows wait and are retried with backoff (1 s doubling, at most 5 min); nothing is
 lost and the client sees no error. Sent rows are deleted after `OUTBOX_RETENTION_HOURS` (default 72).
 Inspect the backlog with `select type, attempts, last_error, sent_at from outbox order by created_at desc;`.
+
+After that the video moves `UPLOADED → PROCESSING → READY` (or `FAILED`). `GET /videos/:id` then returns
+`renditions` (signed URLs, highest first) and `playbackUrl` points at the highest one; a failed video keeps
+the original as `playbackUrl` and explains itself in `failureReason`. The upload page and the watch page
+poll this every 2 seconds until the video is `READY` or `FAILED`, then stop.
 
 ```bash
 curl -X POST http://localhost:3001/uploads/presign \

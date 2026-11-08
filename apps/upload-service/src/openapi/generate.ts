@@ -3,9 +3,8 @@ import { NestFactory } from "@nestjs/core";
 import { AppModule } from "../app.module.js";
 import {
   OPENAPI_FILE,
-  TRANSCODE_COMMAND_FILE,
+  writeMessageContractFiles,
   writeOpenApiFile,
-  writeTranscodeCommandFile,
 } from "../contracts/contract-files.js";
 import { buildOpenApiDocument } from "./openapi.js";
 
@@ -13,6 +12,6 @@ import { buildOpenApiDocument } from "./openapi.js";
 const app = await NestFactory.create(AppModule, { preview: true, logger: false });
 const openApiChanged = await writeOpenApiFile(buildOpenApiDocument(app));
 await app.close();
-const commandChanged = await writeTranscodeCommandFile();
+const messagesChanged = await writeMessageContractFiles();
 console.log(`${openApiChanged ? "Wrote" : "Unchanged"} ${OPENAPI_FILE}`);
-console.log(`${commandChanged ? "Wrote" : "Unchanged"} ${TRANSCODE_COMMAND_FILE}`);
+console.log(`${messagesChanged ? "Wrote" : "Unchanged"} message schemas in contracts/`);

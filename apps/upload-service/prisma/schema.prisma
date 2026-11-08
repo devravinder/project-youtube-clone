@@ -16,21 +16,24 @@ enum VideoStatus {
 }
 
 model Video {
-  id          String      @id @default(uuid()) @db.Uuid
-  title       String
-  description String?
-  status      VideoStatus @default(PENDING)
-  rawBucket   String      @map("raw_bucket")
-  rawKey      String      @map("raw_key")
-  contentType String      @map("content_type")
-  ownerId     String?     @map("owner_id")
-  uploadId    String?     @map("upload_id")
-  partSize    Int?        @map("part_size")
-  partCount   Int?        @map("part_count")
-  fileSize    BigInt?     @map("file_size")
-  viewCount   BigInt      @default(0) @map("view_count")
-  createdAt   DateTime    @default(now()) @map("created_at")
-  updatedAt   DateTime    @updatedAt @map("updated_at")
+  id            String      @id @default(uuid()) @db.Uuid
+  title         String
+  description   String?
+  status        VideoStatus @default(PENDING)
+  rawBucket     String      @map("raw_bucket")
+  rawKey        String      @map("raw_key")
+  contentType   String      @map("content_type")
+  ownerId       String?     @map("owner_id")
+  uploadId      String?     @map("upload_id")
+  partSize      Int?        @map("part_size")
+  partCount     Int?        @map("part_count")
+  fileSize      BigInt?     @map("file_size")
+  viewCount     BigInt      @default(0) @map("view_count")
+  // Set by transcoder status events: [{ name, key }] once READY, a reason once FAILED.
+  renditions    Json?
+  failureReason String?     @map("failure_reason")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
 
   @@map("videos")
 }

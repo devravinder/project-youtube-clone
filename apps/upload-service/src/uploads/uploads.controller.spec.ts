@@ -301,5 +301,54 @@ describe("GET /videos/:id", () => {
     const detail = await t.http().get(`/videos/${videoId}`);
     expect(detail.body.playbackUrl).toBeNull();
     expect(detail.body.status).toBe("PENDING");
+    expect(detail.body.renditions).toEqual([]);
+  });
+
+  it("serves signed rendition URLs, highest first, once READY", async () => {
+    const video = t.prisma.seed({
+      title: "done",
+      rawBucket: "raw-videos",
+      rawKey: "v/source.mp4",
+      contentType: "video/mp4",
+      status: "READY",
+      renditions: [
+        { name: "360p", key: "v/360p.mp4" },
+        { name: "720p", key: "v/720p.mp4" },
+        { name: "bogus", key: "v/x.mp4" },
+      ],
+    });
+
+    const detail = (await t.http().get(`/videos/${video.id}`)).body;
+
+    expect(
+      detail.renditions.map((r: { name: string; height: number }) => [r.name, r.height]),
+    ).toEqual([
+      ["720p", 720],
+      ["360p", 360],
+    ]);
+    expect(detail.renditions[0].playbackUrl).toContain("hls-videos/v/720p.mp4");
+    expect(detail.playbackUrl).toBe(detail.renditions[0].playbackUrl);
+    expect(detail.failureReason).toBeNull();
+  });
+
+  it("explains a failure and still plays the original", async () => {
+    const video = t.prisma.seed({
+      title: "broken",
+      rawBucket: "raw-videos",
+      rawKey: "b/source.mp4",
+      contentType: "video/mp4",
+      status: "FAILED",
+      failureReason: "ffprobe exited with 1",
+    });
+    t.storage.simulatePut("raw-videos", "b/source.mp4", 10);
+
+    const detail = (await t.http().get(`/videos/${video.id}`)).body;
+
+    expect(detail).toMatchObject({
+      status: "FAILED",
+      failureReason: "ffprobe exited with 1",
+      renditions: [],
+    });
+    expect(detail.playbackUrl).toContain("raw-videos/b/source.mp4");
   });
 });

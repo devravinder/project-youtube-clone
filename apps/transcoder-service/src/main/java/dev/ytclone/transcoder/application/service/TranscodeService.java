@@ -1,8 +1,10 @@
 package dev.ytclone.transcoder.application.service;
 
+import dev.ytclone.transcoder.application.port.in.ReportTranscodeFailure;
 import dev.ytclone.transcoder.application.port.in.TranscodeVideo;
 import dev.ytclone.transcoder.application.port.out.StoragePort;
 import dev.ytclone.transcoder.application.port.out.TranscoderPort;
+import dev.ytclone.transcoder.application.port.out.VideoStatusPort;
 import dev.ytclone.transcoder.domain.Rendition;
 import dev.ytclone.transcoder.domain.RenditionLadder;
 import dev.ytclone.transcoder.domain.TranscodeJob;
@@ -21,12 +23,13 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RequiredArgsConstructor
-public class TranscodeService implements TranscodeVideo {
+public class TranscodeService implements TranscodeVideo, ReportTranscodeFailure {
 
   private final StoragePort storage;
   private final TranscoderPort transcoder;
   private final Path workRoot;
   private final String outputBucket;
+  private final VideoStatusPort status;
 
   @Override
   public TranscodeResult transcode(TranscodeJob job) {
@@ -39,10 +42,13 @@ public class TranscodeService implements TranscodeVideo {
             .filter(result -> result.videoId().equals(job.videoId()));
     if (done.isPresent()) {
       log.info("Video {} is already transcoded; skipping duplicate command", job.videoId());
+      // Re-announce: the first READY may be the event that got lost.
+      status.ready(done.get());
       return done.get();
     }
 
     log.info("Transcoding video {}", job.videoId());
+    status.processing(job.videoId());
     Path workDir = createWorkDir(job);
     try {
       Path source = workDir.resolve("source");
@@ -60,10 +66,16 @@ public class TranscodeService implements TranscodeVideo {
       storage.writeText(
           outputBucket, manifestKey, TranscodeManifest.toJson(result), "application/json");
       log.info("Transcoded video {} into {} renditions", job.videoId(), outputKeys.size());
+      status.ready(result);
       return result;
     } finally {
       deleteQuietly(workDir);
     }
+  }
+
+  @Override
+  public void reportFailure(String videoId, String reason) {
+    status.failed(videoId, reason);
   }
 
   private Path createWorkDir(TranscodeJob job) {

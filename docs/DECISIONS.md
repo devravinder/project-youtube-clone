@@ -499,3 +499,31 @@ Rejected: Spring's in-process stateless retry (blocks the only consumer slot for
 for exponential backoff (expiry only happens at the head of the queue, so a long delay blocks short ones;
 several fixed-delay queues would be the next step), and the `rabbitmq_delayed_message_exchange` plugin
 (not in the stock image and not available on Amazon MQ).
+
+## ADR-030 - Video status flows back as events; the UI polls
+
+Date: 2026-11-08 - Status: Accepted
+
+- The transcoder has no database, so it reports through an out-port, `VideoStatusPort`, published to the
+  `yt.video-status` direct exchange with publisher confirms (`publisher-confirm-type: simple`,
+  `waitForConfirmsOrDie`). A status publish that fails throws, so the job is retried, and a retried job
+  that finds its manifest re-announces `READY`, which repairs a lost event.
+- `FAILED` is reported when the listener gives up (permanent failure or attempts used up), through an
+  in-port, `ReportTranscodeFailure`, so the driving adapter never calls a driven adapter directly.
+- The upload service owns the queue (`upload-service.video-status`, quorum, own DLQ for malformed events)
+  and validates each event with Zod. Its `VideoStatusService` uses conditional updates that only move
+  forward (`UPLOADED → PROCESSING → READY`, `UPLOADED|PROCESSING → FAILED`, `FAILED → READY` for a replayed
+  command). Events can then arrive late, twice or out of order without harm, with no processed-ids table.
+  A database error requeues the event after 1 s.
+- The schema lives on the consumer side this time (`contracts/video-status.schema.json` from Zod); the Java
+  record is tested against it, including that `occurredAt` is serialised as an ISO string.
+- The rendition list is stored as JSON on the video row (`renditions`, `failure_reason` columns);
+  `GET /videos/:id` signs one URL per rendition. A separate renditions table can come when HLS adds
+  per-rendition metadata.
+- The UI polls `GET /videos/:id` every 2 s while the status is `UPLOADED` or `PROCESSING` (TanStack Query
+  `refetchInterval`) and stops when it is final. Nothing plays meanwhile, so re-signed URLs do not restart a
+  player.
+
+Rejected for now: pushing status over WebSocket or SSE (that is the notification service in Stage 4;
+polling is enough for one uploader watching one video) and the transcoder writing to the upload
+service's database (shared databases couple deployments and schemas).

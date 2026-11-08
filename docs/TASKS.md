@@ -73,7 +73,7 @@ Concepts: async processing, work-queue semantics, outbox, idempotency, polyglot 
 - [x] Storage (MinIO, AWS SDK v2) + ffmpeg adapters: MP4 renditions per ladder rung into `hls-videos/<id>/`; ffmpeg runs in `mwader/static-ffmpeg` locally or as installed binaries
 - [x] Transactional outbox in Postgres: confirm writes status + command in one transaction; `OutboxRelay` claims with `FOR UPDATE SKIP LOCKED` + lease, publishes with confirms, retries with backoff, purges sent rows
 - [x] Idempotent consumer + DLQ + retries: `manifest.json` written last makes duplicates a no-op; transient failures wait in a TTL retry queue (3 attempts), permanent ones go straight to the DLQ
-- [ ] Upload status polling in the UI
+- [x] Upload status polling in the UI: transcoder reports `PROCESSING`/`READY`/`FAILED` on `yt.video-status` (publisher confirms); upload-service applies forward-only transitions; `GET /videos/:id` returns signed renditions; upload card and watch page poll every 2 s until done, with a quality picker
 
 ## Stage 3 — Phase 2: Real streaming (HLS + nginx edge)
 

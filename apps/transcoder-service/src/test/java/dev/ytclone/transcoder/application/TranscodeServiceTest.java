@@ -29,13 +29,48 @@ class TranscodeServiceTest {
 
   private FakeStorage storage;
   private FakeTranscoder transcoder;
+  private FakeStatus status;
   private TranscodeService service;
 
   @BeforeEach
   void setUp() {
     storage = new FakeStorage();
     transcoder = new FakeTranscoder(1080);
-    service = new TranscodeService(storage, transcoder, workRoot, "renditions");
+    status = new FakeStatus();
+    service = new TranscodeService(storage, transcoder, workRoot, "renditions", status);
+  }
+
+  @Test
+  void reportsProcessingThenReadyWithEveryRendition() {
+    service.transcode(JOB);
+
+    assertThat(status.events).containsExactly("PROCESSING vid-1", "READY vid-1 4");
+  }
+
+  @Test
+  void reportsReadyAgainForADuplicateSoALostEventIsRepaired() {
+    service.transcode(JOB);
+    status.events.clear();
+
+    service.transcode(JOB);
+
+    assertThat(status.events).containsExactly("READY vid-1 4");
+  }
+
+  @Test
+  void doesNotReportReadyWhenTranscodingFails() {
+    transcoder.failOn = "480p";
+
+    org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.transcode(JOB));
+
+    assertThat(status.events).containsExactly("PROCESSING vid-1");
+  }
+
+  @Test
+  void reportsAFailureItIsToldAbout() {
+    service.reportFailure("vid-9", "not a video");
+
+    assertThat(status.events).containsExactly("FAILED vid-9 not a video");
   }
 
   @Test
@@ -104,7 +139,8 @@ class TranscodeServiceTest {
   @Test
   void neverUpscalesASmallSource() {
     transcoder = new FakeTranscoder(480);
-    service = new TranscodeService(storage, transcoder, workRoot, "renditions");
+    status = new FakeStatus();
+    service = new TranscodeService(storage, transcoder, workRoot, "renditions", status);
 
     TranscodeResult result = service.transcode(JOB);
 
@@ -160,7 +196,7 @@ class TranscodeServiceTest {
   void failsClearlyWhenTheWorkRootCannotBeCreated() throws IOException {
     Path file = Files.createFile(workRoot.resolve("not-a-directory"));
     TranscodeService broken =
-        new TranscodeService(storage, transcoder, file.resolve("nested"), "renditions");
+        new TranscodeService(storage, transcoder, file.resolve("nested"), "renditions", status);
 
     assertThatThrownBy(() -> broken.transcode(JOB))
         .isInstanceOf(UncheckedIOException.class)
@@ -214,6 +250,26 @@ class TranscodeServiceTest {
       } catch (IOException e) {
         throw new UncheckedIOException(e);
       }
+    }
+  }
+
+  private static final class FakeStatus
+      implements dev.ytclone.transcoder.application.port.out.VideoStatusPort {
+    final List<String> events = new ArrayList<>();
+
+    @Override
+    public void processing(String videoId) {
+      events.add("PROCESSING " + videoId);
+    }
+
+    @Override
+    public void ready(TranscodeResult result) {
+      events.add("READY " + result.videoId() + " " + result.outputKeys().size());
+    }
+
+    @Override
+    public void failed(String videoId, String reason) {
+      events.add("FAILED " + videoId + " " + reason);
     }
   }
 

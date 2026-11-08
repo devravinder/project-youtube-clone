@@ -3,7 +3,8 @@ import { Link } from "react-router-dom";
 import { BackButton } from "../components/back-button";
 import { ArrowRight, Check } from "lucide-react";
 import { Button, Card, Input, Label, ProgressBar, Textarea } from "../components/ui";
-import { useUploadVideo } from "../queries/videos";
+import { ProcessingStatus } from "../components/processing-status";
+import { useUploadVideo, useVideo } from "../queries/videos";
 import { MULTIPART_THRESHOLD_BYTES } from "../services/upload";
 
 interface UploadSuccessProps {
@@ -13,11 +14,9 @@ interface UploadSuccessProps {
 }
 
 function UploadSuccess({ videoId, title, onUploadAnother }: UploadSuccessProps) {
+  const { data: video } = useVideo(videoId);
   return (
-    <Card
-      role="status"
-      className="flex flex-col gap-4 border-transparent bg-primary p-6 text-primary-foreground"
-    >
+    <Card className="flex flex-col gap-4 border-transparent bg-primary p-6 text-primary-foreground">
       <span className="flex size-10 items-center justify-center rounded-full bg-primary-foreground/20">
         <Check className="size-6" />
       </span>
@@ -25,6 +24,7 @@ function UploadSuccess({ videoId, title, onUploadAnother }: UploadSuccessProps) 
       <p className="text-lg">
         <span className="font-semibold">{title}</span> is now in your library.
       </p>
+      <ProcessingStatus video={video} />
       <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
         <Link
           to={`/watch/${videoId}`}
