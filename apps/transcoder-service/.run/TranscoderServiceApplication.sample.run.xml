@@ -1,0 +1,29 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="TranscoderServiceApplication (sample)" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
+    <envs>
+      <env name="SERVER_PORT" value="3002" />
+      <env name="STORAGE_ENDPOINT" value="http://localhost:9000" />
+      <env name="STORAGE_REGION" value="us-east-1" />
+      <env name="STORAGE_ACCESS_KEY" value="minioadmin" />
+      <env name="STORAGE_SECRET_KEY" value="minioadmin" />
+      <env name="STORAGE_RAW_BUCKET" value="raw-videos" />
+      <env name="STORAGE_HLS_BUCKET" value="hls-videos" />
+      <env name="SPRING_RABBITMQ_HOST" value="localhost" />
+      <env name="SPRING_RABBITMQ_PORT" value="5672" />
+      <env name="SPRING_RABBITMQ_USERNAME" value="yt" />
+      <env name="SPRING_RABBITMQ_PASSWORD" value="yt_password" />
+    </envs>
+    <option name="ACTIVE_PROFILES" value="local" />
+    <module name="transcoder-service.main" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="dev.ytclone.transcoder.TranscoderServiceApplication" />
+    <extension name="coverage">
+      <pattern>
+        <option name="PATTERN" value="dev.ytclone.transcoder.*" />
+        <option name="ENABLED" value="true" />
+      </pattern>
+    </extension>
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

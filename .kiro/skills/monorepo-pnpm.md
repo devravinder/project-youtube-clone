@@ -97,3 +97,10 @@ Root `package.json` carries three shared database scripts: `db:generate`, `db:mi
 `db:reset`. They use `pnpm -r --if-present`, so a service without a database is skipped. The
 destructive one goes through `scripts/assert-local-db.mjs`. Shared helper scripts live in the root
 `scripts/` folder.
+
+## Java services in the workspace
+
+A Gradle service lives in `apps/<service>` with its own wrapper and a minimal `package.json`. Its scripts
+call `node ../../scripts/gradle.mjs <task>`, which runs `gradlew` by absolute path (a bare `gradlew.bat`
+is not found by `cmd` on some Windows setups). Use `dev`/`start`, `build`, `test` and `test:coverage`
+so `pnpm -r` runs treat it like any other package.

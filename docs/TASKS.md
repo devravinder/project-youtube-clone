@@ -66,8 +66,9 @@ Goal: upload returns instantly; transcoding happens in the background.
 Concepts: async processing, work-queue semantics, outbox, idempotency, polyglot services.
 
 - [x] Add RabbitMQ to `docker-compose-local.yaml` (+ management UI), `rabbitmqEnv` in `@yt/config`
-- [ ] `apps/transcoder-service` (Spring Boot 4.1 / Java 21) — ports & adapters
+- [x] `apps/transcoder-service` skeleton (Spring Boot 4.1 / Java 21): domain, ports, `TranscodeService`, ArchUnit rules, JaCoCo gate, health probes
 - [ ] Java formatting: Gradle spotless + formatter (google or palantir) + lint-staged entry
+- [ ] Transcoder config per profile: `application.properties` + `application-local.properties` (and later `-local-observability`, `-aws`), bound to a config record
 - [ ] RabbitMQ command producer (upload-service) + consumer (transcoder)
 - [ ] ffmpeg adapter — produce renditions
 - [ ] Transactional outbox in Postgres

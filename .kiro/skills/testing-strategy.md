@@ -78,3 +78,8 @@ k6 run load-testing/smoke-test.js
 
 Run `pnpm api:check` in CI so the committed OpenAPI spec and generated client types always match the
 code. Behaviour is covered by the `http/` requests.
+
+## Running Java tests from the root
+
+`pnpm test` runs every package's tests, including Gradle `test` for Java services; `pnpm test:coverage`
+runs `gradlew check`, which includes the JaCoCo gate.

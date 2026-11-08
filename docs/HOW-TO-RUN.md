@@ -7,7 +7,8 @@ runnable pieces are added — check the **Status** column for what actually work
 
 - Docker Desktop (running)
 - Node.js >= 22 and **pnpm** (`npm i -g pnpm`)
-- (Later phases) JDK 21 for the Spring Boot transcoder; `kind` + `helm` for the k8s stage
+- JDK 21 (for example Temurin) for the Spring Boot transcoder; no separate Gradle install, the wrapper downloads it
+- (Later phases) `kind` + `helm` for the k8s stage
 
 ## Script convention
 
@@ -18,13 +19,13 @@ Scripts follow `start|stop:env:service`:
 
 ## What runs today
 
-| Capability                                        | How                   | Status                        |
-| ------------------------------------------------- | --------------------- | ----------------------------- |
-| Local infra (Postgres, MinIO, Keycloak, RabbitMQ) | `pnpm start:l:pods`   | ✅ available                  |
-| Upload service (NestJS)                           | `pnpm start:l:upload` | ✅ available                  |
-| Web UI (React)                                    | `pnpm start:l:web`    | ✅ available                  |
-| Transcoder (Spring Boot)                          | —                     | ⏳ not built yet              |
-| Observability (otel-lgtm)                         | `pnpm start:lo:pods`  | ⏳ compose file not added yet |
+| Capability                                        | How                       | Status                        |
+| ------------------------------------------------- | ------------------------- | ----------------------------- |
+| Local infra (Postgres, MinIO, Keycloak, RabbitMQ) | `pnpm start:l:pods`       | ✅ available                  |
+| Upload service (NestJS)                           | `pnpm start:l:upload`     | ✅ available                  |
+| Web UI (React)                                    | `pnpm start:l:web`        | ✅ available                  |
+| Transcoder (Spring Boot)                          | `pnpm start:l:transcoder` | ✅ skeleton (health only)     |
+| Observability (otel-lgtm)                         | `pnpm start:lo:pods`      | ⏳ compose file not added yet |
 
 Web app settings live in `apps/web/.env.development` (public values only). Override any of them
 in a git-ignored `apps/web/.env.local`. Restart `pnpm start:l:web` after changing either file.
@@ -44,7 +45,7 @@ pnpm test:coverage    # also enforces the coverage gates
 pnpm --filter @yt/web test      # one workspace
 ```
 
-Tests use in-memory fakes, so they need no Docker, database or network.
+Tests use in-memory fakes, so they need no Docker, database or network. `pnpm test` also runs the transcoder's Java tests through Gradle; `pnpm test:coverage` adds its 75% JaCoCo gate.
 
 ## API docs and contracts
 
@@ -212,15 +213,49 @@ file, with progress), and **Watch** (plays the video). The dev server proxies `/
 upload service on port 3001, so the browser needs no CORS setup for the API. Uploads go
 straight from the browser to MinIO, which allows cross-origin requests by default.
 
+## 7. Run the transcoder service
+
+Needs JDK 21 on `PATH`. The first run downloads Gradle 9.8.2 and the dependencies, which can take a few
+minutes.
+
+```bash
+pnpm start:l:transcoder
+```
+
+It listens on port 3002. So far it only exposes health probes (`/actuator/health`, `/actuator/health/liveness`,
+`/actuator/health/readiness`); queue consumption, storage and ffmpeg arrive in the next tasks. Run its checks
+without starting it: `pnpm --filter @yt/transcoder-service build` (compile, 31 tests, coverage gate).
+
+### From IntelliJ
+
+Open `apps/transcoder-service` as the IntelliJ project. The run list then shows
+**TranscoderServiceApplication (sample)**, loaded from the committed
+`.run/TranscoderServiceApplication.sample.run.xml` (profile `local` plus the env vars below).
+
+For your own settings, copy it to the git-ignored `.run/TranscoderServiceApplication.run.xml` and rename the
+configuration inside to `TranscoderServiceApplication`. Add any new variable to the sample as well.
+
+| Variable                                               | Local value                          | Read by                      |
+| ------------------------------------------------------ | ------------------------------------ | ---------------------------- |
+| `SERVER_PORT`                                          | `3002`                               | Spring Boot, today           |
+| `STORAGE_ENDPOINT`, `STORAGE_REGION`                   | `http://localhost:9000`, `us-east-1` | storage adapter (next tasks) |
+| `STORAGE_ACCESS_KEY`, `STORAGE_SECRET_KEY`             | `minioadmin` / `minioadmin`          | storage adapter (next tasks) |
+| `STORAGE_RAW_BUCKET`, `STORAGE_HLS_BUCKET`             | `raw-videos`, `hls-videos`           | storage adapter (next tasks) |
+| `SPRING_RABBITMQ_HOST`, `SPRING_RABBITMQ_PORT`         | `localhost`, `5672`                  | Spring AMQP (RabbitMQ task)  |
+| `SPRING_RABBITMQ_USERNAME`, `SPRING_RABBITMQ_PASSWORD` | `yt` / `yt_password`                 | Spring AMQP (RabbitMQ task)  |
+
+To edit them in the dialog: **Modify options > Environment variables** shows the field; the icon at its right
+opens a table. The field only appears by default once the config has a value.
+
 ## Local service URLs & credentials
 
-| Service        | URL                     | Credentials                                             |
-| -------------- | ----------------------- | ------------------------------------------------------- |
-| Upload service | <http://localhost:3001> | none yet (auth comes with Keycloak)                     |
-| -------------  | ----------------------- | ------------------------------------------------------- |
-| Postgres       | `localhost:5432`        | user `yt` / password `yt_password` / db `youtube_clone` |
-| MinIO S3 API   | <http://localhost:9000> | `minioadmin` / `minioadmin`                             |
-| MinIO Console  | <http://localhost:9001> | `minioadmin` / `minioadmin`                             |
+| Service        | URL                                     | Credentials                                             |
+| -------------- | --------------------------------------- | ------------------------------------------------------- |
+| Upload service | <http://localhost:3001>                 | Keycloak bearer token (see `http/keycloak.http`)        |
+| Transcoder     | <http://localhost:3002/actuator/health> | none                                                    |
+| Postgres       | `localhost:5432`                        | user `yt` / password `yt_password` / db `youtube_clone` |
+| MinIO S3 API   | <http://localhost:9000>                 | `minioadmin` / `minioadmin`                             |
+| MinIO Console  | <http://localhost:9001>                 | `minioadmin` / `minioadmin`                             |
 
 > Credentials are local dev defaults only — never use them outside local.
 
@@ -233,11 +268,13 @@ pnpm format:md   # auto-fix
 
 ## Troubleshooting
 
-| Issue                                                                                      | Fix                                                                                                                                                                                        |
-| ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `port is already allocated`                                                                | Another service uses 5432/9000/9001. Stop it or change the host port in `infra/docker-compose-local.yaml`.                                                                                 |
-| MinIO buckets missing                                                                      | Check the `yt-minio-setup` container logs: `pnpm logs:l`. It runs once then exits — that is expected.                                                                                      |
-| `docker compose` not found                                                                 | Docker Desktop not running, or old Docker without Compose v2.                                                                                                                              |
-| Postgres exits with "in 18+, these Docker images are configured..."                        | Volume must mount at `/var/lib/postgresql` (not `/data`). Already fixed in compose; if it persists, run `pnpm stop:l:pods` to drop the old volume.                                         |
-| DBeaver or a Java app fails with `invalid value for parameter "TimeZone": "Asia/Calcutta"` | Postgres 18 dropped legacy zone names. Start the Java client with `-Duser.timezone=Asia/Kolkata` (DBeaver: add it under `-vmargs` in `dbeaver.ini`, then restart). Keep the server on UTC. |
-| Web page is blank and `/src/main.tsx` returns 500                                          | A dependency was installed while Vite was running. Stop `pnpm start:l:web` and start it again.                                                                                             |
+| Issue                                                                                          | Fix                                                                                                                                                                                                                                                                                                                      |
+| ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `port is already allocated`                                                                    | Another service uses 5432/9000/9001. Stop it or change the host port in `infra/docker-compose-local.yaml`.                                                                                                                                                                                                               |
+| MinIO buckets missing                                                                          | Check the `yt-minio-setup` container logs: `pnpm logs:l`. It runs once then exits — that is expected.                                                                                                                                                                                                                    |
+| `docker compose` not found                                                                     | Docker Desktop not running, or old Docker without Compose v2.                                                                                                                                                                                                                                                            |
+| Postgres exits with "in 18+, these Docker images are configured..."                            | Volume must mount at `/var/lib/postgresql` (not `/data`). Already fixed in compose; if it persists, run `pnpm stop:l:pods` to drop the old volume.                                                                                                                                                                       |
+| DBeaver or a Java app fails with `invalid value for parameter "TimeZone": "Asia/Calcutta"`     | Postgres 18 dropped legacy zone names. Start the Java client with `-Duser.timezone=Asia/Kolkata` (DBeaver: add it under `-vmargs` in `dbeaver.ini`, then restart). Keep the server on UTC.                                                                                                                               |
+| Web page is blank and `/src/main.tsx` returns 500                                              | A dependency was installed while Vite was running. Stop `pnpm start:l:web` and start it again.                                                                                                                                                                                                                           |
+| Gradle: `Cannot invoke "org.gradle.cache.FileLock.writeFile..." ... is null` (CLI or IntelliJ) | Gradle daemons started on different JDKs are fighting over the cache. Run `apps/transcoder-service/gradlew --stop`, make sure `JAVA_HOME` points to JDK 21 (open a new terminal after changing it), and in IntelliJ set **Settings > Build Tools > Gradle > Gradle JVM** to that JDK 21, then reload the Gradle project. |
+| Gradle says it cannot find a Java 21 toolchain                                                 | Install a JDK 21 (not a JRE); Gradle detects installed JDKs, or point `JAVA_HOME` at one. A `JAVA_HOME` that points to a JRE is fine as long as a JDK 21 is installed.                                                                                                                                                   |

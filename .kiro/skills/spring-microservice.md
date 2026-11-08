@@ -30,6 +30,14 @@ transcoder/
     └── out/         # MinioStorageAdapter, KafkaEventAdapter, FfmpegAdapter
 ```
 
+## Bootstrapping
+
+Generate the project at <https://start.spring.io> (Gradle Kotlin DSL, Java 21, the current GA Boot) so the
+wrapper and build files are valid, then reshape it. Boot 4 starter names differ from Boot 3: web is
+`spring-boot-starter-webmvc`, and tests use `spring-boot-starter-*-test`. Pin plugin and library versions.
+Expose a `package.json` shim whose scripts call `scripts/gradle.mjs`, so root `pnpm test` and
+`pnpm start:l:<service>` cover Java too. Build with `gradlew build`; the first run downloads Gradle.
+
 ## Principles
 
 - **Config as record, never hardcode.** Bind all config from `application.yaml` into an
@@ -97,3 +105,22 @@ see `openapi-contracts`.
 - Internal dependencies resolve via the org Maven repo (configured in Gradle).
 - ffmpeg invoked via a thin wrapper class; keep process handling isolated and testable.
 - OpenTelemetry via Micrometer tracing → OTLP (see `observability-otel`).
+
+## Ports-and-adapters checks
+
+- Keep `domain` and `application` free of Spring and `jakarta`; use records, plain classes and JDK APIs.
+  Wire the application service into Spring in an adapter or config class, never with annotations on it.
+- Enforce the layering with ArchUnit (`noClasses().that().resideInAPackage(...).should().dependOnClassesThat()`).
+  Add `.allowEmptyShould(true)` to rules about packages that have no classes yet, or they fail.
+- Test application services with hand-written fake ports (no Spring, no Mockito) and a `@TempDir`.
+- Gate coverage with JaCoCo (`minimum = 0.75`, main class excluded), and let `test` finish with
+  `jacocoTestReport` so the report always exists.
+- After writing tests, break the code on purpose (drop the cleanup, skip a rule) and confirm a test fails.
+
+## IntelliJ run configs
+
+Commit `apps/<service>/.run/<Main>.sample.run.xml` (Spring Boot type, the `<project>.main` module, active
+profile `local`, every env var with its local value) and git-ignore `.run/*.run.xml` except
+`!.run/*.sample.run.xml`. Give the sample its own configuration name (`<Main> (sample)`) so a personal copy
+named `<Main>` can sit next to it. Use the same env names as the Node services (`STORAGE_*`) and Spring's own
+names where they exist (`SPRING_RABBITMQ_*`). Add every new env var to the sample in the same task.

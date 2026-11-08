@@ -317,3 +317,30 @@ use an absolute URL.
 Rejected: a generated SDK (`@hey-api/openapi-ts`, `orval`) adds a lot of generated source, and
 `@hey-api/openapi-ts` does not list TypeScript 7 as supported. `openapi-react-query` (typed hooks on
 top of this client) is a possible later step.
+
+## ADR-023 - Transcoder skeleton: Spring Boot 4.1, ports and adapters, Gradle wrapper
+
+Date: 2026-11-08 - Status: Accepted
+
+`apps/transcoder-service` is Spring Boot 4.1.2 on Java 21 (toolchain), built with Gradle 9.8.2 through the
+wrapper, generated from Spring Initializr so the build files and wrapper are valid. Boot 4 renamed the web
+starter to `spring-boot-starter-webmvc`, with matching `*-test` starters.
+
+Layout follows ADR-011: `domain` (records and the `RenditionLadder` rule), `application` (the `TranscodeVideo`
+use case, `StoragePort` and `TranscoderPort`, and `TranscodeService`), and `adapter/in` and `adapter/out`,
+which do not exist yet and arrive with the RabbitMQ, MinIO and ffmpeg tasks. `TranscodeService` has no
+Spring annotations; it is wired into the application when the first adapters exist, so the service already
+starts and reports health without any messaging.
+
+Rules enforced by tests: ArchUnit forbids Spring and `jakarta` in the domain and application layers, forbids
+the application layer from depending on adapters, and forbids the two adapter groups from depending on each
+other (the adapter rules allow empty sets until adapters exist). JaCoCo fails `check` below 75% coverage,
+excluding the main class. Dependency and tool versions are pinned (ArchUnit 1.5.1, JaCoCo 0.8.16).
+
+The rendition rule never upscales: a source gets every rung of 360p, 480p, 720p and 1080p at or below its
+height, or one rendition at its own even height if smaller than every rung. Renditions are MP4 files for this
+stage; Stage 3 changes the transcoder port to HLS output.
+
+Monorepo wiring: the service has a small `package.json` whose scripts call `scripts/gradle.mjs`, which runs
+the wrapper by absolute path on any OS. That makes `pnpm test`, `pnpm start:l:transcoder` and
+`pnpm --filter` work for Java the same as for Node. The service listens on 3002.

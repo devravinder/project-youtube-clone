@@ -1,0 +1,12 @@
+{
+  "name": "@yt/transcoder-service",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "node ../../scripts/gradle.mjs bootRun",
+    "start": "node ../../scripts/gradle.mjs bootRun",
+    "build": "node ../../scripts/gradle.mjs build",
+    "test": "node ../../scripts/gradle.mjs test",
+    "test:coverage": "node ../../scripts/gradle.mjs check"
+  }
+}

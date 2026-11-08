@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: transcoder-service
+
+server:
+  port: 3002
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
