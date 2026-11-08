@@ -39,3 +39,9 @@ app:
     hls-bucket: ${STORAGE_HLS_BUCKET:hls-videos}
   transcode:
     work-dir: ${TRANSCODE_WORK_DIR:${java.io.tmpdir}/yt-transcoder}
+    ffmpeg:
+      path: ${FFMPEG_PATH:ffmpeg}
+      probe-path: ${FFPROBE_PATH:ffprobe}
+      # Empty runs the binaries above; an image runs each call in a container instead.
+      docker-image: ${FFMPEG_DOCKER_IMAGE:}
+      timeout: ${TRANSCODE_TIMEOUT:30m}

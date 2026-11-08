@@ -22,6 +22,8 @@ $map = [ordered]@{
   "redis:6.2.24"                          = "redis:6.2.24"
   "nginx:v1"                              = "nginx:v1"
   "2462402/otel-lgtm:1.3"                 = "grafana/otel-lgtm:1.3"
+  # Transcoder runs ffmpeg/ffprobe from this image locally (verified with ffmpeg 9.0.2).
+  "mwader/static-ffmpeg:latest"           = "mwader/static-ffmpeg:latest"
 }
 
 $missing = @()

@@ -24,6 +24,8 @@ dependencies {
     implementation(libs.spring.boot.starter.amqp)
     implementation(libs.spring.boot.starter.validation)
     implementation(libs.spring.boot.starter.webmvc)
+    implementation(platform(libs.aws.sdk.bom))
+    implementation(libs.aws.sdk.s3)
 
     compileOnly(libs.spring.boot.configuration.processor)
     annotationProcessor(libs.spring.boot.configuration.processor)

@@ -8,6 +8,7 @@ archunit = "1.5.1"
 spotless = "8.11.0"
 google-java-format = "2.0.0"
 cleanthat = "2.26"
+aws-sdk = "2.57.11"
 
 [libraries]
 spring-boot-starter-actuator = { module = "org.springframework.boot:spring-boot-starter-actuator" }
@@ -18,6 +19,8 @@ spring-boot-configuration-processor = { module = "org.springframework.boot:sprin
 lombok = { module = "org.projectlombok:lombok" }
 lombok-mapstruct-binding = { module = "org.projectlombok:lombok-mapstruct-binding", version.ref = "lombok-mapstruct-binding" }
 mapstruct = { module = "org.mapstruct:mapstruct", version.ref = "mapstruct" }
+aws-sdk-bom = { module = "software.amazon.awssdk:bom", version.ref = "aws-sdk" }
+aws-sdk-s3 = { module = "software.amazon.awssdk:s3" }
 mapstruct-processor = { module = "org.mapstruct:mapstruct-processor", version.ref = "mapstruct" }
 
 spring-boot-starter-actuator-test = { module = "org.springframework.boot:spring-boot-starter-actuator-test" }

@@ -70,7 +70,7 @@ Concepts: async processing, work-queue semantics, outbox, idempotency, polyglot 
 - [x] Java formatting: Spotless + google-java-format (as in the reference starter), formats on compile, lint-staged entry
 - [x] Transcoder conventions from the reference starter: version catalog, `AppProperties` record (`@ConfigurationProperties`), YAML per profile (`local`, `local-observability`, `aws`), Lombok, SLF4J, MapStruct
 - [x] RabbitMQ command producer (upload-service) + consumer (transcoder): `yt.transcode` → quorum queue + DLQ, publisher confirms, 503 + stays `PENDING` when the broker is down, JSON Schema contract in `contracts/`
-- [ ] Storage (MinIO) + ffmpeg adapters — produce renditions; replace the placeholder `TranscodeVideo` bean with `TranscodeService`
+- [x] Storage (MinIO, AWS SDK v2) + ffmpeg adapters: MP4 renditions per ladder rung into `hls-videos/<id>/`; ffmpeg runs in `mwader/static-ffmpeg` locally or as installed binaries
 - [ ] Transactional outbox in Postgres
 - [ ] Idempotent consumer + DLQ + retries
 - [ ] Upload status polling in the UI

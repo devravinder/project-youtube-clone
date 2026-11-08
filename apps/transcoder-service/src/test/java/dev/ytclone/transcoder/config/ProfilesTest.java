@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import dev.ytclone.transcoder.AppProperties;
 import dev.ytclone.transcoder.TranscoderServiceApplication;
+import dev.ytclone.transcoder.application.port.in.TranscodeVideo;
+import dev.ytclone.transcoder.application.service.TranscodeService;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.WebApplicationType;
@@ -32,6 +34,9 @@ class ProfilesTest {
       assertThat(properties.storage().accessKey()).isEqualTo("minioadmin");
       assertThat(properties.storage().forcePathStyle()).isTrue();
       assertThat(context.getEnvironment().getProperty("spring.rabbitmq.username")).isEqualTo("yt");
+      assertThat(properties.transcode().ffmpeg().dockerImage())
+          .isEqualTo("mwader/static-ffmpeg:latest");
+      assertThat(context.getBean(TranscodeVideo.class)).isInstanceOf(TranscodeService.class);
     }
   }
 

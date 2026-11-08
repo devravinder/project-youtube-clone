@@ -19,13 +19,13 @@ Scripts follow `start|stop:env:service`:
 
 ## What runs today
 
-| Capability                                        | How                       | Status                                         |
-| ------------------------------------------------- | ------------------------- | ---------------------------------------------- |
-| Local infra (Postgres, MinIO, Keycloak, RabbitMQ) | `pnpm start:l:pods`       | ✅ available                                   |
-| Upload service (NestJS)                           | `pnpm start:l:upload`     | ✅ available                                   |
-| Web UI (React)                                    | `pnpm start:l:web`        | ✅ available                                   |
-| Transcoder (Spring Boot)                          | `pnpm start:l:transcoder` | ✅ consumes transcode commands (no ffmpeg yet) |
-| Observability (otel-lgtm)                         | `pnpm start:lo:pods`      | ⏳ compose file not added yet                  |
+| Capability                                        | How                       | Status                                             |
+| ------------------------------------------------- | ------------------------- | -------------------------------------------------- |
+| Local infra (Postgres, MinIO, Keycloak, RabbitMQ) | `pnpm start:l:pods`       | ✅ available                                       |
+| Upload service (NestJS)                           | `pnpm start:l:upload`     | ✅ available                                       |
+| Web UI (React)                                    | `pnpm start:l:web`        | ✅ available                                       |
+| Transcoder (Spring Boot)                          | `pnpm start:l:transcoder` | ✅ transcodes to MP4 renditions (ffmpeg in Docker) |
+| Observability (otel-lgtm)                         | `pnpm start:lo:pods`      | ⏳ compose file not added yet                      |
 
 Web app settings live in `apps/web/.env.development` (public values only). Override any of them
 in a git-ignored `apps/web/.env.local`. Restart `pnpm start:l:web` after changing either file.
@@ -234,11 +234,29 @@ minutes.
 pnpm start:l:transcoder
 ```
 
-It listens on port 3002 and consumes `transcoder.transcode-video`: each command is mapped to a `TranscodeJob`
-and handed to the use case, which for now only logs "Accepted job for video ...". The storage and ffmpeg
-adapters arrive with the next task. A message that fails (for example a blank `videoId`) is not retried yet; it
-goes straight to the dead-letter queue. `/actuator/health` includes the RabbitMQ connection. Run its checks
-without starting it: `pnpm --filter @yt/transcoder-service build` (compile, 47 tests, coverage gate).
+It listens on port 3002 and consumes `transcoder.transcode-video`. For each command it downloads the raw
+file from MinIO, probes its height with ffprobe, and encodes H.264/AAC MP4 renditions up to the source
+height: 360p, 480p, 720p and 1080p, never upscaling. It uploads them to
+`hls-videos/<videoId>/<rendition>.mp4` and then deletes its work directory. HLS segments come in Stage 3. A
+message that fails (for example a blank `videoId` or a file that is not a video) is not retried yet; it goes
+straight to the dead-letter queue. `/actuator/health` includes the RabbitMQ connection. Run its checks
+without starting it: `pnpm --filter @yt/transcoder-service build` (compile, tests, coverage gate).
+
+### ffmpeg
+
+No local install is needed. In the `local` profile every ffprobe and ffmpeg call runs as
+`docker run --rm mwader/static-ffmpeg:latest` with the work directory mounted at `/work`, so Docker Desktop
+must be running. Get the image once, then tag it with its plain name:
+
+```powershell
+docker pull <registry>/mwader/static-ffmpeg:latest
+pwsh -File infra/retag-images.ps1 -Registry <registry>
+```
+
+Leave `FFMPEG_DOCKER_IMAGE` empty to call installed binaries instead (`FFMPEG_PATH`, `FFPROBE_PATH`); the
+`aws` profile does that, and its image will copy `/ffmpeg` and `/ffprobe` from the same image. The
+ffmpeg and storage integration tests run only when the image and MinIO are available; otherwise they are
+skipped.
 
 ### From IntelliJ
 
@@ -249,17 +267,20 @@ Open `apps/transcoder-service` as the IntelliJ project. The run list then shows
 For your own settings, copy it to the git-ignored `.run/TranscoderServiceApplication.run.xml` and rename the
 configuration inside to `TranscoderServiceApplication`. Add any new variable to the sample as well.
 
-| Variable                                               | Local value                          | Read by                                    |
-| ------------------------------------------------------ | ------------------------------------ | ------------------------------------------ |
-| `SPRING_PROFILES_ACTIVE`                               | `local` (the default)                | Spring Boot; the run config sets it too    |
-| `SERVER_PORT`                                          | `3002`                               | `application.yaml`                         |
-| `STORAGE_ENDPOINT`, `STORAGE_REGION`                   | `http://localhost:9000`, `us-east-1` | `AppProperties` (`app.storage.*`)          |
-| `STORAGE_ACCESS_KEY`, `STORAGE_SECRET_KEY`             | `minioadmin` / `minioadmin`          | `AppProperties`; required outside `local`  |
-| `STORAGE_RAW_BUCKET`, `STORAGE_HLS_BUCKET`             | `raw-videos`, `hls-videos`           | `AppProperties`                            |
-| `STORAGE_FORCE_PATH_STYLE` (optional)                  | `true` in `local`, `false` otherwise | `AppProperties`                            |
-| `TRANSCODE_WORK_DIR` (optional)                        | `<temp>/yt-transcoder`               | `AppProperties` (`app.transcode.work-dir`) |
-| `SPRING_RABBITMQ_HOST`, `SPRING_RABBITMQ_PORT`         | `localhost`, `5672`                  | Spring AMQP (Boot defaults)                |
-| `SPRING_RABBITMQ_USERNAME`, `SPRING_RABBITMQ_PASSWORD` | `yt` / `yt_password`                 | Spring AMQP; `application-local.yaml`      |
+| Variable                                               | Local value                          | Read by                                     |
+| ------------------------------------------------------ | ------------------------------------ | ------------------------------------------- |
+| `SPRING_PROFILES_ACTIVE`                               | `local` (the default)                | Spring Boot; the run config sets it too     |
+| `SERVER_PORT`                                          | `3002`                               | `application.yaml`                          |
+| `STORAGE_ENDPOINT`, `STORAGE_REGION`                   | `http://localhost:9000`, `us-east-1` | `AppProperties` (`app.storage.*`)           |
+| `STORAGE_ACCESS_KEY`, `STORAGE_SECRET_KEY`             | `minioadmin` / `minioadmin`          | `AppProperties`; required outside `local`   |
+| `STORAGE_RAW_BUCKET`, `STORAGE_HLS_BUCKET`             | `raw-videos`, `hls-videos`           | `AppProperties`                             |
+| `STORAGE_FORCE_PATH_STYLE` (optional)                  | `true` in `local`, `false` otherwise | `AppProperties`                             |
+| `TRANSCODE_WORK_DIR` (optional)                        | `<temp>/yt-transcoder`               | `AppProperties` (`app.transcode.work-dir`)  |
+| `FFMPEG_DOCKER_IMAGE`                                  | `mwader/static-ffmpeg:latest`        | `AppProperties`; empty = installed binaries |
+| `FFMPEG_PATH`, `FFPROBE_PATH` (optional)               | `ffmpeg`, `ffprobe`                  | `AppProperties`; used when no image is set  |
+| `TRANSCODE_TIMEOUT` (optional)                         | `30m`                                | `AppProperties`; per ffmpeg call            |
+| `SPRING_RABBITMQ_HOST`, `SPRING_RABBITMQ_PORT`         | `localhost`, `5672`                  | Spring AMQP (Boot defaults)                 |
+| `SPRING_RABBITMQ_USERNAME`, `SPRING_RABBITMQ_PASSWORD` | `yt` / `yt_password`                 | Spring AMQP; `application-local.yaml`       |
 
 Profiles live in `src/main/resources/application-<profile>.yaml`. `local` supplies the MinIO defaults,
 `local-observability` adds metrics and also activates `local`, and `aws` takes every storage value from the

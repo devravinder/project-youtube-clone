@@ -5,6 +5,10 @@ app:
     access-key: ${STORAGE_ACCESS_KEY:minioadmin}
     secret-key: ${STORAGE_SECRET_KEY:minioadmin}
     force-path-style: ${STORAGE_FORCE_PATH_STYLE:true}
+  # No local ffmpeg install needed; see infra/retag-images.ps1.
+  transcode:
+    ffmpeg:
+      docker-image: ${FFMPEG_DOCKER_IMAGE:mwader/static-ffmpeg:latest}
 
 spring:
   rabbitmq:

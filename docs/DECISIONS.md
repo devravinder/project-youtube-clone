@@ -425,3 +425,26 @@ Date: 2026-11-08 - Status: Accepted (extends ADR-002)
 Rejected: `amqp-connection-manager` (amqplib 2 now recovers connections itself), `@golevelup/nestjs-rabbitmq`
 (a framework layer the single publisher does not need), and a `definitions.json` loaded by the broker (it
 replaces the default user setup and does not apply to a managed broker in AWS).
+
+## ADR-027 - Storage and ffmpeg adapters for the transcoder
+
+Date: 2026-11-08 - Status: Accepted
+
+- Storage: AWS SDK for Java v2 (`s3`, BOM 2.57.11) behind `StoragePort`, with an endpoint override and
+  path-style access for MinIO and checksums only when required, matching the upload-service adapter.
+- ffmpeg is called as a process (`ProcessBuilder`), not through bindings such as JavaCV, which pull in
+  hundreds of MB of native jars. `FfmpegTranscoder` builds the arguments; a launcher decides how they run:
+  - `Binaries`: installed `ffmpeg`/`ffprobe` (the `aws` profile; the image will copy them in).
+  - `Docker`: `docker run --rm` of `mwader/static-ffmpeg` per call with the work root mounted at `/work`
+    (the `local` profile), so Windows needs no ffmpeg install. A container start costs under a second.
+    On timeout the runner kills the client and runs `docker rm -f` on the named container, since killing
+    the client does not stop it.
+  - Process output goes to a temp file, so a chatty process cannot block on a full pipe; errors carry the
+    last 2,000 characters.
+- Encoding: H.264 (`libx264`, preset `veryfast`, `yuv420p`) with the rung's bitrate, `maxrate` 1.5x and
+  `bufsize` 2x; AAC 128 kbit/s stereo when the source has audio; `-movflags +faststart` so playback can start
+  before the download ends. `scale=-2:<height>` keeps the aspect ratio with an even width.
+- Renditions go to `hls-videos/<videoId>/<rendition>.mp4`. The keys are fixed, so a redelivered command
+  overwrites rather than duplicates. Stage 3 replaces the MP4s with HLS segments in the same bucket.
+- The image is the only one pinned to `latest` by necessity: the internal registry mirrors only that tag.
+  The verified build is ffmpeg 9.0.2; the integration tests catch an incompatible update.
