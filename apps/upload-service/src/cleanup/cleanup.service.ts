@@ -39,7 +39,7 @@ export class CleanupService {
     const failedIds: string[] = [];
     let removed = 0;
 
-    // Batches keep memory flat; looping means the backlog can never outgrow a run.
+    // Loop so a backlog cannot outgrow a run.
     while (true) {
       const batch = await this.prisma.video.findMany({
         where: {
@@ -54,7 +54,7 @@ export class CleanupService {
       }
       for (const video of batch) {
         try {
-          // Object first: a row without an object is harmless, the reverse leaks storage.
+          // Object first: a leaked row is harmless, a leaked object is not.
           if (video.uploadId) {
             await this.storage.abortMultipartUpload(video.rawBucket, video.rawKey, video.uploadId);
           }

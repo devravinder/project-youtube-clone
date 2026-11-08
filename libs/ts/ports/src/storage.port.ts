@@ -1,9 +1,8 @@
-// Object storage boundary; MinIO and S3 adapters implement it.
-// Bucket is a logical store; key is the object path within it.
+// Object storage boundary: a bucket is a store, the key is the path inside it.
 
 export interface PresignedUrlOptions {
   readonly expiresInSeconds?: number;
-  // Content-Type the client must send on upload.
+  // Content-Type the client must send.
   readonly contentType?: string;
 }
 
@@ -23,7 +22,7 @@ export interface UploadedPart {
 }
 
 export interface StoragePort {
-  // Client uploads directly to storage, keeping bytes off the app server.
+  // Client uploads straight to storage, off the app server.
   createPresignedUploadUrl(
     bucket: string,
     key: string,
@@ -36,10 +35,10 @@ export interface StoragePort {
     options?: PresignedUrlOptions,
   ): Promise<string>;
 
-  // Transcoder fetches the raw upload with this.
+  // Transcoder fetches the raw upload.
   getObject(bucket: string, key: string): Promise<StoredObject>;
 
-  // Transcoder stores HLS output with this.
+  // Transcoder stores HLS output.
   putObject(
     bucket: string,
     key: string,
@@ -51,8 +50,7 @@ export interface StoragePort {
 
   deleteObject(bucket: string, key: string): Promise<void>;
 
-  // Multipart upload: the client sends big files in parts, each with its own presigned URL.
-  // Parts can be retried or resumed independently; storage joins them on complete.
+  // Multipart: big files go in parts, each with its own presigned URL.
   createMultipartUpload(bucket: string, key: string, options?: PutObjectOptions): Promise<string>;
 
   createPresignedPartUrl(
@@ -65,9 +63,9 @@ export interface StoragePort {
 
   listUploadedParts(bucket: string, key: string, uploadId: string): Promise<UploadedPart[]>;
 
-  // Joins every uploaded part; the adapter reads the part checksums itself.
+  // Joins every stored part; the adapter reads the checksums.
   completeMultipartUpload(bucket: string, key: string, uploadId: string): Promise<void>;
 
-  // Idempotent: aborting an unknown or finished upload succeeds.
+  // Idempotent: unknown or finished uploads succeed.
   abortMultipartUpload(bucket: string, key: string, uploadId: string): Promise<void>;
 }

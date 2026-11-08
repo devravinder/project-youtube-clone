@@ -2,9 +2,7 @@ import { useEffect, useRef } from "react";
 
 const PRELOAD_MARGIN = "300px";
 
-// Calls onVisible whenever the element enters view. Re-observing on `resetKey`
-// matters: the observer only fires on change, so a sentinel that stays visible after
-// a page loads would otherwise never trigger the next load.
+// Re-observes on resetKey so a visible sentinel keeps paging.
 export function useInView<T extends Element>(
   onVisible: () => void,
   enabled: boolean,

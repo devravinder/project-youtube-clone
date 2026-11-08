@@ -22,7 +22,7 @@ import { alice, bob, testConfig } from "./test-data.js";
 const USERS = { alice, bob } as const;
 export type TestUser = keyof typeof USERS;
 
-// Stands in for the JWT guard: the `x-test-user` header says who is calling.
+// Replaces the JWT guard; `x-test-user` picks the caller.
 @Injectable()
 class HeaderAuthGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
@@ -49,7 +49,7 @@ export interface TestApp {
   };
 }
 
-// The real controllers and services over HTTP, with in-memory storage and database.
+// Real controllers and services over fakes.
 export async function createTestApp(): Promise<TestApp> {
   const storage = new FakeStorage();
   const prisma = new FakePrisma();

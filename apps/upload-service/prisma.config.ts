@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { defineConfig, env } from "prisma/config";
 
-// Prisma 7 no longer reads .env itself; load the local sample for CLI commands.
+// Prisma 7 skips .env; load the sample for CLI commands.
 if (existsSync(".env.sample")) {
   process.loadEnvFile(".env.sample");
 }

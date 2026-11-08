@@ -1,7 +1,7 @@
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-  // Nest controllers use legacy decorators; tsx does this for the app, this does it for tests.
+  // Nest needs legacy decorators.
   oxc: { decorator: { legacy: true } },
   test: {
     environment: "node",

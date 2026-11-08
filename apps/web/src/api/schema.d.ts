@@ -4,232 +4,232 @@
  */
 
 export interface paths {
-    readonly "/uploads/presign": {
-        readonly parameters: {
-            readonly query?: never;
-            readonly header?: never;
-            readonly path?: never;
-            readonly cookie?: never;
+    "/uploads/presign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        readonly get?: never;
-        readonly put?: never;
+        get?: never;
+        put?: never;
         /**
          * Create a pending video and a presigned upload URL
          * @description For small files: PUT the file to `uploadUrl`, then call the complete endpoint.
          */
-        readonly post: operations["createPresignedUpload"];
-        readonly delete?: never;
-        readonly options?: never;
-        readonly head?: never;
-        readonly patch?: never;
-        readonly trace?: never;
+        post: operations["createPresignedUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    readonly "/uploads/multipart": {
-        readonly parameters: {
-            readonly query?: never;
-            readonly header?: never;
-            readonly path?: never;
-            readonly cookie?: never;
+    "/uploads/multipart": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        readonly get?: never;
-        readonly put?: never;
+        get?: never;
+        put?: never;
         /**
          * Create a pending video for a multipart upload
          * @description For big files: split the file into `partCount` parts of `partSize` bytes, request part URLs, PUT each part, then call the complete endpoint. Parts can be retried and resumed.
          */
-        readonly post: operations["startMultipartUpload"];
-        readonly delete?: never;
-        readonly options?: never;
-        readonly head?: never;
-        readonly patch?: never;
-        readonly trace?: never;
+        post: operations["startMultipartUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    readonly "/uploads/{videoId}/parts": {
-        readonly parameters: {
-            readonly query?: never;
-            readonly header?: never;
-            readonly path?: never;
-            readonly cookie?: never;
+    "/uploads/{videoId}/parts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
         /** List the parts already in storage, for resuming an upload */
-        readonly get: operations["listUploadedParts"];
-        readonly put?: never;
+        get: operations["listUploadedParts"];
+        put?: never;
         /** Get presigned URLs for some parts of a multipart upload */
-        readonly post: operations["createPartUrls"];
-        readonly delete?: never;
-        readonly options?: never;
-        readonly head?: never;
-        readonly patch?: never;
-        readonly trace?: never;
+        post: operations["createPartUrls"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    readonly "/uploads/{videoId}/complete": {
-        readonly parameters: {
-            readonly query?: never;
-            readonly header?: never;
-            readonly path?: never;
-            readonly cookie?: never;
+    "/uploads/{videoId}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        readonly get?: never;
-        readonly put?: never;
+        get?: never;
+        put?: never;
         /**
          * Confirm that the file reached storage
          * @description Marks a pending video as uploaded. For multipart uploads it first joins the parts. Only the uploader may confirm. Idempotent.
          */
-        readonly post: operations["confirmUpload"];
-        readonly delete?: never;
-        readonly options?: never;
-        readonly head?: never;
-        readonly patch?: never;
-        readonly trace?: never;
+        post: operations["confirmUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    readonly "/uploads/{videoId}": {
-        readonly parameters: {
-            readonly query?: never;
-            readonly header?: never;
-            readonly path?: never;
-            readonly cookie?: never;
+    "/uploads/{videoId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        readonly get?: never;
-        readonly put?: never;
-        readonly post?: never;
+        get?: never;
+        put?: never;
+        post?: never;
         /** Cancel an unfinished upload and discard what was stored */
-        readonly delete: operations["abortUpload"];
-        readonly options?: never;
-        readonly head?: never;
-        readonly patch?: never;
-        readonly trace?: never;
+        delete: operations["abortUpload"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    readonly "/videos": {
-        readonly parameters: {
-            readonly query?: never;
-            readonly header?: never;
-            readonly path?: never;
-            readonly cookie?: never;
+    "/videos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
         /** List ready-to-show videos, newest first (cursor pagination) */
-        readonly get: operations["listVideos"];
-        readonly put?: never;
-        readonly post?: never;
-        readonly delete?: never;
-        readonly options?: never;
-        readonly head?: never;
-        readonly patch?: never;
-        readonly trace?: never;
+        get: operations["listVideos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    readonly "/videos/{id}": {
-        readonly parameters: {
-            readonly query?: never;
-            readonly header?: never;
-            readonly path?: never;
-            readonly cookie?: never;
+    "/videos/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
         /** Get one video with a fresh playback URL */
-        readonly get: operations["getVideo"];
-        readonly put?: never;
-        readonly post?: never;
-        readonly delete?: never;
-        readonly options?: never;
-        readonly head?: never;
-        readonly patch?: never;
-        readonly trace?: never;
+        get: operations["getVideo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        readonly PresignRequest: {
-            readonly filename: string;
-            readonly contentType: string;
-            readonly title?: string;
-            readonly description?: string;
+        PresignRequest: {
+            filename: string;
+            contentType: string;
+            title?: string;
+            description?: string;
         };
-        readonly PresignResponse: {
+        PresignResponse: {
             /** Format: uuid */
-            readonly videoId: string;
-            readonly bucket: string;
-            readonly key: string;
+            videoId: string;
+            bucket: string;
+            key: string;
             /**
              * Format: uri
              * @description Presigned PUT URL; send the file bytes straight to storage
              */
-            readonly uploadUrl: string;
-            readonly expiresInSeconds: number;
+            uploadUrl: string;
+            expiresInSeconds: number;
         };
-        readonly ConfirmUploadResponse: {
+        ConfirmUploadResponse: {
             /** Format: uuid */
-            readonly videoId: string;
+            videoId: string;
             /** @enum {string} */
-            readonly status: "PENDING" | "UPLOADED" | "PROCESSING" | "READY" | "FAILED";
+            status: "PENDING" | "UPLOADED" | "PROCESSING" | "READY" | "FAILED";
         };
-        readonly MultipartInitRequest: {
-            readonly filename: string;
-            readonly contentType: string;
-            readonly title?: string;
-            readonly description?: string;
+        MultipartInitRequest: {
+            filename: string;
+            contentType: string;
+            title?: string;
+            description?: string;
             /** @description File size in bytes */
-            readonly fileSize: number;
+            fileSize: number;
         };
-        readonly MultipartInitResponse: {
+        MultipartInitResponse: {
             /** Format: uuid */
-            readonly videoId: string;
+            videoId: string;
             /** @description Bytes per part; the last part may be smaller */
-            readonly partSize: number;
-            readonly partCount: number;
+            partSize: number;
+            partCount: number;
         };
-        readonly PartUrlsRequest: {
-            readonly partNumbers: readonly number[];
+        PartUrlsRequest: {
+            partNumbers: number[];
         };
-        readonly PartUrlsResponse: {
-            readonly urls: readonly {
-                readonly partNumber: number;
+        PartUrlsResponse: {
+            urls: {
+                partNumber: number;
                 /** Format: uri */
-                readonly url: string;
+                url: string;
             }[];
-            readonly expiresInSeconds: number;
+            expiresInSeconds: number;
         };
-        readonly UploadedPartsResponse: {
-            readonly partSize: number;
-            readonly partCount: number;
-            readonly uploadedParts: readonly {
-                readonly partNumber: number;
-                readonly size: number;
+        UploadedPartsResponse: {
+            partSize: number;
+            partCount: number;
+            uploadedParts: {
+                partNumber: number;
+                size: number;
             }[];
         };
-        readonly VideoSummary: {
+        VideoSummary: {
             /** Format: uuid */
-            readonly id: string;
-            readonly title: string;
-            readonly description: string | null;
+            id: string;
+            title: string;
+            description: string | null;
             /** @enum {string} */
-            readonly status: "PENDING" | "UPLOADED" | "PROCESSING" | "READY" | "FAILED";
-            readonly viewCount: number;
+            status: "PENDING" | "UPLOADED" | "PROCESSING" | "READY" | "FAILED";
+            viewCount: number;
             /** Format: date-time */
-            readonly createdAt: string;
+            createdAt: string;
         };
-        readonly VideoPage: {
-            readonly items: readonly components["schemas"]["VideoSummary"][];
+        VideoPage: {
+            items: components["schemas"]["VideoSummary"][];
             /** @description Pass back as `cursor` to fetch the next page; null on the last page */
-            readonly nextCursor: string | null;
+            nextCursor: string | null;
         };
-        readonly VideoDetail: {
+        VideoDetail: {
             /** Format: uuid */
-            readonly id: string;
-            readonly title: string;
-            readonly description: string | null;
+            id: string;
+            title: string;
+            description: string | null;
             /** @enum {string} */
-            readonly status: "PENDING" | "UPLOADED" | "PROCESSING" | "READY" | "FAILED";
-            readonly viewCount: number;
+            status: "PENDING" | "UPLOADED" | "PROCESSING" | "READY" | "FAILED";
+            viewCount: number;
             /** Format: date-time */
-            readonly createdAt: string;
-            readonly contentType: string;
+            createdAt: string;
+            contentType: string;
             /** @description Null until the file has actually been uploaded */
-            readonly playbackUrl: string | null;
+            playbackUrl: string | null;
         };
         /** @description Error body returned by every failing request */
-        readonly ErrorResponse: {
-            readonly statusCode: number;
-            readonly error: string;
-            readonly message: string | readonly unknown[];
+        ErrorResponse: {
+            statusCode: number;
+            error: string;
+            message: string | unknown[];
         };
     };
     responses: never;
@@ -240,428 +240,428 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    readonly createPresignedUpload: {
-        readonly parameters: {
-            readonly query?: never;
-            readonly header?: never;
-            readonly path?: never;
-            readonly cookie?: never;
+    createPresignedUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        readonly requestBody: {
-            readonly content: {
-                readonly "application/json": components["schemas"]["PresignRequest"];
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PresignRequest"];
             };
         };
-        readonly responses: {
+        responses: {
             /** @description Video created; upload URL issued */
-            readonly 201: {
+            201: {
                 headers: {
-                    readonly [name: string]: unknown;
+                    [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["PresignResponse"];
+                    "application/json": components["schemas"]["PresignResponse"];
                 };
             };
             /** @description Request body failed validation */
-            readonly 400: {
+            400: {
                 headers: {
-                    readonly [name: string]: unknown;
+                    [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Missing, invalid or expired bearer token */
-            readonly 401: {
+            401: {
                 headers: {
-                    readonly [name: string]: unknown;
+                    [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
     };
-    readonly startMultipartUpload: {
-        readonly parameters: {
-            readonly query?: never;
-            readonly header?: never;
-            readonly path?: never;
-            readonly cookie?: never;
+    startMultipartUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        readonly requestBody: {
-            readonly content: {
-                readonly "application/json": components["schemas"]["MultipartInitRequest"];
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MultipartInitRequest"];
             };
         };
-        readonly responses: {
+        responses: {
             /** @description Upload started */
-            readonly 201: {
+            201: {
                 headers: {
-                    readonly [name: string]: unknown;
+                    [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["MultipartInitResponse"];
+                    "application/json": components["schemas"]["MultipartInitResponse"];
                 };
             };
             /** @description Request body failed validation */
-            readonly 400: {
+            400: {
                 headers: {
-                    readonly [name: string]: unknown;
+                    [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Missing, invalid or expired bearer token */
-            readonly 401: {
+            401: {
                 headers: {
-                    readonly [name: string]: unknown;
+                    [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
     };
-    readonly listUploadedParts: {
-        readonly parameters: {
-            readonly query?: never;
-            readonly header?: never;
-            readonly path: {
-                readonly videoId: string;
+    listUploadedParts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                videoId: string;
             };
-            readonly cookie?: never;
+            cookie?: never;
         };
-        readonly requestBody?: never;
-        readonly responses: {
+        requestBody?: never;
+        responses: {
             /** @description Parts stored so far */
-            readonly 200: {
+            200: {
                 headers: {
-                    readonly [name: string]: unknown;
+                    [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["UploadedPartsResponse"];
+                    "application/json": components["schemas"]["UploadedPartsResponse"];
                 };
             };
             /** @description videoId is not a UUID */
-            readonly 400: {
+            400: {
                 headers: {
-                    readonly [name: string]: unknown;
+                    [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Missing, invalid or expired bearer token */
-            readonly 401: {
+            401: {
                 headers: {
-                    readonly [name: string]: unknown;
+                    [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Caller is not the uploader */
-            readonly 403: {
+            403: {
                 headers: {
-                    readonly [name: string]: unknown;
+                    [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Video does not exist */
-            readonly 404: {
+            404: {
                 headers: {
-                    readonly [name: string]: unknown;
+                    [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Not an unfinished multipart upload */
-            readonly 409: {
+            409: {
                 headers: {
-                    readonly [name: string]: unknown;
+                    [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
     };
-    readonly createPartUrls: {
-        readonly parameters: {
-            readonly query?: never;
-            readonly header?: never;
-            readonly path: {
-                readonly videoId: string;
+    createPartUrls: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                videoId: string;
             };
-            readonly cookie?: never;
+            cookie?: never;
         };
-        readonly requestBody: {
-            readonly content: {
-                readonly "application/json": components["schemas"]["PartUrlsRequest"];
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PartUrlsRequest"];
             };
         };
-        readonly responses: {
+        responses: {
             /** @description One URL per requested part */
-            readonly 201: {
+            201: {
                 headers: {
-                    readonly [name: string]: unknown;
+                    [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["PartUrlsResponse"];
+                    "application/json": components["schemas"]["PartUrlsResponse"];
                 };
             };
             /** @description Invalid body or a part number beyond the part count */
-            readonly 400: {
+            400: {
                 headers: {
-                    readonly [name: string]: unknown;
+                    [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Missing, invalid or expired bearer token */
-            readonly 401: {
+            401: {
                 headers: {
-                    readonly [name: string]: unknown;
+                    [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Caller is not the uploader */
-            readonly 403: {
+            403: {
                 headers: {
-                    readonly [name: string]: unknown;
+                    [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Video does not exist */
-            readonly 404: {
+            404: {
                 headers: {
-                    readonly [name: string]: unknown;
+                    [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Not an unfinished multipart upload */
-            readonly 409: {
+            409: {
                 headers: {
-                    readonly [name: string]: unknown;
+                    [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
     };
-    readonly confirmUpload: {
-        readonly parameters: {
-            readonly query?: never;
-            readonly header?: never;
-            readonly path: {
-                readonly videoId: string;
+    confirmUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                videoId: string;
             };
-            readonly cookie?: never;
+            cookie?: never;
         };
-        readonly requestBody?: never;
-        readonly responses: {
+        requestBody?: never;
+        responses: {
             /** @description Video is now uploaded */
-            readonly 201: {
+            201: {
                 headers: {
-                    readonly [name: string]: unknown;
+                    [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["ConfirmUploadResponse"];
+                    "application/json": components["schemas"]["ConfirmUploadResponse"];
                 };
             };
             /** @description videoId is not a UUID */
-            readonly 400: {
+            400: {
                 headers: {
-                    readonly [name: string]: unknown;
+                    [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Missing, invalid or expired bearer token */
-            readonly 401: {
+            401: {
                 headers: {
-                    readonly [name: string]: unknown;
+                    [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Caller is not the uploader */
-            readonly 403: {
+            403: {
                 headers: {
-                    readonly [name: string]: unknown;
+                    [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Video does not exist */
-            readonly 404: {
+            404: {
                 headers: {
-                    readonly [name: string]: unknown;
+                    [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description The file or some parts have not reached storage, or part sizes do not match the plan */
-            readonly 409: {
+            409: {
                 headers: {
-                    readonly [name: string]: unknown;
+                    [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
     };
-    readonly abortUpload: {
-        readonly parameters: {
-            readonly query?: never;
-            readonly header?: never;
-            readonly path: {
-                readonly videoId: string;
+    abortUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                videoId: string;
             };
-            readonly cookie?: never;
+            cookie?: never;
         };
-        readonly requestBody?: never;
-        readonly responses: {
+        requestBody?: never;
+        responses: {
             /** @description Upload discarded */
-            readonly 204: {
+            204: {
                 headers: {
-                    readonly [name: string]: unknown;
+                    [name: string]: unknown;
                 };
                 content?: never;
             };
             /** @description videoId is not a UUID */
-            readonly 400: {
+            400: {
                 headers: {
-                    readonly [name: string]: unknown;
+                    [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Missing, invalid or expired bearer token */
-            readonly 401: {
+            401: {
                 headers: {
-                    readonly [name: string]: unknown;
+                    [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Caller is not the uploader */
-            readonly 403: {
+            403: {
                 headers: {
-                    readonly [name: string]: unknown;
+                    [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Video does not exist */
-            readonly 404: {
+            404: {
                 headers: {
-                    readonly [name: string]: unknown;
+                    [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description The upload is already finished */
-            readonly 409: {
+            409: {
                 headers: {
-                    readonly [name: string]: unknown;
+                    [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
     };
-    readonly listVideos: {
-        readonly parameters: {
-            readonly query?: {
-                readonly cursor?: string;
-                readonly limit?: number;
+    listVideos: {
+        parameters: {
+            query?: {
+                cursor?: string;
+                limit?: number;
             };
-            readonly header?: never;
-            readonly path?: never;
-            readonly cookie?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        readonly requestBody?: never;
-        readonly responses: {
+        requestBody?: never;
+        responses: {
             /** @description One page of videos */
-            readonly 200: {
+            200: {
                 headers: {
-                    readonly [name: string]: unknown;
+                    [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["VideoPage"];
+                    "application/json": components["schemas"]["VideoPage"];
                 };
             };
             /** @description Query parameters failed validation */
-            readonly 400: {
+            400: {
                 headers: {
-                    readonly [name: string]: unknown;
+                    [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
     };
-    readonly getVideo: {
-        readonly parameters: {
-            readonly query?: never;
-            readonly header?: never;
-            readonly path: {
-                readonly id: string;
+    getVideo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
             };
-            readonly cookie?: never;
+            cookie?: never;
         };
-        readonly requestBody?: never;
-        readonly responses: {
+        requestBody?: never;
+        responses: {
             /** @description The video */
-            readonly 200: {
+            200: {
                 headers: {
-                    readonly [name: string]: unknown;
+                    [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["VideoDetail"];
+                    "application/json": components["schemas"]["VideoDetail"];
                 };
             };
             /** @description id is not a UUID */
-            readonly 400: {
+            400: {
                 headers: {
-                    readonly [name: string]: unknown;
+                    [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Video does not exist */
-            readonly 404: {
+            404: {
                 headers: {
-                    readonly [name: string]: unknown;
+                    [name: string]: unknown;
                 };
                 content: {
-                    readonly "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

@@ -12,7 +12,7 @@ import { UploadsService } from "./uploads.service.js";
 
 const MiB = 1024 * 1024;
 
-// A 30,000,000-byte file split into 8 MiB parts: three full parts and the remainder.
+// 30,000,000 bytes in 8 MiB parts: three full, one remainder.
 const COMPLETE_SIZES = [8 * MiB, 8 * MiB, 8 * MiB, 4_834_176];
 
 let storage: FakeStorage;

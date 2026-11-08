@@ -10,7 +10,7 @@ describe("config", () => {
     const { config } = await import("./config");
 
     expect(config).toEqual({
-      apiBaseUrl: "/api",
+      apiBaseUrl: "http://api.test/api",
       oidcAuthority: "http://localhost:8180/realms/test",
       oidcClientId: "yt-web",
     });

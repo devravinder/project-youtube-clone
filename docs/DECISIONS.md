@@ -294,3 +294,26 @@ tokens against a local JWKS server. A test compares the committed OpenAPI file w
 Trade-off: a fake can drift from the real database or storage. `FakePrisma` implements only the
 queries the services use; if a service starts using a new query, the fake must grow with it, and the
 `.http` suite is what catches a mismatch with real Postgres.
+
+## ADR-022 - Web API client: openapi-fetch over the generated paths type
+
+Date: 2026-11-08 - Status: Accepted (extends ADR-019)
+
+`apps/web/src/services/api.ts` used a hand-written `request()` helper with path strings, so only
+payload types came from the contract; a renamed endpoint, a wrong method or a wrong response type
+compiled fine. It now uses `openapi-fetch` (0.17.0), a roughly 6 kB `fetch` wrapper that takes the
+generated `paths` type: every path literal, method, parameter, body and response is checked by the
+compiler. There is no extra code generation. The bearer token and the `ApiError` for non-2xx
+responses are middleware, so callers still see exceptions and TanStack Query is unaffected.
+
+Verified: six deliberately wrong calls all fail `tsc`, and renaming an endpoint in the spec makes the
+web typecheck fail (11 errors), so contract drift now breaks the build instead of production.
+
+Gotcha: with TypeScript 7.0.2 the `--immutable` flag of `openapi-typescript` (readonly arrays) makes
+`openapi-fetch` infer array responses as objects, so the flag was removed and the generated types are
+mutable. Also, a relative `baseUrl` (`/api`) works in browsers but not in Node's `Request`, so tests
+use an absolute URL.
+
+Rejected: a generated SDK (`@hey-api/openapi-ts`, `orval`) adds a lot of generated source, and
+`@hey-api/openapi-ts` does not list TypeScript 7 as supported. `openapi-react-query` (typed hooks on
+top of this client) is a possible later step.

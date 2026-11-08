@@ -56,7 +56,7 @@ export async function uploadVideo(input: UploadInput): Promise<UploadResult> {
   return { ...result, videoId };
 }
 
-// Discards an unfinished upload on the server and forgets how to resume it.
+// Discards an unfinished upload and its resume record.
 export async function cancelUpload(file: File, videoId?: string): Promise<void> {
   const id = videoId ?? localStorage.getItem(resumeKey(file));
   localStorage.removeItem(resumeKey(file));
@@ -103,14 +103,14 @@ async function uploadInParts({
   report();
 
   const urls = new Map<number, string>();
-  // Fetches URLs for this part and the next ones still missing, one request per batch.
+  // Fetches the next batch of missing URLs.
   const loadUrlsFrom = async (partNumber: number) => {
     const wanted = pending.filter((n) => n >= partNumber && !urls.has(n)).slice(0, URL_BATCH_SIZE);
     const batch = await createPartUrls(videoId, wanted);
     batch.urls.forEach(({ partNumber: n, url }) => urls.set(n, url));
   };
 
-  // Workers that need a URL at the same moment share one request.
+  // Concurrent workers share one URL request.
   let loading: Promise<void> | null = null;
   const ensureUrl = async (partNumber: number) => {
     while (!urls.has(partNumber)) {
@@ -144,7 +144,7 @@ async function uploadInParts({
         if (isAbort(error) || attempt >= MAX_ATTEMPTS) {
           throw error;
         }
-        // An expired or rejected URL is replaced on the next attempt.
+        // Expired URL: fetch a fresh one.
         if (error instanceof StorageUploadError && error.status === 403) {
           urls.delete(partNumber);
         }
@@ -157,7 +157,7 @@ async function uploadInParts({
   return videoId;
 }
 
-// Asks the server what a previous attempt already stored; any failure means "start fresh".
+// Any failure means start fresh.
 async function tryResume(file: File) {
   const videoId = localStorage.getItem(resumeKey(file));
   if (!videoId) {
@@ -180,7 +180,7 @@ async function runPool<T>(items: T[], size: number, task: (item: T) => Promise<v
       try {
         await task(item);
       } catch (error) {
-        // Stop handing out work; the remaining parts stay uploadable on a retry.
+        // Stop handing out work after a failure.
         queue.length = 0;
         throw error;
       }

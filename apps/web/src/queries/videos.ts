@@ -26,8 +26,7 @@ export function useVideo(id: string) {
   return useQuery({
     queryKey: videoKeys.detail(id),
     queryFn: () => getVideo(id),
-    // Every fetch signs a new playback URL; a refetch would restart the player.
-    // Keep the data fresh for most of the URL's one-hour life, and skip focus refetches.
+    // Each fetch signs a new URL, so refetching would restart the player.
     staleTime: PLAYBACK_URL_STALE_MS,
     refetchOnWindowFocus: false,
   });
@@ -72,7 +71,7 @@ export function useUploadVideo() {
     },
   });
 
-  // Stops the transfer and discards what was already stored.
+  // Stop the transfer and discard stored parts.
   const cancel = async () => {
     const current = running.current;
     if (!current) {

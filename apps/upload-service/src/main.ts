@@ -11,7 +11,7 @@ app.enableShutdownHooks();
 const config = app.get<AppConfig>(APP_CONFIG);
 const document = buildOpenApiDocument(app);
 SwaggerModule.setup("docs", app, document);
-// Keeps contracts/ current while developing; deployed environments never write files.
+// Keep contracts/ current in development.
 if (config.APP_ENV !== "aws") {
   await writeOpenApiFile(document);
 }

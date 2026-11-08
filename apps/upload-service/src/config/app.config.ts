@@ -8,7 +8,7 @@ const schema = z.object({
   ...postgresEnv.shape,
   ...keycloakEnv.shape,
   UPLOAD_PENDING_TTL_MINUTES: z.coerce.number().int().positive().default(1440),
-  // Storage rejects parts under 5 MiB (except the last one).
+  // Storage rejects smaller parts, except the last.
   UPLOAD_PART_SIZE_MB: z.coerce.number().int().min(5).default(8),
 });
 

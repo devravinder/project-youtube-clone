@@ -22,7 +22,7 @@ import type { AppConfig } from "../config/app.config.js";
 
 const DEFAULT_EXPIRY_SECONDS = 900;
 
-// Serves MinIO locally and AWS S3 in the cloud; only config differs.
+// Serves MinIO and S3; only config differs.
 export class S3StorageAdapter implements StoragePort {
   private readonly client: S3Client;
 
@@ -31,7 +31,7 @@ export class S3StorageAdapter implements StoragePort {
       endpoint: config.STORAGE_ENDPOINT,
       region: config.STORAGE_REGION,
       forcePathStyle: config.STORAGE_FORCE_PATH_STYLE,
-      // Default checksums get baked into presigned PUT URLs and break real S3 uploads.
+      // Default checksums break presigned PUTs on real S3.
       requestChecksumCalculation: "WHEN_REQUIRED",
       credentials: {
         accessKeyId: config.STORAGE_ACCESS_KEY,
@@ -179,7 +179,7 @@ export class S3StorageAdapter implements StoragePort {
     }
   }
 
-  // ListParts returns at most 1000 parts per call, so follow the marker.
+  // ListParts returns at most 1000 parts per call.
   private async listAllParts(bucket: string, key: string, uploadId: string) {
     const parts: { partNumber: number; size: number; etag: string }[] = [];
     let marker: string | undefined;

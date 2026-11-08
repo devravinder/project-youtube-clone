@@ -7,7 +7,7 @@ export const OPENAPI_FILE = resolve(
   "../../../../contracts/upload-service.openapi.json",
 );
 
-// Writes only when the content changed, so watchers and file times stay quiet.
+// Skips the write when nothing changed.
 export async function writeOpenApiFile(document: OpenAPIObject): Promise<boolean> {
   const content = `${JSON.stringify(document, null, 2)}\n`;
   const current = await readFile(OPENAPI_FILE, "utf8").catch(() => "");

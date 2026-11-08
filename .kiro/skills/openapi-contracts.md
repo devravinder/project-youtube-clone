@@ -65,9 +65,34 @@ z.toJSONSchema(z.globalRegistry, {
   `@openapitools/openapi-generator-cli`: it needs a JDK and emits heavy boilerplate.
 - It needs the TypeScript 5 compiler API, which TypeScript 7 lacks, so the web script runs it with
   `pnpm dlx openapi-typescript@<pinned>` (it gets its own TS 5). Keep the version pinned.
-- Command: `openapi-typescript ../../contracts/<svc>.openapi.json --immutable -o src/api/schema.d.ts`.
+- Command: `openapi-typescript ../../contracts/<svc>.openapi.json -o src/api/schema.d.ts`.
+  Do not pass `--immutable`: with TypeScript 7.0.2 the `readonly` arrays it emits make
+  `openapi-fetch` infer array responses as objects (`.map` is "not callable").
 - App code imports named types from a thin `src/types.ts`
   (`components["schemas"]["VideoPage"]`); never import from the generated file everywhere.
+
+## Typed API client (TypeScript)
+
+Never hand-write paths or response types. Create one `openapi-fetch` client from the generated
+`paths` type and call it with the path literal:
+
+```ts
+const client = createClient<paths>({ baseUrl: config.apiBaseUrl });
+client.GET("/videos/{id}", { params: { path: { id } } }); // response type inferred
+```
+
+- A typo in a path, a method the contract lacks, a wrong parameter name or type, a missing body
+  field and a misspelled response field all fail `tsc`. After `pnpm api:generate`, a renamed or
+  removed endpoint fails the web build instead of failing in production.
+- Cross-cutting behaviour lives in middleware: add the bearer token in `onRequest`, and throw a
+  typed `ApiError` in `onResponse` for non-2xx responses, so callers (and TanStack Query) see
+  exceptions and `data` is always present.
+- Pass `fetch: (request) => globalThis.fetch(request)` so tests can stub the global fetch.
+- A relative `baseUrl` such as `/api` works in browsers but not in Node's `Request`; use an absolute
+  URL in the test environment.
+- Keep non-API traffic out of the client: the presigned storage PUT is not part of the contract and
+  stays a plain XHR (it needs upload progress).
+- Optional next step: `openapi-react-query` generates typed hooks on top of this client.
 - Add `contracts/` and the generated file to `.prettierignore` so formatters do not cause drift.
 
 ## Java services

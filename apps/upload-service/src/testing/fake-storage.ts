@@ -6,7 +6,7 @@ interface MultipartSession {
   readonly parts: Map<number, number>;
 }
 
-// In-memory StoragePort. The "simulate" helpers play the browser's part.
+// In-memory StoragePort; simulate* helpers play the browser.
 export class FakeStorage implements StoragePort {
   readonly objects = new Map<string, number>();
   readonly sessions = new Map<string, MultipartSession>();
@@ -91,7 +91,7 @@ export class FakeStorage implements StoragePort {
     this.session(uploadId).parts.set(partNumber, size);
   }
 
-  // Mirrors real storage, which rejects calls for an upload that finished or never existed.
+  // Real storage rejects finished or unknown uploads.
   private session(uploadId: string): MultipartSession {
     const session = this.sessions.get(uploadId);
     if (!session) {

@@ -1,5 +1,4 @@
-// Refuses destructive database commands unless DATABASE_URL points at this machine.
-// Usage (from a service folder): node ../../scripts/assert-local-db.mjs
+// Refuses destructive database commands unless DATABASE_URL is local.
 import { existsSync } from "node:fs";
 
 if (existsSync(".env.sample")) {

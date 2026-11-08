@@ -16,7 +16,7 @@ export class VideosService {
   ) {}
 
   async list({ limit, cursor }: ListVideosQuery): Promise<VideoPage> {
-    // Fetch one extra row: it becomes the cursor that starts the next page.
+    // One extra row becomes the next cursor.
     const rows = await this.prisma.video.findMany({
       where: { status: { not: VideoStatus.PENDING } },
       take: limit + 1,

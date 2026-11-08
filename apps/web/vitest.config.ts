@@ -1,7 +1,7 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 
-// Separate from vite.config.ts: tests need no dev proxy and no real environment.
+// Separate from vite.config.ts: no dev proxy needed.
 export default defineConfig({
   plugins: [react()],
   test: {
@@ -9,7 +9,8 @@ export default defineConfig({
     include: ["src/**/*.test.{ts,tsx}"],
     setupFiles: ["src/test/setup.ts"],
     env: {
-      VITE_API_BASE_URL: "/api",
+      // Node's Request needs an absolute URL.
+      VITE_API_BASE_URL: "http://api.test/api",
       VITE_OIDC_AUTHORITY: "http://localhost:8180/realms/test",
       VITE_OIDC_CLIENT_ID: "yt-web",
     },

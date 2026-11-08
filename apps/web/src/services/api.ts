@@ -1,16 +1,8 @@
+import createClient, { type Middleware } from "openapi-fetch";
+import type { paths } from "../api/schema";
 import { getAccessToken } from "../auth/user-manager";
 import { config } from "../config";
-import type {
-  ConfirmUploadResponse,
-  MultipartInitRequest,
-  MultipartInitResponse,
-  PartUrlsResponse,
-  PresignRequest,
-  PresignResponse,
-  VideoDetail,
-  UploadedPartsResponse,
-  VideoPage,
-} from "../types";
+import type { PresignRequest, MultipartInitRequest } from "../types";
 
 export class ApiError extends Error {
   constructor(
@@ -34,65 +26,67 @@ async function readErrorMessage(response: Response): Promise<string> {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = await getAccessToken();
-  const headers = new Headers(init?.headers);
-  if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
-  }
-  const response = await fetch(`${config.apiBaseUrl}${path}`, { ...init, headers });
-  if (!response.ok) {
-    throw new ApiError(response.status, await readErrorMessage(response));
-  }
-  if (response.status === 204) {
-    return undefined as T;
-  }
-  return (await response.json()) as T;
-}
-
-export const listVideos = (params: { cursor?: string; limit?: number } = {}) => {
-  const query = new URLSearchParams();
-  if (params.cursor) {
-    query.set("cursor", params.cursor);
-  }
-  if (params.limit) {
-    query.set("limit", String(params.limit));
-  }
-  const queryString = query.toString();
-  return request<VideoPage>(`/videos${queryString ? `?${queryString}` : ""}`);
+const authAndErrors: Middleware = {
+  async onRequest({ request }) {
+    const token = await getAccessToken();
+    if (token) {
+      request.headers.set("Authorization", `Bearer ${token}`);
+    }
+    return request;
+  },
+  async onResponse({ response }) {
+    if (!response.ok) {
+      throw new ApiError(response.status, await readErrorMessage(response.clone()));
+    }
+    return undefined;
+  },
 };
 
-export const getVideo = (id: string) => request<VideoDetail>(`/videos/${id}`);
-
-export const createPresignedUpload = (body: PresignRequest) =>
-  request<PresignResponse>("/uploads/presign", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-
-export const confirmUpload = (videoId: string) =>
-  request<ConfirmUploadResponse>(`/uploads/${videoId}/complete`, {
-    method: "POST",
-  });
-
-const jsonPost = (body: unknown): RequestInit => ({
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify(body),
+// Paths and payloads are checked against the generated `paths` type.
+const client = createClient<paths>({
+  baseUrl: config.apiBaseUrl,
+  // Resolved per call so tests can stub fetch.
+  fetch: (request) => globalThis.fetch(request),
 });
+client.use(authAndErrors);
 
-export const startMultipartUpload = (body: MultipartInitRequest) =>
-  request<MultipartInitResponse>("/uploads/multipart", jsonPost(body));
+// Errors already threw in the middleware.
+function bodyOf<T>(result: { data?: T }): T {
+  if (result.data === undefined) {
+    throw new ApiError(502, "The server returned an empty response");
+  }
+  return result.data;
+}
 
-export const createPartUrls = (videoId: string, partNumbers: number[]) =>
-  request<PartUrlsResponse>(`/uploads/${videoId}/parts`, jsonPost({ partNumbers }));
+export const listVideos = async (params: { cursor?: string; limit?: number } = {}) =>
+  bodyOf(await client.GET("/videos", { params: { query: params } }));
 
-export const listUploadedParts = (videoId: string) =>
-  request<UploadedPartsResponse>(`/uploads/${videoId}/parts`);
+export const getVideo = async (id: string) =>
+  bodyOf(await client.GET("/videos/{id}", { params: { path: { id } } }));
 
-export const abortUpload = (videoId: string) =>
-  request<void>(`/uploads/${videoId}`, { method: "DELETE" });
+export const createPresignedUpload = async (body: PresignRequest) =>
+  bodyOf(await client.POST("/uploads/presign", { body }));
+
+export const startMultipartUpload = async (body: MultipartInitRequest) =>
+  bodyOf(await client.POST("/uploads/multipart", { body }));
+
+export const createPartUrls = async (videoId: string, partNumbers: number[]) =>
+  bodyOf(
+    await client.POST("/uploads/{videoId}/parts", {
+      params: { path: { videoId } },
+      body: { partNumbers },
+    }),
+  );
+
+export const listUploadedParts = async (videoId: string) =>
+  bodyOf(await client.GET("/uploads/{videoId}/parts", { params: { path: { videoId } } }));
+
+export const confirmUpload = async (videoId: string) =>
+  bodyOf(await client.POST("/uploads/{videoId}/complete", { params: { path: { videoId } } }));
+
+export const abortUpload = async (videoId: string): Promise<void> => {
+  await client.DELETE("/uploads/{videoId}", { params: { path: { videoId } } });
+};
 
 export class StorageUploadError extends Error {
   constructor(

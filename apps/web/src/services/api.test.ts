@@ -13,12 +13,13 @@ import {
 const getAccessToken = vi.hoisted(() => vi.fn<() => Promise<string | undefined>>());
 vi.mock("../auth/user-manager", () => ({ getAccessToken }));
 
-const fetchMock = vi.fn<typeof fetch>();
+const fetchMock = vi.fn<(request: Request) => Promise<Response>>();
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
-const lastCall = () => {
-  const [url, init] = fetchMock.mock.calls.at(-1) ?? [];
-  return { url: String(url), init, headers: new Headers(init?.headers) };
+const lastRequest = () => {
+  const request = fetchMock.mock.calls.at(-1)?.[0];
+  if (!request) throw new Error("fetch was not called");
+  return request;
 };
 
 beforeEach(() => {
@@ -37,7 +38,7 @@ describe("requests", () => {
 
     await listVideos();
 
-    expect(lastCall().headers.get("Authorization")).toBe("Bearer token-123");
+    expect(lastRequest().headers.get("Authorization")).toBe("Bearer token-123");
   });
 
   it("send no Authorization header when signed out", async () => {
@@ -46,17 +47,26 @@ describe("requests", () => {
 
     await listVideos();
 
-    expect(lastCall().headers.has("Authorization")).toBe(false);
+    expect(lastRequest().headers.has("Authorization")).toBe(false);
   });
 
   it("build the list query from cursor and limit", async () => {
     fetchMock.mockImplementation(() => Promise.resolve(json({ items: [], nextCursor: null })));
 
     await listVideos({ cursor: "abc", limit: 12 });
-    expect(lastCall().url).toBe("/api/videos?cursor=abc&limit=12");
+    expect(lastRequest().url).toBe("http://api.test/api/videos?cursor=abc&limit=12");
 
     await listVideos();
-    expect(lastCall().url).toBe("/api/videos");
+    expect(lastRequest().url).toBe("http://api.test/api/videos");
+  });
+
+  it("put the id in the path", async () => {
+    fetchMock.mockResolvedValue(json({ id: "vid" }));
+
+    await getVideo("vid");
+
+    expect(lastRequest().url).toBe("http://api.test/api/videos/vid");
+    expect(lastRequest().method).toBe("GET");
   });
 
   it("post JSON for part URLs", async () => {
@@ -64,28 +74,35 @@ describe("requests", () => {
 
     await createPartUrls("vid", [1, 2]);
 
-    const { url, init, headers } = lastCall();
-    expect(url).toBe("/api/uploads/vid/parts");
-    expect(init?.method).toBe("POST");
-    expect(headers.get("Content-Type")).toBe("application/json");
-    expect(init?.body).toBe(JSON.stringify({ partNumbers: [1, 2] }));
+    const request = lastRequest();
+    expect(request.url).toBe("http://api.test/api/uploads/vid/parts");
+    expect(request.method).toBe("POST");
+    expect(request.headers.get("Content-Type")).toBe("application/json");
+    expect(await request.clone().json()).toEqual({ partNumbers: [1, 2] });
   });
 
   it("return nothing for 204 No Content", async () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
 
     await expect(abortUpload("vid")).resolves.toBeUndefined();
-    expect(lastCall().init?.method).toBe("DELETE");
+    expect(lastRequest().method).toBe("DELETE");
+    expect(lastRequest().url).toBe("http://api.test/api/uploads/vid");
   });
 
   it("call the complete endpoint", async () => {
     fetchMock.mockResolvedValue(json({ videoId: "vid", status: "UPLOADED" }, 201));
 
     await expect(confirmUpload("vid")).resolves.toEqual({ videoId: "vid", status: "UPLOADED" });
-    expect(lastCall().url).toBe("/api/uploads/vid/complete");
+    expect(lastRequest().url).toBe("http://api.test/api/uploads/vid/complete");
+    expect(lastRequest().method).toBe("POST");
+  });
+
+  it("fail loudly when a success response has no body", async () => {
+    fetchMock.mockResolvedValue(new Response(null, { status: 200 }));
+
+    await expect(getVideo("vid")).rejects.toMatchObject({ status: 502 });
   });
 });
-
 describe("errors", () => {
   it("carry the status and the server message", async () => {
     fetchMock.mockResolvedValue(json({ message: "Video not found" }, 404));

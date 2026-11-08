@@ -15,7 +15,7 @@ let issuer: string;
 let privateKey: CryptoKey;
 let guard: AuthGuard;
 
-// A tiny stand-in for Keycloak: it only serves the realm's public signing keys.
+// Minimal Keycloak stand-in that serves the public keys.
 beforeAll(async () => {
   const pair = await generateKeyPair("RS256");
   privateKey = pair.privateKey;

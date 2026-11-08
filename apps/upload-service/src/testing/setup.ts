@@ -1,4 +1,4 @@
 import { Logger } from "@nestjs/common";
 
-// Services log expected failures (for example a storage error in the cleanup test).
+// Silence expected service error logs in tests.
 Logger.overrideLogger(false);

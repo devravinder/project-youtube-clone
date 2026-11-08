@@ -280,8 +280,7 @@ outside the repo.
 
 ## API types
 
-Types for API payloads are generated from `contracts/*.openapi.json` with `pnpm --filter @yt/web api:types`;
-never hand-write them. Re-export named types from `src/types.ts`. See `openapi-contracts`.
+Types for API payloads are generated from `contracts/*.openapi.json` with `pnpm --filter @yt/web api:types`; never hand-write them. Re-export named types from `src/types.ts`. Call the API only through the typed `openapi-fetch` client in `src/services/api.ts`; never write a path string or response type by hand. See `openapi-contracts`.
 
 ## Large file uploads
 

@@ -10,13 +10,14 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "api:types": "pnpm dlx openapi-typescript@7.13.0 ../../contracts/upload-service.openapi.json --immutable -o src/api/schema.d.ts",
+    "api:types": "pnpm dlx openapi-typescript@7.13.0 ../../contracts/upload-service.openapi.json -o src/api/schema.d.ts",
     "theme:contrast": "node scripts/check-theme-contrast.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "5.104.5",
     "lucide-react": "1.61.0",
     "oidc-client-ts": "3.5.0",
+    "openapi-fetch": "0.17.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "react-oidc-context": "3.3.1",

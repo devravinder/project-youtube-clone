@@ -25,7 +25,6 @@ import {
 import type { ConfirmUploadResponse, PresignRequest, PresignResponse } from "./presign.dto.js";
 
 const UPLOAD_URL_EXPIRY_SECONDS = 900;
-// A big file takes a while; part URLs are requested per batch but live longer.
 const PART_URL_EXPIRY_SECONDS = 3600;
 const BYTES_PER_MB = 1024 * 1024;
 
@@ -47,7 +46,7 @@ export class UploadsService {
       expiresInSeconds: UPLOAD_URL_EXPIRY_SECONDS,
     });
 
-    // Insert last: if it fails, the client never receives a usable URL.
+    // Insert last so a failure leaves no usable URL.
     await this.prisma.video.create({
       data: {
         id: videoId,
@@ -93,7 +92,7 @@ export class UploadsService {
         },
       });
     } catch (error) {
-      // Without a row nothing could ever clean this upload up, so undo it now.
+      // No row means no cleanup, so undo now.
       await this.storage.abortMultipartUpload(bucket, key, uploadId);
       throw error;
     }
@@ -160,7 +159,7 @@ export class UploadsService {
     }
 
     const exists = await this.storage.objectExists(video.rawBucket, video.rawKey);
-    // A retry after storage joined the parts but the database update failed lands here.
+    // Retry after parts were joined but the DB update failed.
     if (!exists && video.uploadId) {
       await this.completeMultipart(video);
     } else if (!exists) {
@@ -207,8 +206,7 @@ export class UploadsService {
   }
 }
 
-// Every part but the last must be exactly `partSize`, and the last holds the remainder, so a
-// complete set also adds up to the declared file size. Rows from before the size was stored skip this.
+// All parts but the last are partSize; older rows without fileSize skip this.
 function findSizeMismatch(parts: UploadedPart[], video: Video): string | null {
   const { partSize, partCount, fileSize } = video;
   if (partSize === null || partCount === null || fileSize === null) {
@@ -226,7 +224,7 @@ function findSizeMismatch(parts: UploadedPart[], video: Video): string | null {
   }
   return null;
 }
-// Storage allows at most 10,000 parts, so very large files get bigger parts.
+// Storage allows 10,000 parts, so huge files get bigger parts.
 function planParts(fileSize: number, configuredPartSizeMb: number) {
   const partSize = Math.max(configuredPartSizeMb * BYTES_PER_MB, Math.ceil(fileSize / MAX_PARTS));
   return { partSize, partCount: Math.ceil(fileSize / partSize) };

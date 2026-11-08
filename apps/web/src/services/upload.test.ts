@@ -17,7 +17,7 @@ vi.mock("./api", async (importOriginal) => ({
 const mocked = vi.mocked(api);
 const MiB = 1024 * 1024;
 const PART = 5 * MiB;
-// Just over the 16 MiB multipart threshold: 4 parts of 5 MiB, the last one 2 MiB.
+// 17 MiB: three 5 MiB parts and a 2 MiB last part.
 const LARGE = 17 * MiB;
 
 const makeFile = (sizeBytes: number, name = "clip.mp4") =>
@@ -30,7 +30,7 @@ const plan = (fileSize: number, partSize = PART) => ({
   partCount: Math.ceil(fileSize / partSize),
 });
 
-// Hands out a URL per part number, so a test can tell which part a PUT belonged to.
+// One URL per part number, to tell which part a PUT was.
 function stubPartUrls() {
   mocked.createPartUrls.mockImplementation((_videoId, partNumbers) =>
     Promise.resolve({

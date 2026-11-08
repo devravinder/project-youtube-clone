@@ -6,7 +6,7 @@ interface BackButtonProps {
   readonly fallback?: string;
 }
 
-// History back when the user navigated here inside the app; otherwise go to the fallback.
+// Go back if navigated within the app, else use the fallback.
 export function BackButton({ fallback = "/" }: BackButtonProps) {
   const navigate = useNavigate();
   const location = useLocation();

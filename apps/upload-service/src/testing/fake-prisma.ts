@@ -26,7 +26,7 @@ const matches = (row: Row, where: Where = {}): boolean => {
   return true;
 };
 
-// The small slice of the Prisma video API that the services use, held in memory.
+// The Prisma video queries the services use, in memory.
 export class FakePrisma {
   readonly rows = new Map<string, Row>();
 
@@ -86,7 +86,7 @@ export class FakePrisma {
     return this as unknown as PrismaService;
   }
 
-  // Test helper: insert a row directly, e.g. to backdate createdAt.
+  // Insert a row directly, e.g. to backdate createdAt.
   seed(data: NewRow): Row {
     const row = { ...this.makeDefaults(), ...data } as Row;
     this.rows.set(row.id, row);

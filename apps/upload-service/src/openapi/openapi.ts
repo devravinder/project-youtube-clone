@@ -8,8 +8,7 @@ import "../videos/video.dto.js";
 
 type Schemas = NonNullable<OpenAPIObject["components"]>["schemas"];
 
-// Every schema tagged with `.meta({ id })` becomes a named component, so the
-// validation schemas and the published contract can never drift apart.
+// Named Zod schemas become components, so spec and validation stay in sync.
 function componentSchemas(): Schemas {
   const { schemas } = z.toJSONSchema(z.globalRegistry, {
     target: "draft-2020-12",
