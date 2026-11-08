@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { VideoDetail } from "../types";
@@ -12,13 +12,12 @@ vi.mock("../services/api", async (importOriginal) => ({
   getVideo: api.getVideo,
 }));
 
-// The real player needs a media element; the test only cares about the source.
-vi.mock("react-player", () => ({
-  default: ({ src, title }: { src: string; title: string }) => (
+// The player has its own tests; here only the source it gets matters.
+vi.mock("../components/hls-video", () => ({
+  HlsVideo: ({ src, title }: { src: string; title: string }) => (
     <div data-testid="player" data-src={src} title={title} />
   ),
 }));
-
 const base: VideoDetail = {
   id: "11111111-1111-4111-8111-111111111111",
   title: "Clip",
@@ -88,28 +87,11 @@ describe("WatchPage", () => {
     expect(api.getVideo).toHaveBeenCalledTimes(3);
   });
 
-  it("adapts by default and can pin one quality", async () => {
-    api.getVideo.mockResolvedValue(ready);
-    renderPage();
-
-    const picker = (await screen.findByRole("combobox", { name: "Quality" })) as HTMLSelectElement;
-    expect([...picker.options].map((o) => o.value)).toEqual(["auto", "720p", "360p"]);
-    expect(picker.value).toBe("auto");
-    expect(screen.getByTestId("player").dataset.src).toBe("https://cdn.test/v/hls/master.m3u8");
-
-    fireEvent.change(picker, { target: { value: "360p" } });
-    expect(screen.getByTestId("player").dataset.src).toBe("https://cdn.test/v/hls/360p/index.m3u8");
-
-    fireEvent.change(picker, { target: { value: "auto" } });
-    expect(screen.getByTestId("player").dataset.src).toBe("https://cdn.test/v/hls/master.m3u8");
-  });
-
   it("explains a failure and still plays the original", async () => {
     api.getVideo.mockResolvedValue({ ...base, status: "FAILED", failureReason: "not a video" });
     renderPage();
 
     expect(await screen.findByText("Processing failed: not a video")).toBeTruthy();
     expect(screen.getByTestId("player").dataset.src).toBe("https://storage.test/raw");
-    expect(screen.queryByRole("combobox")).toBeNull();
   });
 });

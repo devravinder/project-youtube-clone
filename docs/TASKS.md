@@ -81,7 +81,7 @@ Goal: adaptive-bitrate playback served through an edge cache.
 Concepts: ABR/HLS, CDN/edge caching, byte-range/seek.
 
 - [x] ffmpeg produces HLS (manifest + segments) into MinIO hls bucket: 4 s segments, keyframes aligned every 2 s, master playlist with bandwidth/resolution; bucket readable (not listable) anonymously; API serves the master as `playbackUrl`
-- [ ] React player uses adaptive bitrate (hls.js)
+- [x] React player uses adaptive bitrate (hls.js): Auto (shows the level it picked) or a pinned level that switches at the next segment; native HLS on Safari; error recovery; `react-player` removed
 - [ ] nginx edge cache + cache headers + byte-range
 - [ ] Verify seek + quality switching under throttled bandwidth
 

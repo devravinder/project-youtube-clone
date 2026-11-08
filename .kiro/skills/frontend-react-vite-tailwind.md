@@ -1,6 +1,6 @@
 ---
 name: frontend-react-vite-tailwind
-description: Scaffold a React 19 + TypeScript + Vite + Tailwind v4 frontend with no shadcn but a shadcn-like token theme, tailwind-variants for reusable components, TanStack Query for server state, and react-player for video. Use when creating or extending a web UI.
+description: Scaffold a React 19 + TypeScript + Vite + Tailwind v4 frontend with no shadcn but a shadcn-like token theme, tailwind-variants for reusable components, TanStack Query for server state, and hls.js for adaptive video. Use when creating or extending a web UI.
 ---
 
 # Frontend — React 19 + Vite + Tailwind v4 (no shadcn)
@@ -16,7 +16,7 @@ design tokens, and **tailwind-variants** for reusable styled primitives.
 - `tailwind-variants` + `tailwind-merge` for reusable components
 - `@tanstack/react-query` for all server state (fetching, caching, pagination, mutations)
 - `react-router-dom` for routing
-- `react-player` for video (MP4 now, HLS and DASH lazy-loaded for streaming later)
+- `hls.js` for HLS playback with adaptive bitrate and a quality picker
 - `lucide-react` for icons (imported by name, tree-shaken)
 - Vitest + Testing Library (unit), Playwright (e2e)
 - oxlint + prettier
@@ -225,15 +225,14 @@ const sentinel = useInView<HTMLDivElement>(
 );
 ```
 
-### Video player (react-player)
+### Video player (hls.js)
 
-```tsx
-import ReactPlayer from "react-player";
-
-<div className="aspect-video overflow-hidden rounded-md bg-black">
-  <ReactPlayer src={playbackUrl} controls width="100%" height="100%" />
-</div>;
-```
+`components/hls-video.tsx` attaches hls.js to a plain `<video>`: `new Hls({ capLevelToPlayerSize: true })`,
+`loadSource(master)`, `attachMedia(video)`. Build the quality list from `MANIFEST_PARSED`, show the playing
+level from `LEVEL_SWITCHED`, pin with `hls.nextLevel = index` (`-1` = Auto), retry fatal network errors with
+`startLoad()`, recover one media error, and `destroy()` on unmount. Fall back to native HLS
+(`canPlayType("application/vnd.apple.mpegurl")`) and to plain `src` for non-playlist files. In tests, mock
+`hls.js` with a fake class that records calls and emits events.
 
 ## Project layout
 

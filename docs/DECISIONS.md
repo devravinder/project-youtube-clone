@@ -552,3 +552,23 @@ Date: 2026-11-08 - Status: Accepted (replaces the MP4 renditions of ADR-027)
 Rejected: fMP4/CMAF segments (better for DASH + HLS sharing, but MPEG-TS is the most compatible start),
 one ffmpeg run with `-var_stream_map` for all renditions (one huge failure unit, harder to test), and
 shipping MP4 renditions next to HLS (double encode time for no player benefit).
+
+## ADR-032 - hls.js player instead of react-player
+
+Date: 2026-11-08 - Status: Accepted
+
+`HlsVideo` drives hls.js 1.7.3 directly on a `<video>` element; `react-player` is removed.
+
+- Auto is ABR with `capLevelToPlayerSize` (no 1080p into a small player); the picker shows the level hls.js
+  is playing ("Auto (720p)"). Pinning sets `hls.nextLevel`, so the switch happens at the next segment
+  boundary without a stall; `-1` hands control back to ABR. This only works because ADR-031 aligns
+  keyframes across renditions.
+- Fatal network errors are retried with `startLoad()` (3 times), a fatal media error gets one
+  `recoverMediaError()`, anything else stops with a visible message.
+- Safari (no MSE-based hls.js needed) plays the master natively; non-playlist sources such as a failed
+  video's original MP4 go to the plain element.
+- Verified in Chrome against real output: Auto starts at 360p, pinning 1080p and then 360p changes the
+  decoded height each time with playback continuing and no reload.
+
+Rejected: keeping react-player (it hides the hls.js instance, so no level list or pinning) and Video.js
+(a much larger player for features we do not use yet).

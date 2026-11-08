@@ -1,53 +1,10 @@
-import { useState } from "react";
-import ReactPlayer from "react-player";
 import { useParams } from "react-router-dom";
 import { BackButton } from "../components/back-button";
+import { HlsVideo } from "../components/hls-video";
 import { ProcessingStatus } from "../components/processing-status";
 import { StatusBadge } from "../components/status-badge";
 import { isProcessing, useVideo } from "../queries/videos";
 import { ApiError } from "../services/api";
-import type { VideoDetail } from "../types";
-
-const AUTO = "auto";
-
-function Player({ video }: { readonly video: VideoDetail }) {
-  // "auto" plays the master playlist, so the player adapts to bandwidth; a name pins one variant.
-  const [quality, setQuality] = useState<string>(AUTO);
-  const pinned = video.renditions.find((r) => r.name === quality);
-  const src = pinned?.playbackUrl ?? video.playbackUrl;
-
-  if (!src) {
-    return (
-      <div className="flex aspect-video items-center justify-center rounded-md bg-muted text-muted-foreground">
-        The file has not been uploaded yet.
-      </div>
-    );
-  }
-  return (
-    <>
-      <div className="aspect-video overflow-hidden rounded-md bg-black">
-        <ReactPlayer src={src} controls width="100%" height="100%" title={video.title} />
-      </div>
-      {video.renditions.length > 1 && (
-        <label className="mt-2 flex items-center justify-end gap-2 text-sm">
-          Quality
-          <select
-            className="rounded-md border border-border bg-background px-2 py-1"
-            value={pinned?.name ?? AUTO}
-            onChange={(event) => setQuality(event.target.value)}
-          >
-            <option value={AUTO}>Auto</option>
-            {video.renditions.map((r) => (
-              <option key={r.name} value={r.name}>
-                {r.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-    </>
-  );
-}
 
 export function WatchPage() {
   const { id = "" } = useParams();
@@ -80,8 +37,13 @@ export function WatchPage() {
         <div className="flex aspect-video items-center justify-center rounded-md bg-muted text-muted-foreground">
           <ProcessingStatus video={video} />
         </div>
+      ) : video.playbackUrl ? (
+        // READY: the master playlist (adaptive); FAILED: the original file.
+        <HlsVideo key={video.playbackUrl} src={video.playbackUrl} title={video.title} />
       ) : (
-        <Player key={video.id} video={video} />
+        <div className="flex aspect-video items-center justify-center rounded-md bg-muted text-muted-foreground">
+          The file has not been uploaded yet.
+        </div>
       )}
       {video.status === "FAILED" && (
         <div className="mt-2 text-sm text-destructive">
