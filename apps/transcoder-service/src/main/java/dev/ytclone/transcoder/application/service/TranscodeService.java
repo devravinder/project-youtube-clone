@@ -22,48 +22,48 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class TranscodeService implements TranscodeVideo {
 
-    private final StoragePort storage;
-    private final TranscoderPort transcoder;
-    private final Path workRoot;
-    private final String outputBucket;
+  private final StoragePort storage;
+  private final TranscoderPort transcoder;
+  private final Path workRoot;
+  private final String outputBucket;
 
-    @Override
-    public TranscodeResult transcode(TranscodeJob job) {
-        log.info("Transcoding video {}", job.videoId());
-        Path workDir = createWorkDir(job);
-        try {
-            Path source = workDir.resolve("source");
-            storage.download(job.sourceBucket(), job.sourceKey(), source);
+  @Override
+  public TranscodeResult transcode(TranscodeJob job) {
+    log.info("Transcoding video {}", job.videoId());
+    Path workDir = createWorkDir(job);
+    try {
+      Path source = workDir.resolve("source");
+      storage.download(job.sourceBucket(), job.sourceKey(), source);
 
-            List<String> outputKeys = new ArrayList<>();
-            for (Rendition rendition : RenditionLadder.forSourceHeight(transcoder.probeHeight(source))) {
-                Path output = workDir.resolve(rendition.name() + ".mp4");
-                transcoder.transcode(source, rendition, output);
-                String key = job.videoId() + "/" + rendition.name() + ".mp4";
-                storage.upload(outputBucket, key, output, "video/mp4");
-                outputKeys.add(key);
-            }
-            log.info("Transcoded video {} into {} renditions", job.videoId(), outputKeys.size());
-            return new TranscodeResult(job.videoId(), outputKeys);
-        } finally {
-            deleteQuietly(workDir);
-        }
+      List<String> outputKeys = new ArrayList<>();
+      for (Rendition rendition : RenditionLadder.forSourceHeight(transcoder.probeHeight(source))) {
+        Path output = workDir.resolve(rendition.name() + ".mp4");
+        transcoder.transcode(source, rendition, output);
+        String key = job.videoId() + "/" + rendition.name() + ".mp4";
+        storage.upload(outputBucket, key, output, "video/mp4");
+        outputKeys.add(key);
+      }
+      log.info("Transcoded video {} into {} renditions", job.videoId(), outputKeys.size());
+      return new TranscodeResult(job.videoId(), outputKeys);
+    } finally {
+      deleteQuietly(workDir);
     }
+  }
 
-    private Path createWorkDir(TranscodeJob job) {
-        try {
-            Files.createDirectories(workRoot);
-            return Files.createTempDirectory(workRoot, job.videoId() + "-");
-        } catch (IOException e) {
-            throw new UncheckedIOException("Cannot create a work directory in " + workRoot, e);
-        }
+  private Path createWorkDir(TranscodeJob job) {
+    try {
+      Files.createDirectories(workRoot);
+      return Files.createTempDirectory(workRoot, job.videoId() + "-");
+    } catch (IOException e) {
+      throw new UncheckedIOException("Cannot create a work directory in " + workRoot, e);
     }
+  }
 
-    private static void deleteQuietly(Path directory) {
-        try (Stream<Path> paths = Files.walk(directory)) {
-            paths.sorted(Comparator.reverseOrder()).forEach(path -> path.toFile().delete());
-        } catch (IOException e) {
-            log.warn("Could not delete work directory {}", directory, e);
-        }
+  private static void deleteQuietly(Path directory) {
+    try (Stream<Path> paths = Files.walk(directory)) {
+      paths.sorted(Comparator.reverseOrder()).forEach(path -> path.toFile().delete());
+    } catch (IOException e) {
+      log.warn("Could not delete work directory {}", directory, e);
     }
+  }
 }

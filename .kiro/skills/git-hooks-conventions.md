@@ -25,14 +25,13 @@ Automated quality gates on commit, adapted from the reference advanced-starter.
 ```js
 // lint-staged.config.js
 export default {
-  "apps/**/*.{ts,tsx}": () => [
-    "pnpm -r lint",
-    "pnpm -r test",
-  ],
-  "**/*.{ts,tsx,js,json,css,md}": ["prettier --write"],
-  "apps/transcoder-service/**/*.java": () => [
-    "./gradlew spotlessApply --no-daemon",
-    "./gradlew test --no-daemon",
+  "*.{ts,tsx,js,jsx,mjs,cjs}": ["oxlint", "prettier --write"],
+  "*.md": ["markdownlint-cli2 --fix", "prettier --write"],
+  "*.{json,yaml,yml,css}": ["prettier --write"],
+  // A function returns commands without file args, so Gradle runs once, not per file.
+  "apps/transcoder-service/src/**/*.java": () => [
+    "pnpm --filter @yt/transcoder-service format",
+    "pnpm --filter @yt/transcoder-service test",
   ],
 };
 ```
@@ -52,5 +51,5 @@ See `git-commit-convention` for the per-task rule (commit after every task, unde
 ## Notes
 
 - Keep hooks enabled; do not `--no-verify` unless explicitly required.
-- On Windows, Gradle hook commands use `gradlew.bat`.
+- On Windows, Gradle hook commands go through `scripts/gradle.mjs`, which picks `gradlew.bat` or `gradlew`.
 - Tooling packages resolve via the org registry (developer's npm settings; not committed).

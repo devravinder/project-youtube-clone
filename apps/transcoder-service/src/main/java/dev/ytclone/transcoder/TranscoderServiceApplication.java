@@ -8,7 +8,7 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 @ConfigurationPropertiesScan
 public class TranscoderServiceApplication {
 
-    public static void main(String[] args) {
-        SpringApplication.run(TranscoderServiceApplication.class, args);
-    }
+  public static void main(String[] args) {
+    SpringApplication.run(TranscoderServiceApplication.class, args);
+  }
 }

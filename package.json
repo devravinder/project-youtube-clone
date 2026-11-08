@@ -27,8 +27,10 @@
     "start:lo:pods": "docker compose -f infra/docker-compose-local-observability.yaml up -d",
     "stop:lo:pods": "docker compose -f infra/docker-compose-local-observability.yaml down -v",
     "logs:lo": "docker compose -f infra/docker-compose-local-observability.yaml logs -f",
-    "lint:md": "markdownlint-cli2 \"**/*.md\" \"#node_modules\"",
-    "format:md": "markdownlint-cli2 --fix \"**/*.md\" \"#node_modules\""
+    "lint:md": "markdownlint-cli2 \"**/*.md\" \"#**/node_modules\"",
+    "format:md": "markdownlint-cli2 --fix \"**/*.md\" \"#**/node_modules\"",
+    "format:java": "pnpm -r --if-present format",
+    "format:java:check": "pnpm -r --if-present format:check"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.8.1",

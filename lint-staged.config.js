@@ -1,4 +1,3 @@
-// Java formatting runs via Gradle spotless per service.
 export default {
   "*.{ts,tsx,js,jsx,mjs,cjs}": ["oxlint", "prettier --write"],
   "*.md": ["markdownlint-cli2 --fix", "prettier --write"],
@@ -7,5 +6,10 @@ export default {
   "apps/upload-service/src/**/*.ts": () => [
     "pnpm api:generate",
     "git add contracts apps/web/src/api",
+  ],
+  // Gradle formats the whole source set, so run once, not per file.
+  "apps/transcoder-service/src/**/*.java": () => [
+    "pnpm --filter @yt/transcoder-service format",
+    "pnpm --filter @yt/transcoder-service test",
   ],
 };

@@ -14,27 +14,31 @@ import org.springframework.test.web.servlet.MockMvc;
 @AutoConfigureMockMvc
 class TranscoderServiceApplicationTests {
 
-    @Autowired
-    MockMvc mockMvc;
+  @Autowired MockMvc mockMvc;
 
-    @Test
-    void healthReportsUp() throws Exception {
-        mockMvc.perform(get("/actuator/health")).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("UP"));
-    }
+  @Test
+  void healthReportsUp() throws Exception {
+    mockMvc
+        .perform(get("/actuator/health"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("UP"));
+  }
 
-    @Test
-    void exposesKubernetesProbes() throws Exception {
-        mockMvc.perform(get("/actuator/health/liveness"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("UP"));
-        mockMvc.perform(get("/actuator/health/readiness"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("UP"));
-    }
+  @Test
+  void exposesKubernetesProbes() throws Exception {
+    mockMvc
+        .perform(get("/actuator/health/liveness"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("UP"));
+    mockMvc
+        .perform(get("/actuator/health/readiness"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("UP"));
+  }
 
-    @Test
-    void doesNotExposeOtherActuatorEndpoints() throws Exception {
-        mockMvc.perform(get("/actuator/env")).andExpect(status().isNotFound());
-        mockMvc.perform(get("/actuator/beans")).andExpect(status().isNotFound());
-    }
+  @Test
+  void doesNotExposeOtherActuatorEndpoints() throws Exception {
+    mockMvc.perform(get("/actuator/env")).andExpect(status().isNotFound());
+    mockMvc.perform(get("/actuator/beans")).andExpect(status().isNotFound());
+  }
 }

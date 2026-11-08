@@ -5,6 +5,9 @@ jacoco = "0.8.16"
 mapstruct = "1.6.3"
 lombok-mapstruct-binding = "0.2.0"
 archunit = "1.5.1"
+spotless = "8.11.0"
+google-java-format = "2.0.0"
+cleanthat = "2.26"
 
 [libraries]
 spring-boot-starter-actuator = { module = "org.springframework.boot:spring-boot-starter-actuator" }
@@ -25,3 +28,4 @@ archunit = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "arc
 [plugins]
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
 spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "dependency-management" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }

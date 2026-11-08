@@ -3,6 +3,7 @@ plugins {
     jacoco
     alias(libs.plugins.spring.boot)
     alias(libs.plugins.spring.dependency.management)
+    alias(libs.plugins.spotless)
 }
 
 group = "dev.ytclone"
@@ -39,6 +40,24 @@ dependencies {
     testImplementation(libs.spring.boot.starter.webmvc.test)
     testImplementation(libs.archunit)
     testRuntimeOnly(libs.junit.platform.launcher)
+}
+
+spotless {
+    java {
+        target("src/**/*.java")
+        cleanthat().version(libs.versions.cleanthat.get())
+        removeUnusedImports()
+        importOrder()
+        formatAnnotations()
+        googleJavaFormat(libs.versions.google.java.format.get())
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+}
+
+// Same as the reference project: format before every compile.
+tasks.named("compileJava") {
+    dependsOn("spotlessApply")
 }
 
 tasks.withType<Test> {

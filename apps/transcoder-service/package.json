@@ -7,6 +7,8 @@
     "start": "node ../../scripts/gradle.mjs bootRun",
     "build": "node ../../scripts/gradle.mjs build",
     "test": "node ../../scripts/gradle.mjs test",
-    "test:coverage": "node ../../scripts/gradle.mjs check"
+    "test:coverage": "node ../../scripts/gradle.mjs check",
+    "format": "node ../../scripts/gradle.mjs spotlessApply",
+    "format:check": "node ../../scripts/gradle.mjs spotlessCheck"
   }
 }

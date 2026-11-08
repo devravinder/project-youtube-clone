@@ -5,7 +5,7 @@ import java.nio.file.Path;
 
 public interface TranscoderPort {
 
-    int probeHeight(Path source);
+  int probeHeight(Path source);
 
-    void transcode(Path source, Rendition rendition, Path target);
+  void transcode(Path source, Rendition rendition, Path target);
 }

@@ -67,7 +67,7 @@ Concepts: async processing, work-queue semantics, outbox, idempotency, polyglot 
 
 - [x] Add RabbitMQ to `docker-compose-local.yaml` (+ management UI), `rabbitmqEnv` in `@yt/config`
 - [x] `apps/transcoder-service` skeleton (Spring Boot 4.1 / Java 21): domain, ports, `TranscodeService`, ArchUnit rules, JaCoCo gate, health probes
-- [ ] Java formatting: Gradle spotless + formatter (google or palantir) + lint-staged entry
+- [x] Java formatting: Spotless + google-java-format (as in the reference starter), formats on compile, lint-staged entry
 - [x] Transcoder conventions from the reference starter: version catalog, `AppProperties` record (`@ConfigurationProperties`), YAML per profile (`local`, `local-observability`, `aws`), Lombok, SLF4J, MapStruct
 - [ ] RabbitMQ command producer (upload-service) + consumer (transcoder)
 - [ ] ffmpeg adapter — produce renditions

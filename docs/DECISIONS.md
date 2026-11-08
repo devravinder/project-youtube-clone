@@ -371,6 +371,21 @@ Changes from the reference, on purpose:
 - The coverage gate stays at 75% (the reference ships 0.00 with a comment recommending 0.75).
 - No `test` or `util` profile in `src/main`; tests set what they need.
 
-Not adopted yet: Spotless with google-java-format (next task), `logback-spring.xml` and the Loki appender
-(observability stage), and the reference test style (snake_case names, `@Nested`, JUnit assertions); the existing
-tests keep AssertJ.
+Not adopted yet: `logback-spring.xml` and the Loki appender (observability stage), and the reference test style
+(snake_case names, `@Nested`, JUnit assertions); the existing tests keep AssertJ. Spotless is covered by ADR-025.
+
+## ADR-025 - Java formatting with Spotless and google-java-format
+
+Date: 2026-11-08 - Status: Accepted
+
+The transcoder uses the reference starter's Spotless block: `cleanthat`, `removeUnusedImports`, `importOrder`,
+`formatAnnotations`, `googleJavaFormat`, `trimTrailingWhitespace`, `endWithNewline`, applied to `src/**/*.java`.
+Versions are pinned in the catalog: Spotless plugin 8.11.0, google-java-format 2.0.0, cleanthat 2.26.
+
+- `compileJava` depends on `spotlessApply`, as in the reference, so every build formats first.
+- `spotlessCheck` (`pnpm format:java:check`) fails on unformatted code without changing it; use it in CI.
+- The pre-commit hook runs `format` and `test` for the transcoder once when any of its Java files is staged.
+
+Rejected: palantir-java-format (4-space indent and 120 columns, but the reference uses Google style and one style across repos
+is simpler to keep). Google style means 2-space indentation and 100 columns, so the first run reformatted all
+sources with whitespace and line-wrap changes only.

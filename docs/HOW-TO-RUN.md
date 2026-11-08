@@ -273,6 +273,18 @@ pnpm lint:md     # check
 pnpm format:md   # auto-fix
 ```
 
+## Java formatting
+
+Spotless with google-java-format. Every Gradle compile formats the sources first, and the pre-commit hook
+formats and tests the transcoder when its Java files are staged.
+
+```bash
+pnpm format:java         # apply
+pnpm format:java:check   # check only, fails if anything is unformatted
+```
+
+In IntelliJ, install the google-java-format plugin and enable it, so the editor matches what Spotless writes.
+
 ## Troubleshooting
 
 | Issue                                                                                          | Fix                                                                                                                                                                                                                                                                                                                      |

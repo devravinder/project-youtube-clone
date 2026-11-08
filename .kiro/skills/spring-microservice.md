@@ -57,6 +57,9 @@ Expose a `package.json` shim whose scripts call `scripts/gradle.mjs`, so root `p
   `updateEntity`, `@MappingTarget` for updates, explicit `ignore = true` for target-only fields.
 - **Tests for config:** `ApplicationContextRunner` for binding and validation; start the app with
   `--spring.profiles.active=<profile>` to check each profile, including that `aws` fails without its variables.
+- **Formatting:** Spotless with `cleanthat`, `removeUnusedImports`, `importOrder`, `formatAnnotations`,
+  `googleJavaFormat`, `trimTrailingWhitespace`, `endWithNewline` on `src/**/*.java`; pin the formatter versions
+  in the catalog. `compileJava` depends on `spotlessApply`; CI runs `spotlessCheck`.
 
 ## Principles
 

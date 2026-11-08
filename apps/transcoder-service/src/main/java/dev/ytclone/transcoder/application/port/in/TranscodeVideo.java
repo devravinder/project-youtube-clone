@@ -5,5 +5,5 @@ import dev.ytclone.transcoder.domain.TranscodeResult;
 
 public interface TranscodeVideo {
 
-    TranscodeResult transcode(TranscodeJob job);
+  TranscodeResult transcode(TranscodeJob job);
 }
