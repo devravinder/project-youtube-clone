@@ -169,9 +169,12 @@ pnpm start:l:upload
 
 Request a presigned upload URL, then PUT the file straight to storage. `title` and
 `description` are optional; the title defaults to the filename. Each presign saves a `videos`
-row with status `PENDING`. `POST /uploads/:videoId/complete` then queues a transcode command on
-RabbitMQ and marks the video `UPLOADED`. If RabbitMQ is down it answers 503 and the video stays
-`PENDING`, so the same request can be retried; the connection recovers by itself.
+row with status `PENDING`. `POST /uploads/:videoId/complete` marks the video `UPLOADED` and writes a
+transcode command to the `outbox` table in the same transaction, then answers 201 at once. A relay inside
+the upload service publishes due outbox rows to RabbitMQ every `OUTBOX_POLL_INTERVAL_MS` (default 1000).
+If RabbitMQ is down, the rows wait and are retried with backoff (1 s doubling, at most 5 min); nothing is
+lost and the client sees no error. Sent rows are deleted after `OUTBOX_RETENTION_HOURS` (default 72).
+Inspect the backlog with `select type, attempts, last_error, sent_at from outbox order by created_at desc;`.
 
 ```bash
 curl -X POST http://localhost:3001/uploads/presign \
@@ -333,5 +336,5 @@ In IntelliJ, install the google-java-format plugin and enable it, so the editor 
 | Gradle: `Cannot invoke "org.gradle.cache.FileLock.writeFile..." ... is null` (CLI or IntelliJ) | Gradle daemons started on different JDKs are fighting over the cache. Run `apps/transcoder-service/gradlew --stop`, make sure `JAVA_HOME` points to JDK 21 (open a new terminal after changing it), and in IntelliJ set **Settings > Build Tools > Gradle > Gradle JVM** to that JDK 21, then reload the Gradle project. |
 | Gradle says it cannot find a Java 21 toolchain                                                 | Install a JDK 21 (not a JRE); Gradle detects installed JDKs, or point `JAVA_HOME` at one. `gradle/gradle-daemon-jvm.properties` makes the Gradle daemon itself run on that JDK 21, so a `JAVA_HOME` that points to an older JRE still works.                                                                             |
 | `You are running Spotless on JVM 17, which limits you to google-java-format 1.28.0`            | The Gradle daemon is not on Java 21. Check that `apps/transcoder-service/gradle/gradle-daemon-jvm.properties` exists, run `gradlew --stop`, and in IntelliJ set **Gradle JVM** to JDK 21 (or "Daemon JVM criteria").                                                                                                     |
-| Upload confirm returns 503 "Could not queue the video for transcoding"                         | RabbitMQ is down or unreachable. Check `docker ps` for `yt-rabbitmq` and `RABBITMQ_URL`. The video stays `PENDING`; retry the confirm once the broker is back.                                                                                                                                                           |
+| Videos stay `UPLOADED` and nothing reaches the transcoder                                      | Check the `outbox` table: unsent rows with `last_error` mean the relay cannot reach RabbitMQ (`docker ps` for `yt-rabbitmq`, `RABBITMQ_URL`). They are delivered automatically once it is back. No rows at all means the upload service runs older code; restart it.                                                     |
 | RabbitMQ log or app log shows `PRECONDITION_FAILED - inequivalent arg`                         | The queue exists with other arguments than the code declares. Keep `transcode-topology.ts` and `MessagingConfig.java` identical; locally, delete the queue in the management UI (or `pnpm stop:l:pods`) to recreate it.                                                                                                  |

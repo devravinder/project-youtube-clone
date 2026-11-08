@@ -525,8 +525,8 @@ GET {{baseUrl}}/videos?limit=50
 ?? js !response.parsedBody.items.map(v => v.id).includes(noUpload.videoId)
 
 ### Confirm marks the video as uploaded and queues a transcode command
-# Returns 503 (video stays PENDING) while RabbitMQ is down; send it again once the broker is back.
-# Check the transcoder log, or `http/rabbitmq.http`, for the command.
+# Writes the outbox row in the same transaction; the relay publishes it within about a second,
+# even if RabbitMQ is down right now. Check the transcoder log, or `http/rabbitmq.http`.
 # @name confirm
 # @ref upload
 # @ref token

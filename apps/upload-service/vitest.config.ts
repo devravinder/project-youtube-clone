@@ -9,7 +9,13 @@ export default defineConfig({
     include: ["src/**/*.spec.ts"],
     coverage: {
       provider: "v8",
-      include: ["src/uploads/**", "src/videos/**", "src/cleanup/**", "src/auth/**"],
+      include: [
+        "src/uploads/**",
+        "src/videos/**",
+        "src/cleanup/**",
+        "src/auth/**",
+        "src/outbox/outbox.relay.ts",
+      ],
       exclude: ["src/**/*.spec.ts", "src/**/*.dto.ts", "src/**/*.module.ts", "src/generated/**"],
       thresholds: { lines: 80, functions: 80, branches: 70, statements: 80 },
     },

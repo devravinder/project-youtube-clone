@@ -85,9 +85,9 @@ sequenceDiagram
   C->>S: PUT raw bytes
   C->>GW: confirm upload
   GW->>UP: confirm upload
-  UP->>Q: transcode.cmd (waits for publisher confirm)
-  UP->>UP: mark Uploaded (only after the broker confirmed)
-  UP-->>C: 201 Uploaded (503 and still Pending if the broker is down)
+  UP->>UP: TX { mark Uploaded; insert outbox(transcode.cmd) }
+  UP-->>C: 201 Uploaded
+  UP->>Q: outbox relay publishes transcode.cmd (retries until confirmed)
   Q->>TR: deliver job
   TR->>S: read raw
   TR->>S: write HLS renditions

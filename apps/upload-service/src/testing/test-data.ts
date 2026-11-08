@@ -18,6 +18,8 @@ export const testConfig = {
   UPLOAD_PENDING_TTL_MINUTES: 1440,
   UPLOAD_PART_SIZE_MB: 8,
   RABBITMQ_URL: "amqp://unused",
+  OUTBOX_POLL_INTERVAL_MS: 1000,
+  OUTBOX_RETENTION_HOURS: 72,
 } as unknown as AppConfig;
 
 export const alice = { id: "user-alice", username: "alice" };

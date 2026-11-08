@@ -34,3 +34,19 @@ model Video {
 
   @@map("videos")
 }
+
+// Transactional outbox: written with the domain change, published later by OutboxRelay.
+model OutboxMessage {
+  id            String    @id @db.Uuid
+  type          String
+  payload       Json
+  attempts      Int       @default(0)
+  lastError     String?   @map("last_error")
+  nextAttemptAt DateTime  @default(now()) @map("next_attempt_at")
+  lockedUntil   DateTime? @map("locked_until")
+  sentAt        DateTime? @map("sent_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@index([sentAt, nextAttemptAt])
+  @@map("outbox")
+}

@@ -5,6 +5,14 @@ import type { PrismaService } from "../prisma/prisma.service.js";
 type Row = Video;
 type NewRow = Partial<Row> & Pick<Row, "rawBucket" | "rawKey" | "contentType" | "title">;
 
+export interface OutboxRow {
+  id: string;
+  type: string;
+  payload: unknown;
+  sentAt: Date | null;
+  createdAt: Date;
+}
+
 interface Where {
   status?: string | { not: string };
   createdAt?: { lt: Date };
@@ -26,9 +34,40 @@ const matches = (row: Row, where: Where = {}): boolean => {
   return true;
 };
 
-// The Prisma video queries the services use, in memory.
+// The Prisma queries the services use, in memory.
 export class FakePrisma {
   readonly rows = new Map<string, Row>();
+  readonly outbox = new Map<string, OutboxRow>();
+
+  // Runs fn against this fake and restores both tables if it throws, like a rolled-back transaction.
+  async $transaction<T>(fn: (tx: FakePrisma) => Promise<T>): Promise<T> {
+    const rows = new Map(this.rows);
+    const outbox = new Map(this.outbox);
+    try {
+      return await fn(this);
+    } catch (error) {
+      this.rows.clear();
+      rows.forEach((v, k) => this.rows.set(k, v));
+      this.outbox.clear();
+      outbox.forEach((v, k) => this.outbox.set(k, v));
+      throw error;
+    }
+  }
+
+  readonly outboxMessage = {
+    create: ({
+      data,
+    }: {
+      data: Pick<OutboxRow, "id" | "type" | "payload">;
+    }): Promise<OutboxRow> => {
+      if (this.outbox.has(data.id)) {
+        return Promise.reject(new Error("Unique constraint failed on id"));
+      }
+      const row: OutboxRow = { ...data, sentAt: null, createdAt: new Date() };
+      this.outbox.set(row.id, row);
+      return Promise.resolve(row);
+    },
+  };
 
   readonly video = {
     create: ({ data }: { data: NewRow }): Promise<Row> => {
@@ -70,6 +109,21 @@ export class FakePrisma {
       return Promise.resolve(updated);
     },
 
+    updateMany: ({
+      where,
+      data,
+    }: {
+      where: { id: string; status?: string };
+      data: Partial<Row>;
+    }): Promise<{ count: number }> => {
+      const row = this.rows.get(where.id);
+      if (!row || (where.status !== undefined && row.status !== where.status)) {
+        return Promise.resolve({ count: 0 });
+      }
+      this.rows.set(where.id, { ...row, ...data, updatedAt: new Date() });
+      return Promise.resolve({ count: 1 });
+    },
+
     delete: ({ where }: { where: { id: string } }): Promise<Row> => {
       const row = this.rows.get(where.id);
       if (!row) return Promise.reject(new Error("Record to delete not found"));
@@ -80,6 +134,7 @@ export class FakePrisma {
 
   reset(): void {
     this.rows.clear();
+    this.outbox.clear();
   }
 
   asPrismaService(): PrismaService {

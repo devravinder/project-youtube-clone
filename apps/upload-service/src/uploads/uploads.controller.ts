@@ -140,8 +140,9 @@ export class UploadsController {
     operationId: "confirmUpload",
     summary: "Confirm that the file reached storage",
     description:
-      "Marks a pending video as uploaded and queues it for transcoding. For multipart uploads " +
-      "it first joins the parts. Only the uploader may confirm. Idempotent.",
+      "Marks a pending video as uploaded and records a transcode command in the outbox, in one " +
+      "transaction; a relay publishes it to RabbitMQ. For multipart uploads it first joins the " +
+      "parts. Only the uploader may confirm. Idempotent.",
   })
   @ApiParam(videoIdParam)
   @ApiJsonResponse(201, "Video is now uploaded", "ConfirmUploadResponse")
@@ -152,7 +153,6 @@ export class UploadsController {
     409,
     "The file or some parts have not reached storage, or part sizes do not match the plan",
   )
-  @ApiErrorResponse(503, "The transcode queue is unavailable; the video stays pending, so retry")
   complete(
     @Param("videoId") videoId: string,
     @CurrentUser() user: AuthUser,

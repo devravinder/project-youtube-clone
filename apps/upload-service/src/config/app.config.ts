@@ -11,6 +11,8 @@ const schema = z.object({
   UPLOAD_PENDING_TTL_MINUTES: z.coerce.number().int().positive().default(1440),
   // Storage rejects smaller parts, except the last.
   UPLOAD_PART_SIZE_MB: z.coerce.number().int().min(5).default(8),
+  OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().min(100).default(1000),
+  OUTBOX_RETENTION_HOURS: z.coerce.number().int().positive().default(72),
 });
 
 export type AppConfig = z.infer<typeof schema>;

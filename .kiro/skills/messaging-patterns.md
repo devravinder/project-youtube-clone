@@ -32,11 +32,18 @@ In this project: RabbitMQ carries the **transcode command**; Kafka carries the
   identical arguments, so either can start first. Different arguments → `PRECONDITION_FAILED`; pin them with a
   test on each side.
 
-### Before the outbox exists
+### Commands go through the outbox
 
-Publish **first**, then update the row. A failed publish leaves the row unchanged so the client can retry
-(the API answers 503); a failed update after a publish leads to a duplicate on retry, which an idempotent
-consumer absorbs. The reverse order (update, then publish) silently loses jobs.
+`POST /uploads/:id/complete` updates the video and inserts an `outbox` row in **one transaction**, so either
+both happen or neither does. `OutboxRelay` claims due rows with
+`UPDATE outbox SET locked_until = now + 30 s WHERE id IN (SELECT ... FOR UPDATE SKIP LOCKED) RETURNING ...`:
+several replicas get disjoint batches, no transaction stays open while publishing, and a crashed relay's
+rows become due again when the lease expires. It publishes with confirms, then marks the row sent; a
+failure schedules a retry with backoff. A crash between publish and mark-sent re-sends, so delivery is
+at least once and the row id doubles as the `messageId` consumers dedupe on.
+
+Before the outbox existed the rule was: publish first, then update the row (the reverse silently loses
+jobs). The outbox removes the choice and the 503.
 
 In this project: exchange `yt.transcode` (direct), routing key `transcode.cmd`, queue
 `transcoder.transcode-video`, DLX `yt.transcode.dlx`, DLQ `transcoder.transcode-video.dlq`. Names live in

@@ -448,3 +448,31 @@ Date: 2026-11-08 - Status: Accepted
   overwrites rather than duplicates. Stage 3 replaces the MP4s with HLS segments in the same bucket.
 - The image is the only one pinned to `latest` by necessity: the internal registry mirrors only that tag.
   The verified build is ffmpeg 9.0.2; the integration tests catch an incompatible update.
+
+## ADR-028 - Transactional outbox for the transcode command
+
+Date: 2026-11-08 - Status: Accepted (supersedes the publish-then-update order in ADR-026)
+
+Confirm no longer talks to RabbitMQ. In one Prisma interactive transaction it runs a conditional
+`updateMany` (`PENDING` → `UPLOADED`) and, only if a row changed, inserts an `outbox` row whose id is the
+command's `messageId`. The condition also closes a race in which two parallel confirms both wrote a command.
+The API therefore answers 201 even while the broker is down; the 503 is gone.
+
+`OutboxRelay` (in the upload service) polls every `OUTBOX_POLL_INTERVAL_MS`:
+
+- Claim: `UPDATE ... SET locked_until = now + 30 s WHERE id IN (SELECT ... WHERE sent_at IS NULL AND
+next_attempt_at <= now AND lease free ORDER BY created_at, id LIMIT 50 FOR UPDATE SKIP LOCKED)
+RETURNING ...`. Replicas get disjoint batches; no transaction is held during the publish; a crashed
+  relay's rows come back when the lease expires. It only claims types it can publish.
+- Publish with confirms, then mark sent. On failure: `attempts + 1`, `last_error`, next attempt after
+  1 s × 2^attempts (max 5 min). A database error ends the run; the next tick retries.
+- Sent rows are purged hourly after `OUTBOX_RETENTION_HOURS` (72).
+- Timestamps are compared with `now() AT TIME ZONE 'UTC'` in SQL, because the columns hold UTC without a
+  zone and `pg` would serialise a JS `Date` in the machine's local zone.
+
+Delivery stays at least once (a crash between publish and mark-sent re-sends), which the idempotent
+consumer task handles by `messageId`/`videoId`.
+
+Rejected: CDC with Debezium (another moving part for one table; worth it at higher volume), `LISTEN/NOTIFY`
+to wake the relay (polling at 1 s is simpler and survives missed notifications), and publishing inside the
+request with the outbox only as a fallback (two code paths for one job).
