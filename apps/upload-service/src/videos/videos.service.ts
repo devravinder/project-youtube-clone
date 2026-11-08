@@ -39,23 +39,22 @@ export class VideosService {
     }
 
     const sign = { expiresInSeconds: PLAYBACK_URL_EXPIRY_SECONDS };
+    const publicUrl = (key: string) => `${this.config.HLS_PUBLIC_BASE_URL}/${key}`;
+    // Transcoded output is public (HLS segments cannot each be signed); only the original is private.
     const renditions =
       video.status === VideoStatus.READY
-        ? await Promise.all(
-            storedRenditions(video.renditions).map(async ({ name, key }) => ({
-              name,
-              height: Number.parseInt(name, 10),
-              playbackUrl: await this.storage.createPresignedDownloadUrl(
-                this.config.STORAGE_HLS_BUCKET,
-                key,
-                sign,
-              ),
-            })),
-          )
+        ? storedRenditions(video.renditions).map(({ name, key }) => ({
+            name,
+            height: Number.parseInt(name, 10),
+            playbackUrl: publicUrl(key),
+          }))
         : [];
     renditions.sort((a, b) => b.height - a.height);
 
-    let playbackUrl = renditions[0]?.playbackUrl ?? null;
+    let playbackUrl: string | null =
+      video.status === VideoStatus.READY && video.hlsMasterKey
+        ? publicUrl(video.hlsMasterKey)
+        : (renditions[0]?.playbackUrl ?? null);
     if (!playbackUrl && (await this.storage.objectExists(video.rawBucket, video.rawKey))) {
       playbackUrl = await this.storage.createPresignedDownloadUrl(
         video.rawBucket,

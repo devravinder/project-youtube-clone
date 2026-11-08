@@ -990,14 +990,14 @@
                 "type": "null"
               }
             ],
-            "description": "The highest rendition once READY, before that the original file; null until it is uploaded"
+            "description": "The HLS master playlist once READY (adaptive bitrate), before that the original file; null until it is uploaded"
           },
           "renditions": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Rendition"
             },
-            "description": "Transcoded versions, highest first; empty until READY"
+            "description": "One HLS variant playlist per quality, highest first; empty until READY"
           },
           "failureReason": {
             "description": "Why transcoding failed when FAILED",

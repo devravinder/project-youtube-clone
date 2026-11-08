@@ -32,6 +32,7 @@ model Video {
   // Set by transcoder status events: [{ name, key }] once READY, a reason once FAILED.
   renditions    Json?
   failureReason String?     @map("failure_reason")
+  hlsMasterKey  String?     @map("hls_master_key")
   createdAt     DateTime    @default(now()) @map("created_at")
   updatedAt     DateTime    @updatedAt @map("updated_at")
 

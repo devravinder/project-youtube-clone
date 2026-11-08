@@ -527,3 +527,28 @@ Date: 2026-11-08 - Status: Accepted
 Rejected for now: pushing status over WebSocket or SSE (that is the notification service in Stage 4;
 polling is enough for one uploader watching one video) and the transcoder writing to the upload
 service's database (shared databases couple deployments and schemas).
+
+## ADR-031 - HLS output and a publicly readable output bucket
+
+Date: 2026-11-08 - Status: Accepted (replaces the MP4 renditions of ADR-027)
+
+- One ffmpeg run per rendition with the HLS muxer: `-hls_time 4 -hls_playlist_type vod`, MPEG-TS segments
+  (`seg_%03d.ts`), and `-force_key_frames expr:gte(t,n_forced*2) -sc_threshold 0` so every rendition has a
+  keyframe at the same instants. Segment edges then line up across renditions, which is what lets a player
+  switch quality mid-stream. A real-ffmpeg test checks 9 s of input becomes segments of 4 + 4 + 1 s.
+- The transcoder writes the master playlist itself (`HlsMasterPlaylist`): `BANDWIDTH` is the peak
+  (video `maxrate` 1.5x + audio), `AVERAGE-BANDWIDTH` the target, and `RESOLUTION` uses ffmpeg's own
+  `scale=-2` rounding, so it matches the encoded width. `CODECS` is left out rather than risk a wrong value.
+- Upload order: segments, then each variant playlist, then the master, then `manifest.json`. A reader never
+  sees a playlist that names missing files. A manifest without `masterPlaylist` (from the MP4 era) counts as
+  missing, so those videos are redone.
+- Segment URLs inside a playlist cannot each be presigned, so `hls-videos` gets an anonymous `GetObject`-only
+  policy (MinIO's `download` preset also allows listing, which would let anyone enumerate videos).
+  `raw-videos` stays private. This matches the app: listing and watching are already public. Unlisted or
+  private videos would need signed cookies at the edge (CloudFront) or a token-checking edge; out of scope.
+- The status event gains `masterPlaylist`; the video row gains `hls_master_key`. `GET /videos/:id` builds
+  public URLs from `HLS_PUBLIC_BASE_URL` (MinIO today, the nginx edge next) instead of signing them.
+
+Rejected: fMP4/CMAF segments (better for DASH + HLS sharing, but MPEG-TS is the most compatible start),
+one ffmpeg run with `-var_stream_map` for all renditions (one huge failure unit, harder to test), and
+shipping MP4 renditions next to HLS (double encode time for no player benefit).

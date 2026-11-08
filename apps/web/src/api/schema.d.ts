@@ -229,9 +229,9 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             contentType: string;
-            /** @description The highest rendition once READY, before that the original file; null until it is uploaded */
+            /** @description The HLS master playlist once READY (adaptive bitrate), before that the original file; null until it is uploaded */
             playbackUrl: string | null;
-            /** @description Transcoded versions, highest first; empty until READY */
+            /** @description One HLS variant playlist per quality, highest first; empty until READY */
             renditions: components["schemas"]["Rendition"][];
             /** @description Why transcoding failed when FAILED */
             failureReason: string | null;

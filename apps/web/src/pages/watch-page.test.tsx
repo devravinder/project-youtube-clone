@@ -35,10 +35,10 @@ const base: VideoDetail = {
 const ready: VideoDetail = {
   ...base,
   status: "READY",
-  playbackUrl: "https://storage.test/720p",
+  playbackUrl: "https://cdn.test/v/hls/master.m3u8",
   renditions: [
-    { name: "720p", height: 720, playbackUrl: "https://storage.test/720p" },
-    { name: "360p", height: 360, playbackUrl: "https://storage.test/360p" },
+    { name: "720p", height: 720, playbackUrl: "https://cdn.test/v/hls/720p/index.m3u8" },
+    { name: "360p", height: 360, playbackUrl: "https://cdn.test/v/hls/360p/index.m3u8" },
   ],
 };
 
@@ -79,25 +79,29 @@ describe("WatchPage", () => {
     expect(await screen.findByText("Transcoding...")).toBeTruthy();
 
     await act(() => vi.advanceTimersByTimeAsync(2000));
-    expect((await screen.findByTestId("player")).dataset.src).toBe("https://storage.test/720p");
+    expect((await screen.findByTestId("player")).dataset.src).toBe(
+      "https://cdn.test/v/hls/master.m3u8",
+    );
 
     // Polling stops once ready, so the signed URL (and the player) stays put.
     await act(() => vi.advanceTimersByTimeAsync(10_000));
     expect(api.getVideo).toHaveBeenCalledTimes(3);
   });
 
-  it("switches quality from the picker", async () => {
+  it("adapts by default and can pin one quality", async () => {
     api.getVideo.mockResolvedValue(ready);
     renderPage();
 
-    const picker = await screen.findByRole("combobox", { name: "Quality" });
-    expect([...(picker as HTMLSelectElement).options].map((o) => o.value)).toEqual([
-      "720p",
-      "360p",
-    ]);
+    const picker = (await screen.findByRole("combobox", { name: "Quality" })) as HTMLSelectElement;
+    expect([...picker.options].map((o) => o.value)).toEqual(["auto", "720p", "360p"]);
+    expect(picker.value).toBe("auto");
+    expect(screen.getByTestId("player").dataset.src).toBe("https://cdn.test/v/hls/master.m3u8");
 
     fireEvent.change(picker, { target: { value: "360p" } });
-    expect(screen.getByTestId("player").dataset.src).toBe("https://storage.test/360p");
+    expect(screen.getByTestId("player").dataset.src).toBe("https://cdn.test/v/hls/360p/index.m3u8");
+
+    fireEvent.change(picker, { target: { value: "auto" } });
+    expect(screen.getByTestId("player").dataset.src).toBe("https://cdn.test/v/hls/master.m3u8");
   });
 
   it("explains a failure and still plays the original", async () => {

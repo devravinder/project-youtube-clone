@@ -43,7 +43,7 @@ class DomainValidationTest {
   @Test
   void resultCopiesItsKeysSoLaterChangesCannotLeakIn() {
     List<String> keys = new ArrayList<>(List.of("a.mp4"));
-    TranscodeResult result = new TranscodeResult("id", keys);
+    TranscodeResult result = new TranscodeResult("id", "id/hls/master.m3u8", keys);
 
     keys.add("b.mp4");
 

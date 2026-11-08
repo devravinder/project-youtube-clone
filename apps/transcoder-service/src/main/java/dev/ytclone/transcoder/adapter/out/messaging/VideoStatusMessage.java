@@ -8,6 +8,7 @@ public record VideoStatusMessage(
     String messageId,
     String videoId,
     String status,
+    String masterPlaylist,
     List<Rendition> renditions,
     String reason,
     Instant occurredAt) {

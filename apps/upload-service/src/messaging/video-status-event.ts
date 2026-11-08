@@ -5,6 +5,11 @@ const schema = z
     messageId: z.uuid(),
     videoId: z.uuid(),
     status: z.enum(["PROCESSING", "READY", "FAILED"]),
+    masterPlaylist: z
+      .string()
+      .min(1)
+      .nullable()
+      .describe("Key of the HLS master playlist in the output bucket when READY, otherwise null"),
     renditions: z
       .array(
         z

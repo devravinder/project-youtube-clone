@@ -37,7 +37,7 @@ class TranscodeCommandListenerTest {
       job -> {
         jobs.add(job);
         behaviour.accept(job);
-        return new TranscodeResult(job.videoId(), List.of());
+        return new TranscodeResult(job.videoId(), job.videoId() + "/hls/master.m3u8", List.of());
       };
 
   private final RetryScheduler retryScheduler =

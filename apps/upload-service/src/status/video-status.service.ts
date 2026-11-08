@@ -23,7 +23,11 @@ export class VideoStatusService {
       where: { id: event.videoId, status: { in: ALLOWED_FROM[event.status] } },
       data: {
         status: event.status,
-        ...(event.status === "READY" && { renditions: event.renditions, failureReason: null }),
+        ...(event.status === "READY" && {
+          renditions: event.renditions,
+          hlsMasterKey: event.masterPlaylist,
+          failureReason: null,
+        }),
         ...(event.status === "FAILED" && { failureReason: event.reason ?? "Transcoding failed" }),
       },
     });

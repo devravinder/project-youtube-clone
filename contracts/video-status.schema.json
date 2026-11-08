@@ -20,6 +20,18 @@
         "FAILED"
       ]
     },
+    "masterPlaylist": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Key of the HLS master playlist in the output bucket when READY, otherwise null"
+    },
     "renditions": {
       "type": "array",
       "items": {
@@ -59,6 +71,7 @@
     "messageId",
     "videoId",
     "status",
+    "masterPlaylist",
     "renditions",
     "reason",
     "occurredAt"

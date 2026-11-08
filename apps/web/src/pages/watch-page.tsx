@@ -8,11 +8,13 @@ import { isProcessing, useVideo } from "../queries/videos";
 import { ApiError } from "../services/api";
 import type { VideoDetail } from "../types";
 
+const AUTO = "auto";
+
 function Player({ video }: { readonly video: VideoDetail }) {
-  // Renditions arrive highest first; an unknown choice falls back to the default.
-  const [quality, setQuality] = useState<string | null>(null);
-  const selected = video.renditions.find((r) => r.name === quality) ?? video.renditions[0];
-  const src = selected?.playbackUrl ?? video.playbackUrl;
+  // "auto" plays the master playlist, so the player adapts to bandwidth; a name pins one variant.
+  const [quality, setQuality] = useState<string>(AUTO);
+  const pinned = video.renditions.find((r) => r.name === quality);
+  const src = pinned?.playbackUrl ?? video.playbackUrl;
 
   if (!src) {
     return (
@@ -31,9 +33,10 @@ function Player({ video }: { readonly video: VideoDetail }) {
           Quality
           <select
             className="rounded-md border border-border bg-background px-2 py-1"
-            value={selected?.name}
+            value={pinned?.name ?? AUTO}
             onChange={(event) => setQuality(event.target.value)}
           >
+            <option value={AUTO}>Auto</option>
             {video.renditions.map((r) => (
               <option key={r.name} value={r.name}>
                 {r.name}

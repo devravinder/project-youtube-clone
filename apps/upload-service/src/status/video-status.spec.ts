@@ -33,6 +33,7 @@ const event = (videoId: string, overrides: Partial<VideoStatusEvent> = {}): Vide
   messageId: randomUUID(),
   videoId,
   status: "PROCESSING",
+  masterPlaylist: null,
   renditions: [],
   reason: null,
   occurredAt: new Date().toISOString(),
@@ -42,9 +43,10 @@ const event = (videoId: string, overrides: Partial<VideoStatusEvent> = {}): Vide
 const ready = (videoId: string) =>
   event(videoId, {
     status: "READY",
+    masterPlaylist: `${videoId}/hls/master.m3u8`,
     renditions: [
-      { name: "360p", key: `${videoId}/360p.mp4` },
-      { name: "720p", key: `${videoId}/720p.mp4` },
+      { name: "360p", key: `${videoId}/hls/360p/index.m3u8` },
+      { name: "720p", key: `${videoId}/hls/720p/index.m3u8` },
     ],
   });
 
@@ -59,6 +61,7 @@ describe("VideoStatusService", () => {
     expect(prisma.rows.get(id)).toMatchObject({
       status: "READY",
       renditions: ready(id).renditions,
+      hlsMasterKey: `${id}/hls/master.m3u8`,
       failureReason: null,
     });
   });

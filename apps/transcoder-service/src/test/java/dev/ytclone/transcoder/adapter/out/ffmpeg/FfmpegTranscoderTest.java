@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.ytclone.transcoder.application.PermanentFailureException;
 import dev.ytclone.transcoder.domain.Rendition;
+import dev.ytclone.transcoder.domain.VideoInfo;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -39,14 +40,17 @@ class FfmpegTranscoderTest {
   }
 
   @Test
-  void probeReadsTheFirstVideoStreamHeight() {
-    next = new ProcessRunner.Result(0, "1080\n");
+  void probeReadsTheFirstVideoStreamSize() {
+    next = new ProcessRunner.Result(0, "1920,1080\n");
 
-    assertThat(withBinaries().probeHeight(workRoot.resolve("job/source"))).isEqualTo(1080);
+    assertThat(withBinaries().probe(workRoot.resolve("job/source")))
+        .isEqualTo(new VideoInfo(1920, 1080));
 
     List<String> command = specs.getFirst().command();
     assertThat(command.getFirst()).isEqualTo("/opt/ffprobe");
-    assertThat(command).containsSequence("-select_streams", "v:0");
+    assertThat(command)
+        .containsSequence("-select_streams", "v:0")
+        .containsSequence("-show_entries", "stream=width,height");
     assertThat(command.getLast()).isEqualTo(workRoot.resolve("job/source").toString());
     assertThat(timeouts).containsExactly(TIMEOUT);
   }
@@ -55,18 +59,16 @@ class FfmpegTranscoderTest {
   void probeFailsWhenThereIsNoVideoStream() {
     next = new ProcessRunner.Result(0, "\n");
 
-    assertThatThrownBy(() -> withBinaries().probeHeight(workRoot.resolve("job/song.mp3")))
+    assertThatThrownBy(() -> withBinaries().probe(workRoot.resolve("job/song.mp3")))
         .isInstanceOf(UnprocessableMediaException.class)
         .hasMessageContaining("No video stream");
   }
 
   @Test
-  void transcodeScalesToTheRungHeightWithItsBitrateAndFaststart() {
+  void hlsScalesToTheRungWithItsBitrateAlignedKeyframesAndVodSegments() {
+    Path out = workRoot.resolve("job/hls/720p");
     withBinaries()
-        .transcode(
-            workRoot.resolve("job/source"),
-            new Rendition("720p", 720, 2800),
-            workRoot.resolve("job/720p.mp4"));
+        .transcodeToHls(workRoot.resolve("job/source"), new Rendition("720p", 720, 2800), out);
 
     List<String> command = specs.getFirst().command();
     assertThat(command.getFirst()).isEqualTo("/opt/ffmpeg");
@@ -77,15 +79,22 @@ class FfmpegTranscoderTest {
         .containsSequence("-maxrate", "4200k")
         .containsSequence("-bufsize", "5600k")
         .containsSequence("-map", "0:a:0?")
-        .containsSequence("-movflags", "+faststart");
-    assertThat(command.getLast()).isEqualTo(workRoot.resolve("job/720p.mp4").toString());
+        .containsSequence("-force_key_frames", "expr:gte(t,n_forced*2)")
+        .containsSequence("-sc_threshold", "0")
+        .containsSequence("-f", "hls")
+        .containsSequence("-hls_time", "4")
+        .containsSequence("-hls_playlist_type", "vod")
+        .containsSequence("-hls_segment_filename", out.resolve("seg_%03d.ts").toString());
+    assertThat(command.getLast()).isEqualTo(out.resolve("index.m3u8").toString());
+    // ffmpeg will not create the directory itself.
+    assertThat(out).isDirectory();
   }
 
   @Test
   void dockerModeMapsPathsIntoTheMountAndRemovesTheContainerOnTimeout() {
-    next = new ProcessRunner.Result(0, "480");
+    next = new ProcessRunner.Result(0, "854,480");
 
-    withDocker().probeHeight(workRoot.resolve("job-1/source"));
+    withDocker().probe(workRoot.resolve("job-1/source"));
 
     ProcessRunner.Spec spec = specs.getFirst();
     assertThat(spec.command())
@@ -101,22 +110,23 @@ class FfmpegTranscoderTest {
   @Test
   void dockerModeUsesTheFfmpegEntrypointForTranscodes() {
     withDocker()
-        .transcode(
+        .transcodeToHls(
             workRoot.resolve("j/source"),
             new Rendition("360p", 360, 800),
-            workRoot.resolve("j/360p.mp4"));
+            workRoot.resolve("j/hls/360p"));
 
     assertThat(specs.getFirst().command())
         .containsSequence("--entrypoint", "/ffmpeg")
         .containsSequence("-i", "/work/j/source")
-        .endsWith("/work/j/360p.mp4");
+        .containsSequence("-hls_segment_filename", "/work/j/hls/360p/seg_%03d.ts")
+        .endsWith("/work/j/hls/360p/index.m3u8");
   }
 
   @Test
   void dockerModeRefusesFilesOutsideTheMountedWorkRoot() {
     Path outside = workRoot.resolveSibling("elsewhere/source");
 
-    assertThatThrownBy(() -> withDocker().probeHeight(outside))
+    assertThatThrownBy(() -> withDocker().probe(outside))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("outside the mounted work root");
     assertThat(specs).isEmpty();
@@ -128,10 +138,8 @@ class FfmpegTranscoderTest {
 
     assertThatThrownBy(() ->
             withBinaries()
-                .transcode(
-                    workRoot.resolve("s"),
-                    new Rendition("360p", 360, 800),
-                    workRoot.resolve("o.mp4")))
+                .transcodeToHls(
+                    workRoot.resolve("s"), new Rendition("360p", 360, 800), workRoot.resolve("o")))
         .isInstanceOf(UnprocessableMediaException.class)
         .hasMessageStartingWith("ffmpeg exited with 1: ...")
         .hasMessageEndingWith("Invalid data found")
@@ -142,7 +150,7 @@ class FfmpegTranscoderTest {
   void aKilledProcessIsTransientNotAProblemWithTheFile() {
     next = new ProcessRunner.Result(137, "Killed");
 
-    assertThatThrownBy(() -> withBinaries().probeHeight(workRoot.resolve("s")))
+    assertThatThrownBy(() -> withBinaries().probe(workRoot.resolve("s")))
         .isInstanceOf(FfmpegException.class)
         .isNotInstanceOf(PermanentFailureException.class);
   }

@@ -67,13 +67,19 @@ class VideoStatusContractTest {
 
   @Test
   void readyListsEachRenditionByNameAndKey() throws Exception {
-    publisher.ready(new TranscodeResult("vid-1", List.of("vid-1/360p.mp4", "vid-1/720p.mp4")));
+    publisher.ready(
+        new TranscodeResult(
+            "vid-1",
+            "vid-1/hls/master.m3u8",
+            List.of("vid-1/hls/360p/index.m3u8", "vid-1/hls/720p/index.m3u8")));
 
     JsonNode json = wire(sent.getFirst());
     assertThat(json.get("status").asString()).isEqualTo("READY");
     assertThat(json.get("renditions").toString())
         .isEqualTo(
-            "[{\"name\":\"360p\",\"key\":\"vid-1/360p.mp4\"},{\"name\":\"720p\",\"key\":\"vid-1/720p.mp4\"}]");
+            "[{\"name\":\"360p\",\"key\":\"vid-1/hls/360p/index.m3u8\"},"
+                + "{\"name\":\"720p\",\"key\":\"vid-1/hls/720p/index.m3u8\"}]");
+    assertThat(json.get("masterPlaylist").asString()).isEqualTo("vid-1/hls/master.m3u8");
     assertThat(json.get("reason").isNull()).isTrue();
     // Zod's z.iso.datetime() wants an ISO string in UTC, not epoch numbers.
     assertThat(json.get("occurredAt").asString()).isEqualTo("2026-11-08T10:00:00Z");
@@ -86,6 +92,7 @@ class VideoStatusContractTest {
     publisher.failed("vid-2", "not a video");
 
     assertThat(wire(sent.get(0)).get("renditions").isEmpty()).isTrue();
+    assertThat(wire(sent.get(0)).get("masterPlaylist").isNull()).isTrue();
     JsonNode failed = wire(sent.get(1));
     assertThat(failed.get("status").asString()).isEqualTo("FAILED");
     assertThat(failed.get("reason").asString()).isEqualTo("not a video");
@@ -93,8 +100,8 @@ class VideoStatusContractTest {
   }
 
   @Test
-  void renditionNameIsTheFileNameWithoutExtension() {
-    assertThat(RabbitVideoStatusPublisher.renditionName("v/1080p.mp4")).isEqualTo("1080p");
-    assertThat(RabbitVideoStatusPublisher.renditionName("plain")).isEqualTo("plain");
+  void renditionNameIsTheVariantDirectory() {
+    assertThat(RabbitVideoStatusPublisher.renditionName("v/hls/1080p/index.m3u8"))
+        .isEqualTo("1080p");
   }
 }

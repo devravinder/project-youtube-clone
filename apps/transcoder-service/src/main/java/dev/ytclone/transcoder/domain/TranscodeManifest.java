@@ -12,6 +12,7 @@ public final class TranscodeManifest {
   public static final String FILE_NAME = "manifest.json";
 
   private static final Pattern VIDEO_ID = Pattern.compile("\"videoId\"\\s*:\\s*\"([^\"]*)\"");
+  private static final Pattern MASTER = Pattern.compile("\"masterPlaylist\"\\s*:\\s*\"([^\"]*)\"");
   private static final Pattern RENDITIONS = Pattern.compile("\"renditions\"\\s*:\\s*\\[([^]]*)]");
   private static final Pattern STRING = Pattern.compile("\"([^\"]*)\"");
 
@@ -25,17 +26,24 @@ public final class TranscodeManifest {
   public static String toJson(TranscodeResult result) {
     String keys =
         result.outputKeys().stream().map(k -> "\"" + k + "\"").collect(Collectors.joining(","));
-    return "{\"videoId\":\"" + result.videoId() + "\",\"renditions\":[" + keys + "]}\n";
+    return "{\"videoId\":\""
+        + result.videoId()
+        + "\",\"masterPlaylist\":\""
+        + result.masterPlaylistKey()
+        + "\",\"renditions\":["
+        + keys
+        + "]}\n";
   }
 
+  // A manifest from before HLS has no masterPlaylist and is treated as missing, so it is redone.
   public static Optional<TranscodeResult> fromJson(String json) {
     Matcher id = VIDEO_ID.matcher(json);
+    Matcher master = MASTER.matcher(json);
     Matcher renditions = RENDITIONS.matcher(json);
-    if (!id.find() || !renditions.find()) {
+    if (!id.find() || !master.find() || !renditions.find()) {
       return Optional.empty();
     }
-    Matcher item = STRING.matcher(renditions.group(1));
-    List<String> keys = item.results().map(m -> m.group(1)).toList();
-    return Optional.of(new TranscodeResult(id.group(1), keys));
+    List<String> keys = STRING.matcher(renditions.group(1)).results().map(m -> m.group(1)).toList();
+    return Optional.of(new TranscodeResult(id.group(1), master.group(1), keys));
   }
 }

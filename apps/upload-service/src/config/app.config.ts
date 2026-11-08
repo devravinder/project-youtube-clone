@@ -13,6 +13,8 @@ const schema = z.object({
   UPLOAD_PART_SIZE_MB: z.coerce.number().int().min(5).default(8),
   OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().min(100).default(1000),
   OUTBOX_RETENTION_HOURS: z.coerce.number().int().positive().default(72),
+  // The hls bucket is public read; players fetch playlists and segments from here (later: the edge cache).
+  HLS_PUBLIC_BASE_URL: z.url().default("http://localhost:9000/hls-videos"),
 });
 
 export type AppConfig = z.infer<typeof schema>;

@@ -48,11 +48,12 @@ export const videoDetailSchema = videoSummarySchema
       .url()
       .nullable()
       .describe(
-        "The highest rendition once READY, before that the original file; null until it is uploaded",
+        "The HLS master playlist once READY (adaptive bitrate), before that the original file; " +
+          "null until it is uploaded",
       ),
     renditions: z
       .array(renditionSchema)
-      .describe("Transcoded versions, highest first; empty until READY"),
+      .describe("One HLS variant playlist per quality, highest first; empty until READY"),
     failureReason: z.string().nullable().describe("Why transcoding failed when FAILED"),
   })
   .meta({ id: "VideoDetail" });

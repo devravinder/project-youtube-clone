@@ -304,16 +304,17 @@ describe("GET /videos/:id", () => {
     expect(detail.body.renditions).toEqual([]);
   });
 
-  it("serves signed rendition URLs, highest first, once READY", async () => {
+  it("serves the public HLS master playlist and variants, highest first, once READY", async () => {
     const video = t.prisma.seed({
       title: "done",
       rawBucket: "raw-videos",
       rawKey: "v/source.mp4",
       contentType: "video/mp4",
       status: "READY",
+      hlsMasterKey: "v/hls/master.m3u8",
       renditions: [
-        { name: "360p", key: "v/360p.mp4" },
-        { name: "720p", key: "v/720p.mp4" },
+        { name: "360p", key: "v/hls/360p/index.m3u8" },
+        { name: "720p", key: "v/hls/720p/index.m3u8" },
         { name: "bogus", key: "v/x.mp4" },
       ],
     });
@@ -326,8 +327,10 @@ describe("GET /videos/:id", () => {
       ["720p", 720],
       ["360p", 360],
     ]);
-    expect(detail.renditions[0].playbackUrl).toContain("hls-videos/v/720p.mp4");
-    expect(detail.playbackUrl).toBe(detail.renditions[0].playbackUrl);
+    expect(detail.renditions[0].playbackUrl).toBe(
+      "https://cdn.test/hls-videos/v/hls/720p/index.m3u8",
+    );
+    expect(detail.playbackUrl).toBe("https://cdn.test/hls-videos/v/hls/master.m3u8");
     expect(detail.failureReason).toBeNull();
   });
 

@@ -80,7 +80,7 @@ Concepts: async processing, work-queue semantics, outbox, idempotency, polyglot 
 Goal: adaptive-bitrate playback served through an edge cache.
 Concepts: ABR/HLS, CDN/edge caching, byte-range/seek.
 
-- [ ] ffmpeg produces HLS (manifest + segments) into MinIO hls bucket
+- [x] ffmpeg produces HLS (manifest + segments) into MinIO hls bucket: 4 s segments, keyframes aligned every 2 s, master playlist with bandwidth/resolution; bucket readable (not listable) anonymously; API serves the master as `playbackUrl`
 - [ ] React player uses adaptive bitrate (hls.js)
 - [ ] nginx edge cache + cache headers + byte-range
 - [ ] Verify seek + quality switching under throttled bandwidth

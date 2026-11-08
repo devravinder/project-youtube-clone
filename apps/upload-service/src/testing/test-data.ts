@@ -20,6 +20,7 @@ export const testConfig = {
   RABBITMQ_URL: "amqp://unused",
   OUTBOX_POLL_INTERVAL_MS: 1000,
   OUTBOX_RETENTION_HOURS: 72,
+  HLS_PUBLIC_BASE_URL: "https://cdn.test/hls-videos",
 } as unknown as AppConfig;
 
 export const alice = { id: "user-alice", username: "alice" };

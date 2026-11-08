@@ -16,7 +16,7 @@ public class RabbitVideoStatusPublisher implements VideoStatusPort {
 
   @Override
   public void processing(String videoId) {
-    send(videoId, "PROCESSING", List.of(), null);
+    send(videoId, "PROCESSING", null, List.of(), null);
   }
 
   @Override
@@ -25,25 +25,34 @@ public class RabbitVideoStatusPublisher implements VideoStatusPort {
         result.outputKeys().stream()
             .map(key -> new VideoStatusMessage.Rendition(renditionName(key), key))
             .toList();
-    send(result.videoId(), "READY", renditions, null);
+    send(result.videoId(), "READY", result.masterPlaylistKey(), renditions, null);
   }
 
   @Override
   public void failed(String videoId, String reason) {
-    send(videoId, "FAILED", List.of(), reason);
+    send(videoId, "FAILED", null, List.of(), reason);
   }
 
   private void send(
-      String videoId, String status, List<VideoStatusMessage.Rendition> renditions, String reason) {
+      String videoId,
+      String status,
+      String masterPlaylist,
+      List<VideoStatusMessage.Rendition> renditions,
+      String reason) {
     sender.accept(
         new VideoStatusMessage(
-            UUID.randomUUID().toString(), videoId, status, renditions, reason, clock.instant()));
+            UUID.randomUUID().toString(),
+            videoId,
+            status,
+            masterPlaylist,
+            renditions,
+            reason,
+            clock.instant()));
   }
 
-  // Keys are "<videoId>/<name>.mp4".
+  // Variant keys are "<videoId>/hls/<name>/index.m3u8".
   static String renditionName(String key) {
-    String file = key.substring(key.lastIndexOf('/') + 1);
-    int dot = file.lastIndexOf('.');
-    return dot < 0 ? file : file.substring(0, dot);
+    String dir = key.substring(0, Math.max(key.lastIndexOf('/'), 0));
+    return dir.substring(dir.lastIndexOf('/') + 1);
   }
 }

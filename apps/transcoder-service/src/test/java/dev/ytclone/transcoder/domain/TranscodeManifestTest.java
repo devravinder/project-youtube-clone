@@ -10,21 +10,31 @@ class TranscodeManifestTest {
   @Test
   void roundTripsAResult() {
     TranscodeResult result =
-        new TranscodeResult("vid-1", List.of("vid-1/360p.mp4", "vid-1/480p.mp4"));
+        new TranscodeResult(
+            "vid-1",
+            "vid-1/hls/master.m3u8",
+            List.of("vid-1/hls/360p/index.m3u8", "vid-1/hls/480p/index.m3u8"));
 
     assertThat(TranscodeManifest.fromJson(TranscodeManifest.toJson(result))).contains(result);
   }
 
   @Test
   void readsAManifestWithWhitespaceAndNoRenditions() {
-    assertThat(TranscodeManifest.fromJson("{ \"videoId\" : \"v\", \"renditions\" : [ ] }"))
-        .contains(new TranscodeResult("v", List.of()));
+    assertThat(
+            TranscodeManifest.fromJson(
+                "{ \"videoId\" : \"v\", \"masterPlaylist\" : \"m\", \"renditions\" : [ ] }"))
+        .contains(new TranscodeResult("v", "m", List.of()));
+  }
+
+  @Test
+  void treatsAManifestFromBeforeHlsAsMissing() {
+    assertThat(TranscodeManifest.fromJson("{\"videoId\":\"v\",\"renditions\":[\"v/360p.mp4\"]}"))
+        .isEmpty();
   }
 
   @Test
   void rejectsSomethingThatIsNotAManifest() {
     assertThat(TranscodeManifest.fromJson("{\"hello\":1}")).isEmpty();
-    assertThat(TranscodeManifest.fromJson("{\"videoId\":\"v\"}")).isEmpty();
   }
 
   @Test

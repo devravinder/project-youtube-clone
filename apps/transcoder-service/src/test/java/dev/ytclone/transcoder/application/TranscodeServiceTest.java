@@ -5,16 +5,21 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.ytclone.transcoder.application.port.out.StoragePort;
 import dev.ytclone.transcoder.application.port.out.TranscoderPort;
+import dev.ytclone.transcoder.application.port.out.VideoStatusPort;
 import dev.ytclone.transcoder.application.service.TranscodeService;
 import dev.ytclone.transcoder.domain.Rendition;
 import dev.ytclone.transcoder.domain.TranscodeJob;
 import dev.ytclone.transcoder.domain.TranscodeResult;
+import dev.ytclone.transcoder.domain.VideoInfo;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,6 +29,8 @@ class TranscodeServiceTest {
 
   private static final TranscodeJob JOB =
       new TranscodeJob("vid-1", "raw-videos", "vid-1/source.mp4");
+  private static final String MASTER = "out/vid-1/hls/master.m3u8";
+  private static final String MANIFEST = "out/vid-1/manifest.json";
 
   @TempDir Path workRoot;
 
@@ -35,9 +42,64 @@ class TranscodeServiceTest {
   @BeforeEach
   void setUp() {
     storage = new FakeStorage();
-    transcoder = new FakeTranscoder(1080);
+    transcoder = new FakeTranscoder(new VideoInfo(1920, 1080));
     status = new FakeStatus();
-    service = new TranscodeService(storage, transcoder, workRoot, "renditions", status);
+    service = new TranscodeService(storage, transcoder, workRoot, "out", status);
+  }
+
+  @Test
+  void uploadsEveryVariantWithSegmentsBeforeItsPlaylist() {
+    service.transcode(JOB);
+
+    assertThat(storage.downloads).containsExactly("raw-videos/vid-1/source.mp4");
+    assertThat(storage.uploads)
+        .containsExactly(
+            "out/vid-1/hls/360p/seg_000.ts",
+            "out/vid-1/hls/360p/seg_001.ts",
+            "out/vid-1/hls/360p/index.m3u8",
+            "out/vid-1/hls/480p/seg_000.ts",
+            "out/vid-1/hls/480p/seg_001.ts",
+            "out/vid-1/hls/480p/index.m3u8",
+            "out/vid-1/hls/720p/seg_000.ts",
+            "out/vid-1/hls/720p/seg_001.ts",
+            "out/vid-1/hls/720p/index.m3u8",
+            "out/vid-1/hls/1080p/seg_000.ts",
+            "out/vid-1/hls/1080p/seg_001.ts",
+            "out/vid-1/hls/1080p/index.m3u8");
+    assertThat(storage.contentTypes.get("out/vid-1/hls/360p/seg_000.ts")).isEqualTo("video/mp2t");
+    assertThat(storage.contentTypes.get("out/vid-1/hls/360p/index.m3u8"))
+        .isEqualTo("application/vnd.apple.mpegurl");
+    assertThat(storage.uploadedContent).containsEntry("out/vid-1/hls/720p/seg_001.ts", "720p-1");
+  }
+
+  @Test
+  void writesTheMasterPlaylistAfterTheVariantsAndTheManifestLast() {
+    TranscodeResult result = service.transcode(JOB);
+
+    assertThat(storage.textOrder).containsExactly(MASTER, MANIFEST);
+    assertThat(storage.texts.get(MASTER))
+        .startsWith("#EXTM3U")
+        .contains("RESOLUTION=640x360", "RESOLUTION=1920x1080", "360p/index.m3u8");
+    assertThat(storage.textTypes.get(MASTER)).isEqualTo("application/vnd.apple.mpegurl");
+    assertThat(result.masterPlaylistKey()).isEqualTo("vid-1/hls/master.m3u8");
+    assertThat(result.outputKeys())
+        .containsExactly(
+            "vid-1/hls/360p/index.m3u8",
+            "vid-1/hls/480p/index.m3u8",
+            "vid-1/hls/720p/index.m3u8",
+            "vid-1/hls/1080p/index.m3u8");
+  }
+
+  @Test
+  void neverUpscalesASmallSource() {
+    transcoder = new FakeTranscoder(new VideoInfo(854, 480));
+    service = new TranscodeService(storage, transcoder, workRoot, "out", status);
+
+    TranscodeResult result = service.transcode(JOB);
+
+    assertThat(result.outputKeys())
+        .containsExactly("vid-1/hls/360p/index.m3u8", "vid-1/hls/480p/index.m3u8");
+    assertThat(transcoder.transcoded).extracting(Rendition::height).containsExactly(360, 480);
   }
 
   @Test
@@ -48,22 +110,41 @@ class TranscodeServiceTest {
   }
 
   @Test
-  void reportsReadyAgainForADuplicateSoALostEventIsRepaired() {
-    service.transcode(JOB);
+  void skipsADuplicateCommandOnceTheManifestExistsAndReportsReadyAgain() {
+    TranscodeResult first = service.transcode(JOB);
+    storage.downloads.clear();
+    storage.uploads.clear();
     status.events.clear();
 
-    service.transcode(JOB);
+    TranscodeResult second = service.transcode(JOB);
 
+    assertThat(second).isEqualTo(first);
+    assertThat(storage.downloads).isEmpty();
+    assertThat(storage.uploads).isEmpty();
     assertThat(status.events).containsExactly("READY vid-1 4");
   }
 
   @Test
-  void doesNotReportReadyWhenTranscodingFails() {
-    transcoder.failOn = "480p";
-
-    org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.transcode(JOB));
-
+  void encodesAgainWhenAFailedRunLeftNoManifest() {
+    transcoder.failOn = "720p";
+    assertThatThrownBy(() -> service.transcode(JOB)).hasMessage("ffmpeg failed for 720p");
+    assertThat(storage.texts).doesNotContainKeys(MASTER, MANIFEST);
     assertThat(status.events).containsExactly("PROCESSING vid-1");
+
+    transcoder.failOn = null;
+    storage.uploads.clear();
+    service.transcode(JOB);
+
+    assertThat(storage.uploads).hasSize(12);
+  }
+
+  @Test
+  void ignoresAManifestForAnotherVideoOrFromBeforeHls() {
+    storage.texts.put(MANIFEST, "{\"videoId\":\"vid-1\",\"renditions\":[\"vid-1/360p.mp4\"]}");
+
+    service.transcode(JOB);
+
+    assertThat(storage.uploads).hasSize(12);
   }
 
   @Test
@@ -74,104 +155,13 @@ class TranscodeServiceTest {
   }
 
   @Test
-  void writesAManifestLastThatListsEveryRendition() {
+  void removesItsWorkDirectoryAfterSuccessAndFailure() {
     service.transcode(JOB);
-
-    assertThat(storage.texts)
-        .containsOnlyKeys("renditions/vid-1/manifest.json")
-        .containsValue(
-            "{\"videoId\":\"vid-1\",\"renditions\":[\"vid-1/360p.mp4\",\"vid-1/480p.mp4\","
-                + "\"vid-1/720p.mp4\",\"vid-1/1080p.mp4\"]}\n");
-  }
-
-  @Test
-  void skipsADuplicateCommandOnceTheManifestExists() {
-    TranscodeResult first = service.transcode(JOB);
-    storage.downloads.clear();
-    storage.uploads.clear();
-
-    TranscodeResult second = service.transcode(JOB);
-
-    assertThat(second).isEqualTo(first);
-    assertThat(storage.downloads).isEmpty();
-    assertThat(storage.uploads).isEmpty();
-  }
-
-  @Test
-  void encodesAgainWhenAFailedRunLeftNoManifest() {
-    transcoder.failOn = "720p";
-    org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.transcode(JOB));
-    assertThat(storage.texts).isEmpty();
-
-    transcoder.failOn = null;
-    storage.uploads.clear();
-    service.transcode(JOB);
-
-    assertThat(storage.uploads).hasSize(4);
-  }
-
-  @Test
-  void ignoresAManifestForAnotherVideo() {
-    storage.texts.put(
-        "renditions/vid-1/manifest.json", "{\"videoId\":\"other\",\"renditions\":[\"x.mp4\"]}");
-
-    service.transcode(JOB);
-
-    assertThat(storage.uploads).hasSize(4);
-  }
-
-  @Test
-  void downloadsTheSourceAndUploadsEveryRendition() {
-    TranscodeResult result = service.transcode(JOB);
-
-    assertThat(storage.downloads).containsExactly("raw-videos/vid-1/source.mp4");
-    assertThat(storage.uploads)
-        .containsExactly(
-            "renditions/vid-1/360p.mp4",
-            "renditions/vid-1/480p.mp4",
-            "renditions/vid-1/720p.mp4",
-            "renditions/vid-1/1080p.mp4");
-    assertThat(result.videoId()).isEqualTo("vid-1");
-    assertThat(result.outputKeys())
-        .containsExactly("vid-1/360p.mp4", "vid-1/480p.mp4", "vid-1/720p.mp4", "vid-1/1080p.mp4");
-  }
-
-  @Test
-  void neverUpscalesASmallSource() {
-    transcoder = new FakeTranscoder(480);
-    status = new FakeStatus();
-    service = new TranscodeService(storage, transcoder, workRoot, "renditions", status);
-
-    TranscodeResult result = service.transcode(JOB);
-
-    assertThat(result.outputKeys()).containsExactly("vid-1/360p.mp4", "vid-1/480p.mp4");
-    assertThat(transcoder.transcoded).extracting(Rendition::height).containsExactly(360, 480);
-  }
-
-  @Test
-  void uploadsTheBytesTheTranscoderProduced() {
-    service.transcode(JOB);
-
-    assertThat(storage.uploadedContent).containsEntry("renditions/vid-1/720p.mp4", "encoded-720p");
-    assertThat(storage.contentTypes).containsOnly("video/mp4");
-  }
-
-  @Test
-  void removesItsWorkDirectoryAfterSuccess() {
-    service.transcode(JOB);
-
     assertThat(listWorkRoot()).isEmpty();
-  }
 
-  @Test
-  void removesItsWorkDirectoryAndStopsWhenTranscodingFails() {
-    transcoder.failOn = "720p";
-
-    assertThatThrownBy(() -> service.transcode(JOB)).hasMessage("ffmpeg failed for 720p");
-
+    transcoder.failOn = "360p";
+    assertThatThrownBy(() -> service.transcode(new TranscodeJob("vid-2", "raw-videos", "k")));
     assertThat(listWorkRoot()).isEmpty();
-    assertThat(storage.uploads)
-        .containsExactly("renditions/vid-1/360p.mp4", "renditions/vid-1/480p.mp4");
   }
 
   @Test
@@ -196,7 +186,7 @@ class TranscodeServiceTest {
   void failsClearlyWhenTheWorkRootCannotBeCreated() throws IOException {
     Path file = Files.createFile(workRoot.resolve("not-a-directory"));
     TranscodeService broken =
-        new TranscodeService(storage, transcoder, file.resolve("nested"), "renditions", status);
+        new TranscodeService(storage, transcoder, file.resolve("nested"), "out", status);
 
     assertThatThrownBy(() -> broken.transcode(JOB))
         .isInstanceOf(UncheckedIOException.class)
@@ -216,19 +206,23 @@ class TranscodeServiceTest {
     final List<String> downloads = new ArrayList<>();
     final List<Path> downloadTargets = new ArrayList<>();
     final List<String> uploads = new ArrayList<>();
-    final List<String> contentTypes = new ArrayList<>();
-    final java.util.Map<String, String> uploadedContent = new java.util.HashMap<>();
-    final java.util.Map<String, String> texts = new java.util.HashMap<>();
+    final Map<String, String> contentTypes = new HashMap<>();
+    final Map<String, String> uploadedContent = new HashMap<>();
+    final Map<String, String> texts = new HashMap<>();
+    final Map<String, String> textTypes = new HashMap<>();
+    final List<String> textOrder = new ArrayList<>();
     boolean failDownload;
 
     @Override
-    public java.util.Optional<String> readText(String bucket, String key) {
-      return java.util.Optional.ofNullable(texts.get(bucket + "/" + key));
+    public Optional<String> readText(String bucket, String key) {
+      return Optional.ofNullable(texts.get(bucket + "/" + key));
     }
 
     @Override
     public void writeText(String bucket, String key, String text, String contentType) {
       texts.put(bucket + "/" + key, text);
+      textTypes.put(bucket + "/" + key, contentType);
+      textOrder.add(bucket + "/" + key);
     }
 
     @Override
@@ -244,7 +238,7 @@ class TranscodeServiceTest {
     @Override
     public void upload(String bucket, String key, Path source, String contentType) {
       uploads.add(bucket + "/" + key);
-      contentTypes.add(contentType);
+      contentTypes.put(bucket + "/" + key, contentType);
       try {
         uploadedContent.put(bucket + "/" + key, Files.readString(source));
       } catch (IOException e) {
@@ -253,8 +247,7 @@ class TranscodeServiceTest {
     }
   }
 
-  private static final class FakeStatus
-      implements dev.ytclone.transcoder.application.port.out.VideoStatusPort {
+  private static final class FakeStatus implements VideoStatusPort {
     final List<String> events = new ArrayList<>();
 
     @Override
@@ -274,26 +267,34 @@ class TranscodeServiceTest {
   }
 
   private static final class FakeTranscoder implements TranscoderPort {
-    final int sourceHeight;
+    final VideoInfo info;
     final List<Rendition> transcoded = new ArrayList<>();
     String failOn;
 
-    FakeTranscoder(int sourceHeight) {
-      this.sourceHeight = sourceHeight;
+    FakeTranscoder(VideoInfo info) {
+      this.info = info;
     }
 
     @Override
-    public int probeHeight(Path source) {
-      return sourceHeight;
+    public VideoInfo probe(Path source) {
+      return info;
     }
 
+    // Two segments and a playlist, like ffmpeg's HLS muxer.
     @Override
-    public void transcode(Path source, Rendition rendition, Path target) {
+    public void transcodeToHls(Path source, Rendition rendition, Path outputDir) {
       if (rendition.name().equals(failOn)) {
         throw new IllegalStateException("ffmpeg failed for " + rendition.name());
       }
       transcoded.add(rendition);
-      write(target, "encoded-" + rendition.name());
+      try {
+        Files.createDirectories(outputDir);
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
+      write(outputDir.resolve("index.m3u8"), "#EXTM3U " + rendition.name());
+      write(outputDir.resolve("seg_000.ts"), rendition.name() + "-0");
+      write(outputDir.resolve("seg_001.ts"), rendition.name() + "-1");
     }
   }
 

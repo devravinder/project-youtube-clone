@@ -93,6 +93,10 @@ The script reports any image that has not been pulled yet; pull it and re-run.
 ## 3. Start local infrastructure
 
 Brings up Postgres, MinIO, Keycloak and RabbitMQ, and auto-creates the `raw-videos` and `hls-videos` buckets.
+`raw-videos` is private (uploads and the original go through presigned URLs). `hls-videos` allows anonymous
+`GetObject` but not listing (`infra/minio/hls-read-policy.json`), because a player fetches every segment a
+playlist names and those URLs cannot each be signed. After pulling changes to that policy, apply it with
+`docker compose -f infra/docker-compose-local.yaml up -d --force-recreate minio-setup`.
 
 Keycloak takes about 30 seconds to start. It imports `infra/keycloak/realm-youtube-clone.json`:
 
@@ -250,9 +254,11 @@ pnpm start:l:transcoder
 ```
 
 It listens on port 3002 and consumes `transcoder.transcode-video`. For each command it downloads the raw
-file from MinIO, probes its height with ffprobe, and encodes H.264/AAC MP4 renditions up to the source
-height: 360p, 480p, 720p and 1080p, never upscaling. It uploads them to
-`hls-videos/<videoId>/<rendition>.mp4` and then deletes its work directory. HLS segments come in Stage 3.
+file from MinIO, probes its size with ffprobe, and encodes an HLS ladder up to the source height (360p,
+480p, 720p and 1080p, never upscaling): H.264/AAC in 4-second MPEG-TS segments with a keyframe every
+2 seconds in every rendition, so players can switch quality at any segment edge. Output goes to
+`hls-videos/<videoId>/hls/<rendition>/index.m3u8` + `seg_NNN.ts`, then `hls-videos/<videoId>/hls/master.m3u8`
+(bandwidth and resolution per variant), and the work directory is deleted.
 Last it writes `hls-videos/<videoId>/manifest.json`; a duplicate command for a video with a manifest is
 skipped. Failures are sorted:
 

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import dev.ytclone.transcoder.domain.Rendition;
+import dev.ytclone.transcoder.domain.VideoInfo;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -34,7 +35,8 @@ class FfmpegDockerIntegrationTest {
     transcoder = new FfmpegTranscoder(RUNNER, launcher, TIMEOUT);
     source = workRoot.resolve("job/source");
     Files.createDirectories(source.getParent());
-    // Two seconds of 854x480 test pattern plus a tone, written without an extension like real jobs.
+    // Nine seconds of 854x480 test pattern plus a tone, written without an extension like real
+    // jobs.
     ProcessRunner.Result made =
         RUNNER.run(
             launcher.spec(
@@ -53,7 +55,7 @@ class FfmpegDockerIntegrationTest {
                     "-i",
                     "sine=frequency=440",
                     "-t",
-                    "2",
+                    "9",
                     "-c:v",
                     "libx264",
                     "-c:a",
@@ -79,21 +81,22 @@ class FfmpegDockerIntegrationTest {
   }
 
   @Test
-  void probesTheSourceHeight() {
-    assertThat(transcoder.probeHeight(source)).isEqualTo(480);
+  void probesTheSourceSize() {
+    assertThat(transcoder.probe(source)).isEqualTo(new VideoInfo(854, 480));
   }
 
   @Test
-  void producesAPlayableRenditionAtTheRequestedHeight() throws Exception {
-    Path target = workRoot.resolve("job/360p.mp4");
+  void producesAVodPlaylistWithFourSecondSegmentsAtTheRequestedHeight() throws Exception {
+    Path out = workRoot.resolve("job/hls/360p");
 
-    transcoder.transcode(source, new Rendition("360p", 360, 800), target);
+    transcoder.transcodeToHls(source, new Rendition("360p", 360, 800), out);
 
-    assertThat(target).isNotEmptyFile();
-    assertThat(transcoder.probeHeight(target)).isEqualTo(360);
-    // faststart puts the moov index before the media data.
-    String file = new String(Files.readAllBytes(target), StandardCharsets.ISO_8859_1);
-    assertThat(file.indexOf("moov")).isNotNegative().isLessThan(file.indexOf("mdat"));
+    String playlist = Files.readString(out.resolve("index.m3u8"), StandardCharsets.UTF_8);
+    assertThat(playlist)
+        .contains("#EXT-X-PLAYLIST-TYPE:VOD", "#EXT-X-ENDLIST", "seg_000.ts", "seg_002.ts");
+    // Keyframes every 2 s let ffmpeg cut exactly at 4 s; 9 s of video makes 4 + 4 + 1.
+    assertThat(playlist).contains("#EXTINF:4.000000,").contains("#EXTINF:1.000000,");
+    assertThat(transcoder.probe(out.resolve("seg_000.ts"))).isEqualTo(new VideoInfo(640, 360));
   }
 
   @Test
@@ -101,7 +104,7 @@ class FfmpegDockerIntegrationTest {
     Path junk = workRoot.resolve("job/junk");
     Files.writeString(junk, "not a video");
 
-    assertThatThrownBy(() -> transcoder.probeHeight(junk))
+    assertThatThrownBy(() -> transcoder.probe(junk))
         .isInstanceOf(UnprocessableMediaException.class)
         .hasMessageContaining("ffprobe exited with");
   }

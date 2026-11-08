@@ -2,7 +2,12 @@ package dev.ytclone.transcoder.adapter.out.ffmpeg;
 
 import dev.ytclone.transcoder.adapter.out.ffmpeg.FfmpegLauncher.Tool;
 import dev.ytclone.transcoder.application.port.out.TranscoderPort;
+import dev.ytclone.transcoder.domain.HlsMasterPlaylist;
 import dev.ytclone.transcoder.domain.Rendition;
+import dev.ytclone.transcoder.domain.VideoInfo;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
@@ -13,7 +18,8 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class FfmpegTranscoder implements TranscoderPort {
 
-  private static final int AUDIO_BITRATE_KBPS = 128;
+  private static final int SEGMENT_SECONDS = 4;
+  private static final int KEYFRAME_SECONDS = 2;
   private static final int MAX_OUTPUT_IN_ERRORS = 2000;
 
   private final ProcessRunner runner;
@@ -21,7 +27,7 @@ public class FfmpegTranscoder implements TranscoderPort {
   private final Duration timeout;
 
   @Override
-  public int probeHeight(Path source) {
+  public VideoInfo probe(Path source) {
     String output =
         run(
             Tool.FFPROBE,
@@ -31,22 +37,29 @@ public class FfmpegTranscoder implements TranscoderPort {
                 "-select_streams",
                 "v:0",
                 "-show_entries",
-                "stream=height",
+                "stream=width,height",
                 "-of",
                 "csv=p=0",
                 launcher.path(source)));
     return output
         .lines()
         .map(String::trim)
-        .filter(line -> line.matches("\\d+"))
+        .filter(line -> line.matches("\\d+,\\d+"))
         .findFirst()
-        .map(Integer::parseInt)
+        .map(line -> line.split(","))
+        .map(wh -> new VideoInfo(Integer.parseInt(wh[0]), Integer.parseInt(wh[1])))
         .orElseThrow(() ->
             new UnprocessableMediaException("No video stream found in " + source.getFileName()));
   }
 
   @Override
-  public void transcode(Path source, Rendition rendition, Path target) {
+  public void transcodeToHls(Path source, Rendition rendition, Path outputDir) {
+    try {
+      // The HLS muxer does not create directories; in Docker mode this is the mounted host path.
+      Files.createDirectories(outputDir);
+    } catch (IOException e) {
+      throw new UncheckedIOException("Cannot create " + outputDir, e);
+    }
     int bitrate = rendition.videoBitrateKbps();
     long started = System.nanoTime();
     run(
@@ -73,6 +86,11 @@ public class FfmpegTranscoder implements TranscoderPort {
             "veryfast",
             "-pix_fmt",
             "yuv420p",
+            // A keyframe every 2 s in every rendition, so players can switch at segment edges.
+            "-force_key_frames",
+            "expr:gte(t,n_forced*" + KEYFRAME_SECONDS + ")",
+            "-sc_threshold",
+            "0",
             "-b:v",
             bitrate + "k",
             "-maxrate",
@@ -82,13 +100,18 @@ public class FfmpegTranscoder implements TranscoderPort {
             "-c:a",
             "aac",
             "-b:a",
-            AUDIO_BITRATE_KBPS + "k",
+            HlsMasterPlaylist.AUDIO_BITRATE_KBPS + "k",
             "-ac",
             "2",
-            // Moves the index to the front so browsers can start playing before the download ends.
-            "-movflags",
-            "+faststart",
-            launcher.path(target)));
+            "-f",
+            "hls",
+            "-hls_time",
+            String.valueOf(SEGMENT_SECONDS),
+            "-hls_playlist_type",
+            "vod",
+            "-hls_segment_filename",
+            launcher.path(outputDir.resolve("seg_%03d.ts")),
+            launcher.path(outputDir.resolve(HlsMasterPlaylist.VARIANT_FILE_NAME))));
     log.debug(
         "Rendition {} took {} ms",
         rendition.name(),

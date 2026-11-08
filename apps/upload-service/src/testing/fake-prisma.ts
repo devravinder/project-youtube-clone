@@ -84,6 +84,7 @@ export class FakePrisma {
         fileSize: null,
         renditions: null,
         failureReason: null,
+        hlsMasterKey: null,
         createdAt: now,
         updatedAt: now,
         ...data,
@@ -169,6 +170,7 @@ export class FakePrisma {
       fileSize: null,
       renditions: null,
       failureReason: null,
+      hlsMasterKey: null,
       createdAt: now,
       updatedAt: now,
     } as Row;
