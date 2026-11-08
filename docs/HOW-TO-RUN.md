@@ -235,14 +235,21 @@ Open `apps/transcoder-service` as the IntelliJ project. The run list then shows
 For your own settings, copy it to the git-ignored `.run/TranscoderServiceApplication.run.xml` and rename the
 configuration inside to `TranscoderServiceApplication`. Add any new variable to the sample as well.
 
-| Variable                                               | Local value                          | Read by                      |
-| ------------------------------------------------------ | ------------------------------------ | ---------------------------- |
-| `SERVER_PORT`                                          | `3002`                               | Spring Boot, today           |
-| `STORAGE_ENDPOINT`, `STORAGE_REGION`                   | `http://localhost:9000`, `us-east-1` | storage adapter (next tasks) |
-| `STORAGE_ACCESS_KEY`, `STORAGE_SECRET_KEY`             | `minioadmin` / `minioadmin`          | storage adapter (next tasks) |
-| `STORAGE_RAW_BUCKET`, `STORAGE_HLS_BUCKET`             | `raw-videos`, `hls-videos`           | storage adapter (next tasks) |
-| `SPRING_RABBITMQ_HOST`, `SPRING_RABBITMQ_PORT`         | `localhost`, `5672`                  | Spring AMQP (RabbitMQ task)  |
-| `SPRING_RABBITMQ_USERNAME`, `SPRING_RABBITMQ_PASSWORD` | `yt` / `yt_password`                 | Spring AMQP (RabbitMQ task)  |
+| Variable                                               | Local value                          | Read by                                    |
+| ------------------------------------------------------ | ------------------------------------ | ------------------------------------------ |
+| `SPRING_PROFILES_ACTIVE`                               | `local` (the default)                | Spring Boot; the run config sets it too    |
+| `SERVER_PORT`                                          | `3002`                               | `application.yaml`                         |
+| `STORAGE_ENDPOINT`, `STORAGE_REGION`                   | `http://localhost:9000`, `us-east-1` | `AppProperties` (`app.storage.*`)          |
+| `STORAGE_ACCESS_KEY`, `STORAGE_SECRET_KEY`             | `minioadmin` / `minioadmin`          | `AppProperties`; required outside `local`  |
+| `STORAGE_RAW_BUCKET`, `STORAGE_HLS_BUCKET`             | `raw-videos`, `hls-videos`           | `AppProperties`                            |
+| `STORAGE_FORCE_PATH_STYLE` (optional)                  | `true` in `local`, `false` otherwise | `AppProperties`                            |
+| `TRANSCODE_WORK_DIR` (optional)                        | `<temp>/yt-transcoder`               | `AppProperties` (`app.transcode.work-dir`) |
+| `SPRING_RABBITMQ_HOST`, `SPRING_RABBITMQ_PORT`         | `localhost`, `5672`                  | Spring AMQP (RabbitMQ task)                |
+| `SPRING_RABBITMQ_USERNAME`, `SPRING_RABBITMQ_PASSWORD` | `yt` / `yt_password`                 | Spring AMQP (RabbitMQ task)                |
+
+Profiles live in `src/main/resources/application-<profile>.yaml`. `local` supplies the MinIO defaults,
+`local-observability` adds metrics and also activates `local`, and `aws` takes every storage value from the
+environment and refuses to start when one is missing.
 
 To edit them in the dialog: **Modify options > Environment variables** shows the field; the icon at its right
 opens a table. The field only appears by default once the config has a value.

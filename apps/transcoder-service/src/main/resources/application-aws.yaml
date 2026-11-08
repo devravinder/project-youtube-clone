@@ -1,0 +1,5 @@
+# Profile aws: every STORAGE_* value comes from the environment.
+logging:
+  level:
+    root: INFO
+    dev.ytclone: INFO

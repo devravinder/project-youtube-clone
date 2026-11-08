@@ -1,9 +1,13 @@
 spring:
   application:
     name: transcoder-service
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+    group:
+      local-observability: local
 
 server:
-  port: 3002
+  port: ${SERVER_PORT:3002}
 
 management:
   endpoints:
@@ -14,3 +18,16 @@ management:
     health:
       probes:
         enabled: true
+
+# Empty defaults fail validation; an unresolved ${X} would bind as literal text.
+app:
+  storage:
+    endpoint: ${STORAGE_ENDPOINT:}
+    region: ${STORAGE_REGION:us-east-1}
+    access-key: ${STORAGE_ACCESS_KEY:}
+    secret-key: ${STORAGE_SECRET_KEY:}
+    force-path-style: ${STORAGE_FORCE_PATH_STYLE:false}
+    raw-bucket: ${STORAGE_RAW_BUCKET:raw-videos}
+    hls-bucket: ${STORAGE_HLS_BUCKET:hls-videos}
+  transcode:
+    work-dir: ${TRANSCODE_WORK_DIR:${java.io.tmpdir}/yt-transcoder}

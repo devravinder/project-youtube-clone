@@ -1,0 +1,6 @@
+# Profile local-observability: local plus metrics; also activates local (see profile group).
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics

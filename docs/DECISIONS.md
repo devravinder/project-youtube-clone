@@ -344,3 +344,33 @@ stage; Stage 3 changes the transcoder port to HLS output.
 Monorepo wiring: the service has a small `package.json` whose scripts call `scripts/gradle.mjs`, which runs
 the wrapper by absolute path on any OS. That makes `pnpm test`, `pnpm start:l:transcoder` and
 `pnpm --filter` work for Java the same as for Node. The service listens on 3002.
+
+## ADR-024 - Transcoder follows the reference starter's Spring conventions
+
+Date: 2026-11-08 - Status: Accepted
+
+The transcoder now copies the conventions of `project-spring-boot-gradle-advanced-starter`:
+
+- Versions in `gradle/libs.versions.toml`, used through `alias(libs.plugins.*)` and `libs.*`.
+- Configuration as one validated record: `@Validated @ConfigurationProperties(prefix = "app") record AppProperties`
+  with nested records, registered by `@ConfigurationPropertiesScan` on the main class.
+- YAML per profile: `application.yaml` holds structure and `${ENV:default}` placeholders; `application-local`,
+  `-local-observability` and `-aws` override only what differs. `local` is the default profile, and
+  `local-observability` is a profile group that also activates `local`.
+- Lombok (`@RequiredArgsConstructor` for injection, `@Slf4j` for logging with `{}` placeholders), MapStruct 1.6.3
+  (`componentModel = "spring"`), and `lombok-mapstruct-binding` so MapStruct sees Lombok's output.
+
+Changes from the reference, on purpose:
+
+- No secret defaults in the base file. Development credentials sit in `application-local.yaml`, so the `aws`
+  profile cannot start with MinIO's keys.
+- Required values default to empty (`${STORAGE_ACCESS_KEY:}`). Spring leaves an unresolved `${X}` as literal text,
+  which passes `@NotBlank`; a test caught this when `aws` started without any storage settings.
+- `@NotBlank` instead of `@NotNull` for strings, and `lombok.config` sets `addLombokGeneratedAnnotation` so
+  JaCoCo skips generated code. The Java toolchain stays pinned to 21.
+- The coverage gate stays at 75% (the reference ships 0.00 with a comment recommending 0.75).
+- No `test` or `util` profile in `src/main`; tests set what they need.
+
+Not adopted yet: Spotless with google-java-format (next task), `logback-spring.xml` and the Loki appender
+(observability stage), and the reference test style (snake_case names, `@Nested`, JUnit assertions); the existing
+tests keep AssertJ.

@@ -38,6 +38,26 @@ wrapper and build files are valid, then reshape it. Boot 4 starter names differ 
 Expose a `package.json` shim whose scripts call `scripts/gradle.mjs`, so root `pnpm test` and
 `pnpm start:l:<service>` cover Java too. Build with `gradlew build`; the first run downloads Gradle.
 
+## Conventions from the reference starter
+
+- **Versions:** `gradle/libs.versions.toml`; build files use `alias(libs.plugins.x)` and `libs.x`. Pin non-BOM
+  versions (MapStruct 1.6.3, lombok-mapstruct-binding 0.2.0); let the Boot BOM manage Lombok.
+- **Annotation processors, in this order:** configuration-processor, `mapstruct-processor`, then `lombok` and
+  `lombok-mapstruct-binding`. Add `lombok.config` with `lombok.addLombokGeneratedAnnotation = true`.
+- **Config:** one `@Validated @ConfigurationProperties(prefix = "app") record AppProperties` with nested
+  records, `@NotBlank` on strings, registered with `@ConfigurationPropertiesScan`. Inject it by constructor.
+- **Profiles:** `application.yaml` plus `application-<profile>.yaml` for `local`, `local-observability`, `aws`.
+  Base file: structure and `${ENV:default}` placeholders, no secret defaults. Required values use an empty
+  default (`${X:}`), because an unresolved `${X}` binds as literal text and passes validation.
+  `spring.profiles.active: ${SPRING_PROFILES_ACTIVE:local}`; `local-observability` is a group including `local`.
+- **Lombok:** `@RequiredArgsConstructor` with `private final` fields for injection, `@Slf4j` for logging
+  (`log.info("... {}", value)`). Records for config and domain values; `@Getter/@Setter/@Builder` only on
+  mutable DTOs or entities. No `@Data`.
+- **MapStruct:** interfaces with `@Mapper(componentModel = "spring")`, methods named `toX`/`toEntity`/
+  `updateEntity`, `@MappingTarget` for updates, explicit `ignore = true` for target-only fields.
+- **Tests for config:** `ApplicationContextRunner` for binding and validation; start the app with
+  `--spring.profiles.active=<profile>` to check each profile, including that `aws` fails without its variables.
+
 ## Principles
 
 - **Config as record, never hardcode.** Bind all config from `application.yaml` into an

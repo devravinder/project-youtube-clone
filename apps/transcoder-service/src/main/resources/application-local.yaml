@@ -1,0 +1,11 @@
+# Profile local: app on this machine, infra from infra/docker-compose-local.yaml.
+app:
+  storage:
+    endpoint: ${STORAGE_ENDPOINT:http://localhost:9000}
+    access-key: ${STORAGE_ACCESS_KEY:minioadmin}
+    secret-key: ${STORAGE_SECRET_KEY:minioadmin}
+    force-path-style: ${STORAGE_FORCE_PATH_STYLE:true}
+
+logging:
+  level:
+    dev.ytclone: DEBUG

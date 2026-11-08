@@ -15,26 +15,21 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
+@RequiredArgsConstructor
 public class TranscodeService implements TranscodeVideo {
-
-    private static final System.Logger LOG = System.getLogger(TranscodeService.class.getName());
 
     private final StoragePort storage;
     private final TranscoderPort transcoder;
     private final Path workRoot;
     private final String outputBucket;
 
-    public TranscodeService(
-            StoragePort storage, TranscoderPort transcoder, Path workRoot, String outputBucket) {
-        this.storage = storage;
-        this.transcoder = transcoder;
-        this.workRoot = workRoot;
-        this.outputBucket = outputBucket;
-    }
-
     @Override
     public TranscodeResult transcode(TranscodeJob job) {
+        log.info("Transcoding video {}", job.videoId());
         Path workDir = createWorkDir(job);
         try {
             Path source = workDir.resolve("source");
@@ -48,6 +43,7 @@ public class TranscodeService implements TranscodeVideo {
                 storage.upload(outputBucket, key, output, "video/mp4");
                 outputKeys.add(key);
             }
+            log.info("Transcoded video {} into {} renditions", job.videoId(), outputKeys.size());
             return new TranscodeResult(job.videoId(), outputKeys);
         } finally {
             deleteQuietly(workDir);
@@ -67,7 +63,7 @@ public class TranscodeService implements TranscodeVideo {
         try (Stream<Path> paths = Files.walk(directory)) {
             paths.sorted(Comparator.reverseOrder()).forEach(path -> path.toFile().delete());
         } catch (IOException e) {
-            LOG.log(System.Logger.Level.WARNING, "Could not delete work directory " + directory, e);
+            log.warn("Could not delete work directory {}", directory, e);
         }
     }
 }
