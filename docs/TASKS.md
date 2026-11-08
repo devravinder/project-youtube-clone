@@ -72,7 +72,7 @@ Concepts: async processing, work-queue semantics, outbox, idempotency, polyglot 
 - [x] RabbitMQ command producer (upload-service) + consumer (transcoder): `yt.transcode` → quorum queue + DLQ, publisher confirms, 503 + stays `PENDING` when the broker is down, JSON Schema contract in `contracts/`
 - [x] Storage (MinIO, AWS SDK v2) + ffmpeg adapters: MP4 renditions per ladder rung into `hls-videos/<id>/`; ffmpeg runs in `mwader/static-ffmpeg` locally or as installed binaries
 - [x] Transactional outbox in Postgres: confirm writes status + command in one transaction; `OutboxRelay` claims with `FOR UPDATE SKIP LOCKED` + lease, publishes with confirms, retries with backoff, purges sent rows
-- [ ] Idempotent consumer + DLQ + retries
+- [x] Idempotent consumer + DLQ + retries: `manifest.json` written last makes duplicates a no-op; transient failures wait in a TTL retry queue (3 attempts), permanent ones go straight to the DLQ
 - [ ] Upload status polling in the UI
 
 ## Stage 3 — Phase 2: Real streaming (HLS + nginx edge)

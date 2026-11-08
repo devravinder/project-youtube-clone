@@ -14,6 +14,8 @@
       <env name="SPRING_RABBITMQ_PASSWORD" value="yt_password" />
       <env name="FFMPEG_DOCKER_IMAGE" value="mwader/static-ffmpeg:latest" />
       <env name="TRANSCODE_TIMEOUT" value="30m" />
+      <env name="TRANSCODE_MAX_ATTEMPTS" value="3" />
+      <env name="TRANSCODE_RETRY_DELAY" value="10s" />
     </envs>
     <option name="ACTIVE_PROFILES" value="local" />
     <module name="transcoder-service.main" />

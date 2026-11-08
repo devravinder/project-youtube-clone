@@ -109,14 +109,15 @@ The import only runs when the realm does not exist yet. Change the JSON, then ru
 
 RabbitMQ carries the transcode commands:
 
-| Item          | Value                                                                           |
-| ------------- | ------------------------------------------------------------------------------- |
-| Management UI | <http://localhost:15672> (`yt` / `yt_password`)                                 |
-| AMQP URL      | `amqp://yt:yt_password@localhost:5672` (`RABBITMQ_URL`)                         |
-| Storage       | Named volume `rabbitmq-data`; queues survive a container restart                |
-| Exchange      | `yt.transcode` (direct), routing key `transcode.cmd`                            |
-| Work queue    | `transcoder.transcode-video` (quorum); failed messages go to `yt.transcode.dlx` |
-| Dead letters  | `transcoder.transcode-video.dlq` (quorum); inspect with `http/rabbitmq.http`    |
+| Item          | Value                                                                                 |
+| ------------- | ------------------------------------------------------------------------------------- |
+| Management UI | <http://localhost:15672> (`yt` / `yt_password`)                                       |
+| AMQP URL      | `amqp://yt:yt_password@localhost:5672` (`RABBITMQ_URL`)                               |
+| Storage       | Named volume `rabbitmq-data`; queues survive a container restart                      |
+| Exchange      | `yt.transcode` (direct), routing key `transcode.cmd`                                  |
+| Work queue    | `transcoder.transcode-video` (quorum); failed messages go to `yt.transcode.dlx`       |
+| Dead letters  | `transcoder.transcode-video.dlq` (quorum); inspect with `http/rabbitmq.http`          |
+| Retry queue   | `transcoder.transcode-video.retry` (quorum, TTL; transcoder only), back to work queue |
 
 Both services declare this topology on connect, so either can start first. The queue arguments must be
 identical on both sides, or RabbitMQ closes the channel with `PRECONDITION_FAILED`.
@@ -240,9 +241,16 @@ pnpm start:l:transcoder
 It listens on port 3002 and consumes `transcoder.transcode-video`. For each command it downloads the raw
 file from MinIO, probes its height with ffprobe, and encodes H.264/AAC MP4 renditions up to the source
 height: 360p, 480p, 720p and 1080p, never upscaling. It uploads them to
-`hls-videos/<videoId>/<rendition>.mp4` and then deletes its work directory. HLS segments come in Stage 3. A
-message that fails (for example a blank `videoId` or a file that is not a video) is not retried yet; it goes
-straight to the dead-letter queue. `/actuator/health` includes the RabbitMQ connection. Run its checks
+`hls-videos/<videoId>/<rendition>.mp4` and then deletes its work directory. HLS segments come in Stage 3.
+Last it writes `hls-videos/<videoId>/manifest.json`; a duplicate command for a video with a manifest is
+skipped. Failures are sorted:
+
+- Permanent (invalid command, file is not a video, source object missing): straight to the DLQ.
+- Transient (MinIO or the broker down, ffmpeg timed out or killed): parked in
+  `transcoder.transcode-video.retry` for `TRANSCODE_RETRY_DELAY`, then delivered again, up to
+  `TRANSCODE_MAX_ATTEMPTS` in total; after that, the DLQ.
+
+`/actuator/health` includes the RabbitMQ connection. Run its checks
 without starting it: `pnpm --filter @yt/transcoder-service build` (compile, tests, coverage gate).
 
 ### ffmpeg
@@ -282,6 +290,8 @@ configuration inside to `TranscoderServiceApplication`. Add any new variable to 
 | `FFMPEG_DOCKER_IMAGE`                                  | `mwader/static-ffmpeg:latest`        | `AppProperties`; empty = installed binaries |
 | `FFMPEG_PATH`, `FFPROBE_PATH` (optional)               | `ffmpeg`, `ffprobe`                  | `AppProperties`; used when no image is set  |
 | `TRANSCODE_TIMEOUT` (optional)                         | `30m`                                | `AppProperties`; per ffmpeg call            |
+| `TRANSCODE_MAX_ATTEMPTS` (optional)                    | `3`                                  | `AppProperties`; includes the first try     |
+| `TRANSCODE_RETRY_DELAY` (optional)                     | `10s`                                | `AppProperties`; retry queue TTL            |
 | `SPRING_RABBITMQ_HOST`, `SPRING_RABBITMQ_PORT`         | `localhost`, `5672`                  | Spring AMQP (Boot defaults)                 |
 | `SPRING_RABBITMQ_USERNAME`, `SPRING_RABBITMQ_PASSWORD` | `yt` / `yt_password`                 | Spring AMQP; `application-local.yaml`       |
 

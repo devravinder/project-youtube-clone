@@ -3,6 +3,7 @@ package dev.ytclone.transcoder.adapter.in.messaging;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
 
+import java.time.Duration;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.core.Binding;
@@ -12,7 +13,7 @@ import org.springframework.amqp.core.Queue;
 
 class MessagingConfigTest {
 
-  private final Declarables topology = new MessagingConfig().transcodeTopology();
+  private final Declarables topology = MessagingConfig.topology(Duration.ofSeconds(10));
 
   private Queue queue(String name) {
     return topology.getDeclarablesByType(Queue.class).stream()
@@ -33,6 +34,23 @@ class MessagingConfigTest {
                 "x-queue-type", "quorum",
                 "x-dead-letter-exchange", "yt.transcode.dlx",
                 "x-dead-letter-routing-key", "transcode.cmd"));
+  }
+
+  @Test
+  void retryQueueHoldsCommandsForTheDelayThenSendsThemBackToTheWorkQueue() {
+    Queue retry = queue(TranscodeTopology.RETRY_QUEUE);
+
+    assertThat(retry.isDurable()).isTrue();
+    assertThat(retry.getArguments())
+        .containsExactlyInAnyOrderEntriesOf(
+            Map.of(
+                "x-queue-type", "quorum",
+                "x-message-ttl", 10_000,
+                "x-dead-letter-exchange", "yt.transcode",
+                "x-dead-letter-routing-key", "transcode.cmd"));
+    // No binding: only the transcoder publishes to it, through the default exchange.
+    assertThat(topology.getDeclarablesByType(Binding.class))
+        .noneMatch(b -> b.getDestination().equals(TranscodeTopology.RETRY_QUEUE));
   }
 
   @Test

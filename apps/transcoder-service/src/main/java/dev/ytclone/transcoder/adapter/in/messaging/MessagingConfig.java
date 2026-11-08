@@ -4,8 +4,11 @@ import static dev.ytclone.transcoder.adapter.in.messaging.TranscodeTopology.DEAD
 import static dev.ytclone.transcoder.adapter.in.messaging.TranscodeTopology.DEAD_LETTER_QUEUE;
 import static dev.ytclone.transcoder.adapter.in.messaging.TranscodeTopology.EXCHANGE;
 import static dev.ytclone.transcoder.adapter.in.messaging.TranscodeTopology.QUEUE;
+import static dev.ytclone.transcoder.adapter.in.messaging.TranscodeTopology.RETRY_QUEUE;
 import static dev.ytclone.transcoder.adapter.in.messaging.TranscodeTopology.ROUTING_KEY;
 
+import dev.ytclone.transcoder.AppProperties;
+import java.time.Duration;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.Declarables;
 import org.springframework.amqp.core.DirectExchange;
@@ -19,9 +22,13 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 class MessagingConfig {
 
-  // Either service may start first, so both declare identical topology.
   @Bean
-  Declarables transcodeTopology() {
+  Declarables transcodeTopology(AppProperties properties) {
+    return topology(properties.transcode().retry().delay());
+  }
+
+  // The exchange, work queue and DLQ match upload-service exactly; either may start first.
+  static Declarables topology(Duration retryDelay) {
     DirectExchange exchange = new DirectExchange(EXCHANGE, true, false);
     DirectExchange deadLetterExchange = new DirectExchange(DEAD_LETTER_EXCHANGE, true, false);
     Queue queue =
@@ -31,11 +38,20 @@ class MessagingConfig {
             .deadLetterRoutingKey(ROUTING_KEY)
             .build();
     Queue deadLetterQueue = QueueBuilder.durable(DEAD_LETTER_QUEUE).quorum().build();
+    // No consumer: messages expire after the delay and go back to the work queue.
+    Queue retryQueue =
+        QueueBuilder.durable(RETRY_QUEUE)
+            .quorum()
+            .ttl((int) retryDelay.toMillis())
+            .deadLetterExchange(EXCHANGE)
+            .deadLetterRoutingKey(ROUTING_KEY)
+            .build();
     return new Declarables(
         exchange,
         deadLetterExchange,
         queue,
         deadLetterQueue,
+        retryQueue,
         BindingBuilder.bind(queue).to(exchange).with(ROUTING_KEY),
         BindingBuilder.bind(deadLetterQueue).to(deadLetterExchange).with(ROUTING_KEY));
   }

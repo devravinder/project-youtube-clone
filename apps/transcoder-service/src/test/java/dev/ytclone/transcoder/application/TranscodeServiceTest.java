@@ -39,6 +39,53 @@ class TranscodeServiceTest {
   }
 
   @Test
+  void writesAManifestLastThatListsEveryRendition() {
+    service.transcode(JOB);
+
+    assertThat(storage.texts)
+        .containsOnlyKeys("renditions/vid-1/manifest.json")
+        .containsValue(
+            "{\"videoId\":\"vid-1\",\"renditions\":[\"vid-1/360p.mp4\",\"vid-1/480p.mp4\","
+                + "\"vid-1/720p.mp4\",\"vid-1/1080p.mp4\"]}\n");
+  }
+
+  @Test
+  void skipsADuplicateCommandOnceTheManifestExists() {
+    TranscodeResult first = service.transcode(JOB);
+    storage.downloads.clear();
+    storage.uploads.clear();
+
+    TranscodeResult second = service.transcode(JOB);
+
+    assertThat(second).isEqualTo(first);
+    assertThat(storage.downloads).isEmpty();
+    assertThat(storage.uploads).isEmpty();
+  }
+
+  @Test
+  void encodesAgainWhenAFailedRunLeftNoManifest() {
+    transcoder.failOn = "720p";
+    org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.transcode(JOB));
+    assertThat(storage.texts).isEmpty();
+
+    transcoder.failOn = null;
+    storage.uploads.clear();
+    service.transcode(JOB);
+
+    assertThat(storage.uploads).hasSize(4);
+  }
+
+  @Test
+  void ignoresAManifestForAnotherVideo() {
+    storage.texts.put(
+        "renditions/vid-1/manifest.json", "{\"videoId\":\"other\",\"renditions\":[\"x.mp4\"]}");
+
+    service.transcode(JOB);
+
+    assertThat(storage.uploads).hasSize(4);
+  }
+
+  @Test
   void downloadsTheSourceAndUploadsEveryRendition() {
     TranscodeResult result = service.transcode(JOB);
 
@@ -135,7 +182,18 @@ class TranscodeServiceTest {
     final List<String> uploads = new ArrayList<>();
     final List<String> contentTypes = new ArrayList<>();
     final java.util.Map<String, String> uploadedContent = new java.util.HashMap<>();
+    final java.util.Map<String, String> texts = new java.util.HashMap<>();
     boolean failDownload;
+
+    @Override
+    public java.util.Optional<String> readText(String bucket, String key) {
+      return java.util.Optional.ofNullable(texts.get(bucket + "/" + key));
+    }
+
+    @Override
+    public void writeText(String bucket, String key, String text, String contentType) {
+      texts.put(bucket + "/" + key, text);
+    }
 
     @Override
     public void download(String bucket, String key, Path target) {

@@ -3,6 +3,7 @@ package dev.ytclone.transcoder.adapter.out.ffmpeg;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.ytclone.transcoder.application.PermanentFailureException;
 import dev.ytclone.transcoder.domain.Rendition;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -55,7 +56,7 @@ class FfmpegTranscoderTest {
     next = new ProcessRunner.Result(0, "\n");
 
     assertThatThrownBy(() -> withBinaries().probeHeight(workRoot.resolve("job/song.mp3")))
-        .isInstanceOf(FfmpegException.class)
+        .isInstanceOf(UnprocessableMediaException.class)
         .hasMessageContaining("No video stream");
   }
 
@@ -131,9 +132,18 @@ class FfmpegTranscoderTest {
                     workRoot.resolve("s"),
                     new Rendition("360p", 360, 800),
                     workRoot.resolve("o.mp4")))
-        .isInstanceOf(FfmpegException.class)
+        .isInstanceOf(UnprocessableMediaException.class)
         .hasMessageStartingWith("ffmpeg exited with 1: ...")
         .hasMessageEndingWith("Invalid data found")
         .satisfies(e -> assertThat(e.getMessage()).hasSizeLessThan(2100));
+  }
+
+  @Test
+  void aKilledProcessIsTransientNotAProblemWithTheFile() {
+    next = new ProcessRunner.Result(137, "Killed");
+
+    assertThatThrownBy(() -> withBinaries().probeHeight(workRoot.resolve("s")))
+        .isInstanceOf(FfmpegException.class)
+        .isNotInstanceOf(PermanentFailureException.class);
   }
 }

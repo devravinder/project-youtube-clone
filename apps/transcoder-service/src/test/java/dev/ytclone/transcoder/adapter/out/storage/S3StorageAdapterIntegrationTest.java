@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import dev.ytclone.transcoder.application.PermanentFailureException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -84,6 +85,17 @@ class S3StorageAdapterIntegrationTest {
   @Test
   void downloadOfAMissingKeyFails() {
     assertThatThrownBy(() -> storage.download(BUCKET, PREFIX + "missing", dir.resolve("x")))
-        .isInstanceOf(NoSuchKeyException.class);
+        .isInstanceOf(PermanentFailureException.class)
+        .hasCauseInstanceOf(NoSuchKeyException.class);
+  }
+
+  @Test
+  void writesAndReadsTextAndReportsMissingTextAsEmpty() {
+    String key = PREFIX + "manifest.json";
+
+    storage.writeText(BUCKET, key, "{\"a\":1}", "application/json");
+
+    assertThat(storage.readText(BUCKET, key)).contains("{\"a\":1}");
+    assertThat(storage.readText(BUCKET, PREFIX + "nothing-here")).isEmpty();
   }
 }

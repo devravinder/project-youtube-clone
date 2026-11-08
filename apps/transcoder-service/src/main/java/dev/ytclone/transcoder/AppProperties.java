@@ -1,6 +1,7 @@
 package dev.ytclone.transcoder;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.nio.file.Path;
@@ -21,7 +22,11 @@ public record AppProperties(@Valid @NotNull Storage storage, @Valid @NotNull Tra
       @NotBlank String rawBucket,
       @NotBlank String hlsBucket) {}
 
-  public record Transcode(@NotNull Path workDir, @Valid @NotNull Ffmpeg ffmpeg) {}
+  public record Transcode(
+      @NotNull Path workDir, @Valid @NotNull Ffmpeg ffmpeg, @Valid @NotNull Retry retry) {}
+
+  /** maxAttempts counts the first delivery; delay is the retry queue's message TTL. */
+  public record Retry(@Min(1) int maxAttempts, @NotNull Duration delay) {}
 
   /** A blank dockerImage runs the installed binaries at path and probePath. */
   public record Ffmpeg(

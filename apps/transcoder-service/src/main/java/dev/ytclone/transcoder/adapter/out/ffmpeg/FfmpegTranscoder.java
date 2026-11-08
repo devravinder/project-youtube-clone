@@ -41,7 +41,8 @@ public class FfmpegTranscoder implements TranscoderPort {
         .filter(line -> line.matches("\\d+"))
         .findFirst()
         .map(Integer::parseInt)
-        .orElseThrow(() -> new FfmpegException("No video stream found in " + source.getFileName()));
+        .orElseThrow(() ->
+            new UnprocessableMediaException("No video stream found in " + source.getFileName()));
   }
 
   @Override
@@ -97,9 +98,14 @@ public class FfmpegTranscoder implements TranscoderPort {
   private String run(Tool tool, List<String> args) {
     ProcessRunner.Result result = runner.run(launcher.spec(tool, args), timeout);
     if (result.exitCode() != 0) {
-      throw new FfmpegException(
+      String message =
           "%s exited with %d: %s"
-              .formatted(tool.name().toLowerCase(), result.exitCode(), tail(result.output())));
+              .formatted(tool.name().toLowerCase(), result.exitCode(), tail(result.output()));
+      // 137/143: killed (out of memory, container stopped) rather than rejected the input.
+      if (result.exitCode() == 137 || result.exitCode() == 143) {
+        throw new FfmpegException(message);
+      }
+      throw new UnprocessableMediaException(message);
     }
     return result.output();
   }

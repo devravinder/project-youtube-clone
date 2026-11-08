@@ -22,7 +22,9 @@ class AppPropertiesTest {
     "app.transcode.work-dir=/tmp/yt-transcoder",
     "app.transcode.ffmpeg.path=ffmpeg",
     "app.transcode.ffmpeg.probe-path=ffprobe",
-    "app.transcode.ffmpeg.timeout=10m"
+    "app.transcode.ffmpeg.timeout=10m",
+    "app.transcode.retry.max-attempts=3",
+    "app.transcode.retry.delay=10s"
   };
 
   private final ApplicationContextRunner runner =

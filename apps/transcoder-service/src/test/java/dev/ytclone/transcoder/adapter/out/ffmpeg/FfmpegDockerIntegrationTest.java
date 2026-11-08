@@ -102,7 +102,7 @@ class FfmpegDockerIntegrationTest {
     Files.writeString(junk, "not a video");
 
     assertThatThrownBy(() -> transcoder.probeHeight(junk))
-        .isInstanceOf(FfmpegException.class)
+        .isInstanceOf(UnprocessableMediaException.class)
         .hasMessageContaining("ffprobe exited with");
   }
 }

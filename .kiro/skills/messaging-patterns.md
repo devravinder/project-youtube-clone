@@ -103,6 +103,11 @@ Every consumer must be idempotent:
 - Retry with backoff a bounded number of times.
 - After max retries, route to a DLQ for inspection — never silently drop.
 - Alert/observe DLQ depth.
+- Classify failures: permanent (bad input) → DLQ at once; transient (dependency down) → retry.
+- Delayed retry without plugins: a consumer-less **retry queue** with a TTL that dead-letters back to the
+  work exchange; carry the attempt number in a header (`x-yt-attempt`). The consumer never sleeps.
+- Test messaging end to end in a throwaway **vhost** (`PUT /api/vhosts/<name>` on the management API), so
+  a developer's running consumers cannot take the test messages.
 
 ## Contracts
 

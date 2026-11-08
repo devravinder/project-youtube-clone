@@ -45,3 +45,8 @@ app:
       # Empty runs the binaries above; an image runs each call in a container instead.
       docker-image: ${FFMPEG_DOCKER_IMAGE:}
       timeout: ${TRANSCODE_TIMEOUT:30m}
+    # Transient failures wait in transcoder.transcode-video.retry for `delay`, then run again.
+    # Changing delay changes the retry queue's TTL: delete that queue so it is redeclared.
+    retry:
+      max-attempts: ${TRANSCODE_MAX_ATTEMPTS:3}
+      delay: ${TRANSCODE_RETRY_DELAY:10s}

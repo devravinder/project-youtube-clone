@@ -10,6 +10,13 @@ Authorization: {{auth}}
 ?? js response.parsedBody.type == quorum
 ?? js response.parsedBody.arguments["x-dead-letter-exchange"] == yt.transcode.dlx
 
+### Retry queue: commands waiting for their next attempt (TTL = TRANSCODE_RETRY_DELAY)
+GET {{rabbit}}/queues/%2F/transcoder.transcode-video.retry
+Authorization: {{auth}}
+
+?? status == 200
+?? js response.parsedBody.arguments["x-dead-letter-exchange"] == yt.transcode
+
 ### Dead-letter queue depth
 GET {{rabbit}}/queues/%2F/transcoder.transcode-video.dlq
 Authorization: {{auth}}

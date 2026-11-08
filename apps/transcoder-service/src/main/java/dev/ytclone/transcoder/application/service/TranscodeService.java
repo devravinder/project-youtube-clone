@@ -6,6 +6,7 @@ import dev.ytclone.transcoder.application.port.out.TranscoderPort;
 import dev.ytclone.transcoder.domain.Rendition;
 import dev.ytclone.transcoder.domain.RenditionLadder;
 import dev.ytclone.transcoder.domain.TranscodeJob;
+import dev.ytclone.transcoder.domain.TranscodeManifest;
 import dev.ytclone.transcoder.domain.TranscodeResult;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -29,6 +30,18 @@ public class TranscodeService implements TranscodeVideo {
 
   @Override
   public TranscodeResult transcode(TranscodeJob job) {
+    String manifestKey = TranscodeManifest.key(job.videoId());
+    // At-least-once delivery: a finished video is skipped instead of encoded again.
+    var done =
+        storage
+            .readText(outputBucket, manifestKey)
+            .flatMap(TranscodeManifest::fromJson)
+            .filter(result -> result.videoId().equals(job.videoId()));
+    if (done.isPresent()) {
+      log.info("Video {} is already transcoded; skipping duplicate command", job.videoId());
+      return done.get();
+    }
+
     log.info("Transcoding video {}", job.videoId());
     Path workDir = createWorkDir(job);
     try {
@@ -43,8 +56,11 @@ public class TranscodeService implements TranscodeVideo {
         storage.upload(outputBucket, key, output, "video/mp4");
         outputKeys.add(key);
       }
+      TranscodeResult result = new TranscodeResult(job.videoId(), outputKeys);
+      storage.writeText(
+          outputBucket, manifestKey, TranscodeManifest.toJson(result), "application/json");
       log.info("Transcoded video {} into {} renditions", job.videoId(), outputKeys.size());
-      return new TranscodeResult(job.videoId(), outputKeys);
+      return result;
     } finally {
       deleteQuietly(workDir);
     }

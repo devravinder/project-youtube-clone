@@ -476,3 +476,26 @@ consumer task handles by `messageId`/`videoId`.
 Rejected: CDC with Debezium (another moving part for one table; worth it at higher volume), `LISTEN/NOTIFY`
 to wake the relay (polling at 1 s is simpler and survives missed notifications), and publishing inside the
 request with the outbox only as a fallback (two code paths for one job).
+
+## ADR-029 - Idempotent transcoder with a delayed-retry queue
+
+Date: 2026-11-08 - Status: Accepted
+
+- Idempotency without a database: `TranscodeService` writes `hls-videos/<id>/manifest.json` after every
+  rendition is uploaded, and skips a command whose manifest already exists. Keys are fixed per video, so
+  a crash before the manifest only repeats work; two deliveries running at once overwrite the same keys.
+  The dedupe key is `videoId` (the work is per video), not `messageId`.
+- Failures are classified with `application.PermanentFailureException`, which out-adapters throw (the
+  listener may not import them): missing source object, ffprobe/ffmpeg rejecting the file (non-zero exit
+  except 137/143), and invalid commands. Those are rejected straight to the DLQ.
+- Anything else is transient. The listener republishes the command to `transcoder.transcode-video.retry`
+  with header `x-yt-attempt = n + 1` and acks the delivery. The retry queue has no consumer, a message TTL
+  (`TRANSCODE_RETRY_DELAY`, 10 s) and dead-letters back to `yt.transcode`, so the consumer thread never
+  sleeps. On attempt `TRANSCODE_MAX_ATTEMPTS` (3) the message is rejected to the DLQ.
+- Republish then ack is not atomic: a crash in between delivers twice, which the manifest absorbs.
+
+Rejected: Spring's in-process stateless retry (blocks the only consumer slot for the whole backoff),
+`x-delivery-limit` with requeue (no delay, so a broker outage is retried in a hot loop), per-message TTLs
+for exponential backoff (expiry only happens at the head of the queue, so a long delay blocks short ones;
+several fixed-delay queues would be the next step), and the `rabbitmq_delayed_message_exchange` plugin
+(not in the stock image and not available on Amazon MQ).
