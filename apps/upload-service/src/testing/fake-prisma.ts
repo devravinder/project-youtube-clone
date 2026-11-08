@@ -42,6 +42,7 @@ export class FakePrisma {
         uploadId: null,
         partSize: null,
         partCount: null,
+        fileSize: null,
         createdAt: now,
         updatedAt: now,
         ...data,
@@ -103,6 +104,7 @@ export class FakePrisma {
       uploadId: null,
       partSize: null,
       partCount: null,
+      fileSize: null,
       createdAt: now,
       updatedAt: now,
     } as Row;

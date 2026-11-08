@@ -8,7 +8,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import type { StoragePort } from "@yt/ports";
+import type { StoragePort, UploadedPart } from "@yt/ports";
 import type { AuthUser } from "../auth/auth-user.js";
 import { APP_CONFIG, type AppConfig } from "../config/app.config.js";
 import { VideoStatus } from "../generated/prisma/enums.js";
@@ -89,6 +89,7 @@ export class UploadsService {
           uploadId,
           partSize,
           partCount,
+          fileSize: BigInt(request.fileSize),
         },
       });
     } catch (error) {
@@ -179,6 +180,10 @@ export class UploadsService {
     if (parts.length !== video.partCount) {
       throw new ConflictException(`Uploaded ${parts.length} of ${video.partCount} parts`);
     }
+    const mismatch = findSizeMismatch(parts, video);
+    if (mismatch) {
+      throw new ConflictException(mismatch);
+    }
     await this.storage.completeMultipartUpload(video.rawBucket, video.rawKey, uploadId);
   }
 
@@ -202,6 +207,25 @@ export class UploadsService {
   }
 }
 
+// Every part but the last must be exactly `partSize`, and the last holds the remainder, so a
+// complete set also adds up to the declared file size. Rows from before the size was stored skip this.
+function findSizeMismatch(parts: UploadedPart[], video: Video): string | null {
+  const { partSize, partCount, fileSize } = video;
+  if (partSize === null || partCount === null || fileSize === null) {
+    return null;
+  }
+  const lastPartSize = Number(fileSize) - (partCount - 1) * partSize;
+  for (const { partNumber, size } of parts) {
+    if (partNumber < 1 || partNumber > partCount) {
+      return `Unexpected part ${partNumber}`;
+    }
+    const expected = partNumber === partCount ? lastPartSize : partSize;
+    if (size !== expected) {
+      return `Part ${partNumber} has ${size} bytes, expected ${expected}`;
+    }
+  }
+  return null;
+}
 // Storage allows at most 10,000 parts, so very large files get bigger parts.
 function planParts(fileSize: number, configuredPartSizeMb: number) {
   const partSize = Math.max(configuredPartSizeMb * BYTES_PER_MB, Math.ceil(fileSize / MAX_PARTS));

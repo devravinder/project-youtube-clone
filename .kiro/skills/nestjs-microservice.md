@@ -162,8 +162,7 @@ derive types with `z.infer`, and regenerate with `pnpm api:generate` after any A
 Never proxy big files through the service. Put multipart operations on the storage port
 (`createMultipartUpload`, `createPresignedPartUrl`, `listUploadedParts`, `completeMultipartUpload`,
 `abortMultipartUpload`) and keep ETag handling inside the adapter, so the browser needs no CORS
-header access. Store `uploadId`, `partSize` and `partCount` on the row. Complete only when every
-planned part is stored, make abort idempotent (treat `NoSuchUpload` as success), and abort
+header access. Store `uploadId`, `partSize` and `partCount` on the row. Complete only when every planned part is stored with exactly the planned size (store the declared file size), make abort idempotent (treat `NoSuchUpload` as success), and abort
 multipart uploads in the cleanup job. See ADR-020.
 
 ## Conventions

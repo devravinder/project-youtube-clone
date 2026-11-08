@@ -27,6 +27,7 @@ model Video {
   uploadId    String?     @map("upload_id")
   partSize    Int?        @map("part_size")
   partCount   Int?        @map("part_count")
+  fileSize    BigInt?     @map("file_size")
   viewCount   BigInt      @default(0) @map("view_count")
   createdAt   DateTime    @default(now()) @map("created_at")
   updatedAt   DateTime    @updatedAt @map("updated_at")

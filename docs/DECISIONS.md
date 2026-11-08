@@ -271,8 +271,7 @@ whose size matches. Cancel calls `DELETE /uploads/:id`, which aborts the multipa
 removes the row. The abandoned-upload job also aborts expired multipart uploads, because stored
 parts are billed and invisible in normal listings.
 
-Trade-offs: parts are not checksum-verified (S3 `ChecksumSHA256` per part would add that), and
-`complete` checks the part count, not the total size. Resume relies on `localStorage`, so it works
+Trade-offs: parts are not checksum-verified (S3 `ChecksumSHA256` per part would add that). The declared file size is stored, and `complete` returns 409 unless every part is exactly `partSize` and the last holds the remainder, so a client cannot upload oversized or short parts. Uploads started before the size was stored skip that check. Resume relies on `localStorage`, so it works
 per browser and not across devices.
 
 ## ADR-021 - Tests: Vitest everywhere, with in-memory fakes

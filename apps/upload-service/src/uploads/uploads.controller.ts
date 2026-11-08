@@ -148,7 +148,10 @@ export class UploadsController {
   @ApiErrorResponse(400, "videoId is not a UUID")
   @ApiErrorResponse(403, "Caller is not the uploader")
   @ApiErrorResponse(404, "Video does not exist")
-  @ApiErrorResponse(409, "The file, or some of its parts, has not reached storage yet")
+  @ApiErrorResponse(
+    409,
+    "The file or some parts have not reached storage, or part sizes do not match the plan",
+  )
   complete(
     @Param("videoId") videoId: string,
     @CurrentUser() user: AuthUser,

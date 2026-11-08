@@ -166,6 +166,19 @@ describe("multipart flow", () => {
     ).toBe(409);
   });
 
+  it("refuses to complete when a part is bigger than the plan", async () => {
+    const { videoId } = (await start()).body;
+    t.storage.simulatePartPut("upload-1", 1, 8 * MiB);
+    t.storage.simulatePartPut("upload-1", 2, 20 * MiB);
+    t.storage.simulatePartPut("upload-1", 3, 8 * MiB);
+    t.storage.simulatePartPut("upload-1", 4, 4_834_176);
+
+    const response = await t.as("alice").post(`/uploads/${videoId}/complete`);
+
+    expect(response.status).toBe(409);
+    expect(response.body.message).toBe(`Part 2 has ${20 * MiB} bytes, expected ${8 * MiB}`);
+    expect((await t.http().get(`/videos/${videoId}`)).body.status).toBe("PENDING");
+  });
   it("validates the part request", async () => {
     const { videoId } = (await start()).body;
     const ask = (body: unknown) =>

@@ -518,7 +518,7 @@ export interface operations {
                     readonly "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The file, or some of its parts, has not reached storage yet */
+            /** @description The file or some parts have not reached storage, or part sizes do not match the plan */
             readonly 409: {
                 headers: {
                     readonly [name: string]: unknown;

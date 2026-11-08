@@ -110,6 +110,15 @@ Authorization: Bearer {{bobToken.access_token}}
 POST {{baseUrl}}/uploads/{{noUpload.videoId}}/complete
 
 ?? status == 401
+### Multipart: create a 1 MB file to use as the single part
+{{
+  const fs = require("node:fs");
+  const os = require("node:os");
+  const path = require("node:path");
+  exports.partFile = path.join(os.tmpdir(), "yt-part-1mb.bin");
+  fs.writeFileSync(exports.partFile, Buffer.alloc(1_000_000, 1));
+}}
+
 ### Multipart: start an upload and get the part plan
 # @name mpInit
 # @ref token
@@ -120,14 +129,13 @@ Content-Type: application/json
 {
   "filename": "big.mp4",
   "contentType": "video/mp4",
-  "fileSize": 5000000,
+  "fileSize": 1000000,
   "title": "Multipart video"
 }
 
 ?? status == 201
 ?? js response.parsedBody.partSize == 8388608
 ?? js response.parsedBody.partCount == 1
-
 ### Multipart: a 20 MB file needs 3 parts
 # @name mpPlan
 # @ref token
@@ -249,7 +257,7 @@ Content-Type: application/json
 # @ref mpUrls
 PUT {{mpUrls.urls[0].url}}
 
-< {{VIDEO_FILE}}
+< {{partFile}}
 
 ?? status == 200
 
@@ -282,6 +290,61 @@ GET {{baseUrl}}/videos/{{mpInit.videoId}}
 ?? js response.parsedBody.title == Multipart video
 ?? js response.parsedBody.playbackUrl isString
 
+### Multipart: declared size that the uploaded part does not match
+# @name mpBad
+# @ref token
+POST {{baseUrl}}/uploads/multipart
+Authorization: Bearer {{token.access_token}}
+Content-Type: application/json
+
+{
+  "filename": "liar.mp4",
+  "contentType": "video/mp4",
+  "fileSize": 2000000
+}
+
+?? status == 201
+?? js response.parsedBody.partCount == 1
+
+### Multipart: get the URL for the mismatched part
+# @name mpBadUrls
+# @ref mpBad
+# @ref token
+POST {{baseUrl}}/uploads/{{mpBad.videoId}}/parts
+Authorization: Bearer {{token.access_token}}
+Content-Type: application/json
+
+{
+  "partNumbers": [1]
+}
+
+?? status == 201
+
+### Multipart: upload only 1 MB although 2 MB was declared
+# @name mpBadPut
+# @ref mpBadUrls
+PUT {{mpBadUrls.urls[0].url}}
+
+< {{partFile}}
+
+?? status == 200
+
+### Multipart: complete is refused because the sizes differ
+# @ref mpBadPut
+# @ref token
+POST {{baseUrl}}/uploads/{{mpBad.videoId}}/complete
+Authorization: Bearer {{token.access_token}}
+
+?? status == 409
+?? js response.parsedBody.message == Part 1 has 1000000 bytes, expected 2000000
+
+### Multipart: clean up the mismatched upload
+# @ref mpBad
+# @ref token
+DELETE {{baseUrl}}/uploads/{{mpBad.videoId}}
+Authorization: Bearer {{token.access_token}}
+
+?? status == 204
 ### Multipart: part URLs are refused once the upload is finished
 # @ref mpComplete
 # @ref token

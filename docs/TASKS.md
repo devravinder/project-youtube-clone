@@ -54,7 +54,7 @@ Concepts: object storage, presigned/multipart upload, relational modeling, ports
 - [x] Verify Keycloak JWTs in upload-service (`jose` guard), protect upload endpoints, record video owner
 - [x] Login and logout in the web app (OIDC code flow with PKCE), route guard, bearer token on API calls
 - [x] OpenAPI 3.1 from Zod (Swagger UI at `/docs`), spec in `contracts/`, web types via `openapi-typescript`
-- [ ] On multipart complete, also check the stored part sizes add up to the declared file size
+- [x] On multipart complete, check every part size against the plan, so the total equals the declared file size
 - [x] Tests: Vitest + supertest for upload-service (75), Vitest + Testing Library for web (51)
 - [x] Git hooks: Husky + lint-staged + commitlint + markdownlint
 

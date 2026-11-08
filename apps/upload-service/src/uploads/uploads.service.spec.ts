@@ -12,6 +12,9 @@ import { UploadsService } from "./uploads.service.js";
 
 const MiB = 1024 * 1024;
 
+// A 30,000,000-byte file split into 8 MiB parts: three full parts and the remainder.
+const COMPLETE_SIZES = [8 * MiB, 8 * MiB, 8 * MiB, 4_834_176];
+
 let storage: FakeStorage;
 let prisma: FakePrisma;
 let service: UploadsService;
@@ -23,6 +26,8 @@ beforeEach(() => {
 });
 
 const onlyRow = () => [...prisma.rows.values()][0];
+const storeParts = (uploadId: string, sizes: number[]) =>
+  sizes.forEach((size, i) => storage.simulatePartPut(uploadId, i + 1, size));
 
 describe("createPresignedUpload", () => {
   it("creates a pending video owned by the caller and returns an upload URL", async () => {
@@ -245,7 +250,7 @@ describe("confirmUpload (multipart)", () => {
 
   it("recovers a retry after storage joined the parts but the database update failed", async () => {
     const { videoId } = await start();
-    [1, 2, 3, 4].forEach((n) => storage.simulatePartPut("upload-1", n, 7_500_000));
+    storeParts("upload-1", COMPLETE_SIZES);
     const originalUpdate = prisma.video.update;
     prisma.video.update = () => Promise.reject(new Error("db blip"));
     await expect(service.confirmUpload(videoId, alice)).rejects.toThrow("db blip");
@@ -255,6 +260,96 @@ describe("confirmUpload (multipart)", () => {
   });
 });
 
+describe("confirmUpload (multipart part sizes)", () => {
+  const start = (fileSize = 30_000_000) =>
+    service.startMultipartUpload(
+      { filename: "big.mp4", contentType: "video/mp4", fileSize },
+      alice,
+    );
+
+  const rejectsWith = async (videoId: string, message: string) => {
+    await expect(service.confirmUpload(videoId, alice)).rejects.toThrow(message);
+    expect(onlyRow().status).toBe("PENDING");
+    expect(storage.sessions.has("upload-1")).toBe(true);
+  };
+
+  it("remembers the declared file size", async () => {
+    await start();
+    expect(onlyRow().fileSize).toBe(30_000_000n);
+  });
+
+  it("rejects a part larger than planned", async () => {
+    const { videoId } = await start();
+    storeParts("upload-1", [8 * MiB, 9 * MiB, 8 * MiB, 4_834_176]);
+
+    await rejectsWith(videoId, `Part 2 has ${9 * MiB} bytes, expected ${8 * MiB}`);
+  });
+
+  it("rejects a short part in the middle", async () => {
+    const { videoId } = await start();
+    storeParts("upload-1", [8 * MiB, 8 * MiB, 5 * MiB, 4_834_176]);
+
+    await rejectsWith(videoId, `Part 3 has ${5 * MiB} bytes, expected ${8 * MiB}`);
+  });
+
+  it.each([
+    ["too big", 4_834_177],
+    ["too small", 4_834_175],
+  ])(
+    "rejects a last part that is %s, so the total differs from the declared size",
+    async (_n, last) => {
+      const { videoId } = await start();
+      storeParts("upload-1", [8 * MiB, 8 * MiB, 8 * MiB, last]);
+
+      await rejectsWith(videoId, `Part 4 has ${last} bytes, expected 4834176`);
+    },
+  );
+
+  it("rejects a part number outside the plan", async () => {
+    const { videoId } = await start();
+    storeParts("upload-1", [8 * MiB, 8 * MiB, 8 * MiB]);
+    storage.simulatePartPut("upload-1", 5, 1000);
+
+    await rejectsWith(videoId, "Unexpected part 5");
+  });
+
+  it("accepts exactly the planned sizes", async () => {
+    const { videoId } = await start();
+    storeParts("upload-1", COMPLETE_SIZES);
+
+    expect(await service.confirmUpload(videoId, alice)).toEqual({ videoId, status: "UPLOADED" });
+  });
+
+  it("accepts a one-part file smaller than a part, and rejects a wrong size for it", async () => {
+    const { videoId } = await start(1_000_000);
+    storeParts("upload-1", [999_999]);
+    await rejectsWith(videoId, "Part 1 has 999999 bytes, expected 1000000");
+
+    storeParts("upload-1", [1_000_000]);
+    expect(await service.confirmUpload(videoId, alice)).toEqual({ videoId, status: "UPLOADED" });
+  });
+
+  it("skips the size check for an upload started before sizes were stored", async () => {
+    const uploadId = await storage.createMultipartUpload("raw-videos", "old/source.mp4");
+    const old = prisma.seed({
+      title: "legacy",
+      rawBucket: "raw-videos",
+      rawKey: "old/source.mp4",
+      contentType: "video/mp4",
+      ownerId: alice.id,
+      uploadId,
+      partSize: 8 * MiB,
+      partCount: 2,
+      fileSize: null,
+    });
+    storeParts(uploadId, [123, 456]);
+
+    expect(await service.confirmUpload(old.id, alice)).toEqual({
+      videoId: old.id,
+      status: "UPLOADED",
+    });
+  });
+});
 describe("abortUpload", () => {
   it("aborts the storage upload and removes the video", async () => {
     const { videoId } = await service.startMultipartUpload(

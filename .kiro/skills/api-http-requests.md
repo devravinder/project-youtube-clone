@@ -62,6 +62,5 @@ When an operation is added or changed, update both (see `openapi-contracts`).
 
 ## Multipart uploads
 
-httpYac cannot slice a file, so the `.http` flow declares a size that needs one part and PUTs the
-whole sample file to part 1. Multi-part behaviour (parallelism, retries, resume, cancel) is covered
+httpYac cannot slice a file, so a script block writes a 1 MB temp file and the `.http` flow declares a 1,000,000-byte upload that needs exactly one part. Part sizes must match the plan, so the declared size and the uploaded bytes have to agree. Multi-part behaviour (parallelism, retries, resume, cancel) is covered
 by the browser test instead.
