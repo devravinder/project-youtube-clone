@@ -11,14 +11,25 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started · `⏸ pending` bl
 
 ## Pending (blocked, to do later)
 
-Everything else up to Stage 6 is done. These wait for tools that are not available yet:
+Everything that can run on this machine is done. What remains needs tools that are not available yet:
 
-| Needs                                    | Tasks                                                               |
-| ---------------------------------------- | ------------------------------------------------------------------- |
+| Needs                                           | Waiting                                                                 |
+| ----------------------------------------------- | ----------------------------------------------------------------------- |
+| `kindest/node:v1.37.0` image (kind 0.33)        | Stage 5: `helm install` on kind, running `load-images` (`ctr import`)   |
+| metrics-server and KEDA images (in the cluster) | Stage 5: watching the CPU HPAs and the queue-depth `ScaledObject` scale |
+| k6 (`grafana/k6` image or `k6` binary)          | Stage 5: running `tests/load/*.ts`                                      |
+| kind cluster + k6                               | Stage 5: observe DLQ depth, retries and autoscaling under load          |
+| AWS account                                     | Stage 7 (optional): EKS, MinIO → S3, `aws` profile                      |
+
+Ready for them: the five app images and the whole pipeline in containers (`pnpm start:c:all`), the
+Helm chart (`pnpm k8s:check`), the kind config and scripts, the k6 scripts (`pnpm load:check`), the
+node image in `infra/retag-images` and `IMAGES.md`. Steps: HOW-TO-RUN → Kubernetes and Load tests.
+
+---------------------------------------- | ------------------------------------------------------------------- |
 | `kindest/node:v1.37.0` image (kind 0.33) | Stage 5: kind cluster + Helm chart, HPA, `ctr import` image loading |
-| k6 (`grafana/k6` image or `k6` binary)   | Stage 5: k6 load scripts                                            |
-| kind cluster + k6                        | Stage 5: observe DLQ depth, retries and autoscaling under load      |
-| AWS account                              | Stage 7 (optional): EKS, MinIO → S3, `aws` profile                  |
+| k6 (`grafana/k6` image or `k6` binary) | Stage 5: k6 load scripts |
+| kind cluster + k6 | Stage 5: observe DLQ depth, retries and autoscaling under load |
+| AWS account | Stage 7 (optional): EKS, MinIO → S3, `aws` profile |
 
 Already in place for them: kind 0.33 and Helm 4.3 are installed, the node image is in
 `infra/retag-images.ps1`/`.sh` and `IMAGES.md`, and the storage adapter and `aws` profile exist.
@@ -119,10 +130,10 @@ Goal: reproduce load, watch the system scale and absorb back-pressure.
 Concepts: caching, eventual consistency, back-pressure, autoscaling, load testing.
 
 - [x] Redis caching (hot metadata) + view counts (eventual consistency): cache-aside `video:<id>` (60 s TTL, evicted on every write), views via an atomic Lua `SET NX` + `INCR` flushed to Postgres every 10 s (`SPOP`/`GETDEL`, exactly once across instances), `volatile-lru`, 500 ms guard with Postgres fallback
-- [ ] kind cluster + Helm umbrella chart (per-service subcharts) — ⏸ pending: needs the `kindest/node:v1.37.0` image
-- [ ] HPA on CPU/memory, then on queue depth — ⏸ pending: needs the `kindest/node:v1.37.0` image (runs on the cluster)
-- [ ] k6 load scripts (smoke / cpu / throughput) — ⏸ pending: needs k6 (the `grafana/k6` image or the `k6` binary)
-- [ ] Windows `ctr import --no-unpack` image-loading script — ⏸ pending: needs the `kindest/node:v1.37.0` image (loads images into its nodes)
+- [~] kind cluster + Helm umbrella chart (per-service subcharts) — done: images for all five apps (`pnpm images:build`), the full pipeline verified in containers (`pnpm start:c:all`), umbrella chart + `yt-common` library chart validated by `pnpm k8s:check` (lint + 45 checks), `infra/kind/cluster.yaml` and `connect-infra` — ⏸ pending: `helm install` on kind, needs the `kindest/node:v1.37.0` image
+- [~] HPA on CPU/memory, then on queue depth — done: `autoscaling/v2` HPAs (upload, transcoder, notification) and a KEDA `ScaledObject` on the transcode queue behind a switch, rendered and checked — ⏸ pending: watching them scale, needs the cluster plus metrics-server and KEDA images
+- [~] k6 load scripts (smoke / cpu / throughput) — done: `tests/load/*.ts`, typechecked against `@types/k6` (`pnpm load:check`) — ⏸ pending: running them, needs k6 (the `grafana/k6` image or the `k6` binary)
+- [~] Windows `ctr import --no-unpack` image-loading script — done: `infra/kind/load-images.ps1` and `.sh` — ⏸ pending: running it, needs the `kindest/node:v1.37.0` image
 - [ ] Observe DLQ depth, retries, autoscaling under load — ⏸ pending: needs the kind cluster and k6
 
 ## Stage 6 — Phase 5: Observability (otel-lgtm)

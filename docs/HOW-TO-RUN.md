@@ -125,6 +125,37 @@ Stop the services with Ctrl+C. Then stop the containers:
 | `docker compose -f infra/docker-compose-local-observability.yaml stop` | yes                          |
 | `pnpm stop:lo:pods`                                                    | **no**, deletes every volume |
 
+### All in containers
+
+Every service runs from its image instead of a dev server. This is how they will run in Kubernetes,
+and it is a good check before deploying.
+
+```bash
+pnpm images:build        # once, and after code changes (slow the first time: installs dependencies)
+pnpm start:c:all         # infrastructure + db-migrate + the five services
+```
+
+Open <http://localhost:8090>. The web container's nginx serves the app and proxies `/api`, `/search-api`
+and `/ws`, as the Vite dev server does. Don't run the dev servers at the same time: both sets would
+consume the same queues and topics.
+
+| Command                                                       | Keeps your data?             |
+| ------------------------------------------------------------- | ---------------------------- |
+| `docker compose -f infra/docker-compose-local-apps.yaml stop` | yes                          |
+| `pnpm stop:c:all`                                             | **no**, deletes every volume |
+
+How the containers find each other:
+
+- Containers use the compose names (`postgres`, `kafka`, `minio`, …).
+- Browsers still use `localhost`. That's why the upload service signs storage URLs for
+  `STORAGE_PUBLIC_ENDPOINT=http://localhost:9000`, and fetches Keycloak's keys from `OIDC_JWKS_URL`
+  (`keycloak:8180`) while tokens keep the public issuer `localhost:8180`.
+- `TRUST_PROXY_HOPS=1` makes the upload service read the viewer's IP from nginx's `X-Forwarded-For`.
+
+The images are built by `scripts/build-images.mjs` from `infra/docker/`. Your `~/.npmrc` (registry login)
+and the CA file it names are passed as BuildKit secrets. They are used during the install and are not
+kept in any image layer.
+
 ### Switching and mixing
 
 Both compose files share the project name `youtube-clone-local`, so `start:lo:pods` reuses the same
@@ -609,6 +640,58 @@ proxy) and pushes a message for every new `video.ready` on `yt.video-events`:
   `NOTIFY_MAX_EVENT_AGE_SECONDS` (default 600) are dropped.
 - Dead connections are found by a ping every 30 s and closed if the pong never comes.
 - `GET /health` reports the number of open sockets. Requests to try: `http/notification-service.http`.
+
+## Kubernetes (kind + Helm) — ⏸ pending
+
+Ready but not yet run: it needs the `kindest/node:v1.37.0` image (see [TASKS.md](TASKS.md)). `pnpm k8s:check`
+already validates the chart without a cluster: Helm lint plus 45 checks on the rendered manifests.
+
+```bash
+pnpm images:build
+pnpm start:l:pods                                      # infrastructure stays in Docker Compose
+kind create cluster --config infra/kind/cluster.yaml   # 1 control plane + 2 workers
+pwsh -File infra/kind/connect-infra.ps1                # or ./infra/kind/connect-infra.sh
+pwsh -File infra/kind/load-images.ps1                  # or ./infra/kind/load-images.sh
+pnpm k8s:check                                         # also builds the chart dependencies
+helm upgrade --install yt infra/helm/youtube-clone -n mini-youtube --create-namespace
+```
+
+The app is then at <http://localhost:8090>. kind maps node port 30090 there.
+
+- **Chart layout:** `infra/helm/youtube-clone` is the umbrella chart, with one subchart per service in
+  `charts/`. All of them use the library chart `infra/helm/yt-common`, so Deployment, Service,
+  ConfigMap, Secret and HPA are written once. `global.env` and `global.secretEnv` hold shared settings;
+  `global.imageRegistry` and `global.imageTag` retarget every image.
+- **Infrastructure:** it runs in Compose, not in the cluster. `connect-infra` joins those containers to
+  kind's network under their compose names, so the chart uses the same addresses as
+  `docker-compose-local-apps.yaml`.
+- **Migrations:** a Helm pre-install/pre-upgrade hook Job (`upload-service-migrate`) runs
+  `prisma migrate deploy` before new pods start.
+- **CPU/memory autoscaling:** HPAs for the upload, transcoder and notification services. They need
+  metrics-server in the cluster, which is not installed yet (no image).
+- **Queue-depth autoscaling:** `--set transcoder-service.queueScaling.enabled=true` renders a KEDA
+  `ScaledObject` on `transcoder.transcode-video`, and the CPU HPA steps aside. It needs KEDA in the
+  cluster.
+- **Image loading:** `load-images` uses `ctr import --no-unpack` rather than `kind load docker-image`,
+  because BuildKit images carry an attestation manifest that the default import rejects on Docker
+  Desktop.
+
+## Load tests (k6) — ⏸ pending
+
+Written and typechecked (`pnpm load:check`, against `@types/k6`). Running them needs k6. k6 runs
+TypeScript directly, and every script defaults to `BASE_URL=http://localhost:8090`.
+
+| Script                     | What it does                                                                       |
+| -------------------------- | ---------------------------------------------------------------------------------- |
+| `tests/load/smoke.ts`      | 1 user, 30 s, every read path; p95 < 500 ms, < 1 % errors                          |
+| `tests/load/cpu.ts`        | Arrival rate ramps to `PEAK_RPS` (200) and holds 5 min: watch `kubectl get hpa -w` |
+| `tests/load/throughput.ts` | `UPLOADS` (20) real uploads, 5 at a time: time-to-READY, queue depth, DLQ          |
+
+```bash
+k6 run tests/load/smoke.ts
+k6 run tests/load/cpu.ts -e PEAK_RPS=300
+k6 run tests/load/throughput.ts -e VIDEO=tmp/sample.mp4 -e UPLOADS=30
+```
 
 ## Observability
 

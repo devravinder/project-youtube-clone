@@ -1259,3 +1259,109 @@ Verified live (8 checks), each run under its own service name:
 - `OTEL_ENABLED=false` beat `local-observability`.
 - `OTEL_ENABLED=true` turned telemetry on in `local`.
 - The transcoder on its default profile sent nothing.
+
+## ADR-048 - App container images, and internal vs public addresses
+
+Date: 2026-11-10 - Status: Accepted
+
+**Images** (`infra/docker/`, built by `pnpm images:build`):
+
+- **Base:** `alpine:latest` with Node and JDK from apk, because it is the base image available here.
+  This is the one unpinned base, and the price of availability (ADR-013).
+- **NestJS services:** one parameterised `node-service.Dockerfile` (`SERVICE` build arg). It runs
+  `pnpm install --frozen-lockfile --filter @yt/<svc>...`, so only that service's dependencies are
+  installed, then `prisma generate`. It starts the same way as the dev scripts: tsx plus the telemetry
+  preload. The runtime user is non-root (uid 10001), with `NODE_ENV=production`, which also stops the
+  contract-file writes the dev servers do on startup.
+- **Transcoder:** `bootJar` on a JDK build stage, then a JRE image with `/ffmpeg` and `/ffprobe` copied
+  from `mwader/static-ffmpeg`. An empty `FFMPEG_DOCKER_IMAGE` makes it call the binaries, with no
+  Docker-in-Docker.
+- **Web:** a Vite build served by `nginx:1.26.3`. nginx also proxies `/api`, `/search-api` and `/ws`, as
+  the dev server does. Upstream URLs are filled in by a `sed` entrypoint, since the image has no
+  `envsubst`.
+- **Registry credentials:** passed as BuildKit secrets (`~/.npmrc`, and the CA file it names, since a
+  Windows path inside `.npmrc` means nothing in Linux). Checked: no `.npmrc` anywhere in the image, an
+  empty `/root`, and nothing in the image history.
+
+**Two addresses for the same thing.** Inside containers (and later pods) a service reaches `minio:9000`
+and `keycloak:8180`; a browser reaches `localhost`. Three settings bridge the gap:
+
+- `STORAGE_PUBLIC_ENDPOINT`: a second S3 client signs presigned URLs for the browser's host. The
+  signature covers the host, and signing is local, so that client never connects anywhere.
+- `OIDC_JWKS_URL`: tokens keep the public issuer (`KC_HOSTNAME`), while the keys are fetched over the
+  internal network.
+- `TRUST_PROXY_HOPS`: behind nginx every request comes from nginx's IP, which would merge all viewers
+  into one for view dedupe. Express reads the client from `X-Forwarded-For` instead.
+
+Verified (16 checks), with the whole pipeline in containers on isolated resources and driven only
+through `localhost:8090`:
+
+- SPA routes and cache headers, the `/api`, `/search-api` and `/ws` proxies.
+- JWT verification through the internal JWKS URL.
+- Upload URLs signed for `localhost:9000`, accepted on a direct PUT.
+- READY in 5 s with 4 renditions from the static ffmpeg binaries; the master playlist through the edge.
+- Search indexing, the WebSocket push, and view dedupe behind the proxy.
+
+All services ran as uid 10001.
+
+Rejected:
+
+- Building on the host and copying `node_modules`: the native and platform-specific packages would be
+  Windows builds.
+- `pnpm deploy`: the workspace libraries are TypeScript source, run by tsx.
+- Docker-in-Docker for ffmpeg.
+
+## ADR-049 - Helm umbrella chart, kind cluster, autoscaling (validated, not yet deployed)
+
+Date: 2026-11-10 - Status: Accepted (deployment pending: no `kindest/node` image)
+
+- **Charts:** the umbrella chart `infra/helm/youtube-clone` holds five thin subcharts, each depending on
+  the library chart `yt-common`, so the Deployment, Service, ConfigMap, Secret and HPA templates exist
+  once. Services keep their plain names (`upload-service`, …), so URLs are the same as in Compose.
+- **Infrastructure:** it stays in Compose; `connect-infra` attaches those containers to kind's network
+  with their compose names as aliases. That keeps one copy of the stateful parts and their data, and
+  needs no in-cluster Postgres, Kafka or Elasticsearch charts (no images for them).
+- **Pods:** startup, readiness and liveness probes; CPU and memory requests (HPA computes utilisation
+  from them); a memory limit but no CPU limit, to avoid throttling. Pods run non-root with all
+  capabilities dropped. The transcoder has a 600 s grace period, so a rollout doesn't kill a transcode.
+- **Rollouts:** a `checksum/config` annotation restarts pods on config changes. Migrations run as a
+  pre-install/pre-upgrade hook Job.
+- **Autoscaling:**
+  - `autoscaling/v2` HPAs on CPU (and memory for upload), with a 300 s scale-down stabilisation window.
+    The Deployment omits `replicas` while an HPA owns it, so `helm upgrade` doesn't reset the count.
+  - The transcoder's real signal is queue depth, so a KEDA `ScaledObject` (RabbitMQ `QueueLength`) is
+    in the chart behind a switch. Turning it on removes the CPU HPA: two autoscalers on one Deployment
+    would fight.
+- **Image loading:** `load-images` uses `ctr --namespace=k8s.io images import --no-unpack
+--all-platforms`. BuildKit images include an attestation manifest that `kind load docker-image`
+  fails on with Docker Desktop.
+
+Verified without a cluster, by `pnpm k8s:check` (strict lint + 45 checks on the rendered manifests):
+
+- names; Service selectors match their pods; `envFrom` refers to existing objects;
+- probes and resources on every pod; the security context;
+- HPAs target existing Deployments, and those Deployments omit `replicas`;
+- the web node port; the proxies point at real Service names; the migration hook;
+- secrets only in Secrets; global settings and the image registry reach every service;
+- the KEDA switch; services can be switched off.
+
+Not verified: an actual install, pods becoming ready, pods reaching the infrastructure through the
+kind network, HPA behaviour, and the `ctr` import. All of these need the node image, plus the
+metrics-server and KEDA images.
+
+## ADR-050 - k6 load scripts in TypeScript, typechecked now and run later
+
+Date: 2026-11-10 - Status: Accepted (runs pending: no k6)
+
+`tests/load` (`@yt/load-tests`) holds three scripts that k6 runs as TypeScript. They are typechecked
+against `@types/k6`, and a deliberate error confirmed the check is real.
+
+- **smoke:** 1 user for 30 s, with thresholds.
+- **cpu:** open-model `ramping-arrival-rate` up to `PEAK_RPS`, a mix of cached reads, searches and view
+  counts, to drive the HPA. The open model keeps the request rate steady when the system slows,
+  unlike a fixed number of looping users.
+- **throughput:** real uploads, 5 at a time, with custom `time_to_ready` and `videos_failed` metrics to
+  watch queue depth, retries and transcoder scaling.
+
+npm only has type definitions for k6, not the runner (the `k6` package is a 0.0.0 placeholder), so the
+scripts can't be run from a pnpm dependency.
