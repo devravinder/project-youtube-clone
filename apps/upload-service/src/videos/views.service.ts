@@ -9,6 +9,7 @@ import {
 } from "@nestjs/common";
 import { RedisTimeoutError } from "../cache/redis.client.js";
 import { VIDEO_CACHE, type VideoCachePort } from "../cache/video-cache.js";
+import { untraced } from "@yt/telemetry";
 import { VIEW_COUNTER, type ViewCounterPort } from "../cache/view-counter.js";
 import { APP_CONFIG, type AppConfig } from "../config/app.config.js";
 import { VideoStatus } from "../generated/prisma/enums.js";
@@ -68,9 +69,9 @@ export class ViewsService implements OnApplicationBootstrap, OnApplicationShutdo
     }
   }
 
-  // Overlapping ticks share the run in progress.
+  // Overlapping ticks share the run in progress; untraced, like the outbox poll.
   flush(): Promise<number> {
-    this.flushing ??= this.flushAll().finally(() => {
+    this.flushing ??= untraced(() => this.flushAll()).finally(() => {
       this.flushing = null;
     });
     return this.flushing;

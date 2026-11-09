@@ -8,6 +8,7 @@ import {
 } from "@nestjs/common";
 import { Consumer, type MessagesStream, stringDeserializers } from "@platformatic/kafka";
 import { EVENT_TYPE_HEADER } from "@yt/contracts";
+import { withConsumerSpan } from "@yt/telemetry";
 import { APP_CONFIG, type AppConfig } from "../config/app.config.js";
 import { Notifier } from "./notifier.js";
 
@@ -77,7 +78,17 @@ export class KafkaListener implements OnApplicationBootstrap, OnApplicationShutd
       `Listening to ${this.config.KAFKA_VIDEO_EVENTS_TOPIC} as group ${this.groupId}`,
     );
     for await (const message of this.stream) {
-      this.notifier.handle(message.value, message.headers.get(EVENT_TYPE_HEADER));
+      await withConsumerSpan(
+        `${message.topic} process`,
+        message.headers,
+        {
+          "messaging.system": "kafka",
+          "messaging.operation.type": "process",
+          "messaging.destination.name": message.topic,
+          "messaging.consumer.group.name": this.groupId,
+        },
+        async () => this.notifier.handle(message.value, message.headers.get(EVENT_TYPE_HEADER)),
+      );
     }
   }
 }

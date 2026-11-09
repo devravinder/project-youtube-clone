@@ -6,6 +6,7 @@ export interface ClaimedMessage {
   type: string;
   payload: unknown;
   attempts: number;
+  traceContext?: Record<string, string> | null;
 }
 
 export interface OutboxStore {
@@ -40,8 +41,9 @@ export class PrismaOutboxStore implements OutboxStore {
            ORDER BY created_at, id
            LIMIT $2
            FOR UPDATE SKIP LOCKED)
-         RETURNING id, type, payload, attempts, created_at)
-       SELECT id, type, payload, attempts FROM claimed ORDER BY created_at, id`,
+         RETURNING id, type, payload, attempts, trace_context, created_at)
+       SELECT id, type, payload, attempts, trace_context AS "traceContext"
+       FROM claimed ORDER BY created_at, id`,
       types,
       limit,
       leaseSeconds,

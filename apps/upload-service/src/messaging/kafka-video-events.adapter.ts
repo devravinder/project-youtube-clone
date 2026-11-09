@@ -2,6 +2,7 @@ import type { OnModuleDestroy } from "@nestjs/common";
 import { type MessageToProduce, Producer, stringSerializers } from "@platformatic/kafka";
 import { EVENT_ID_HEADER, EVENT_TYPE_HEADER, type VideoEvent } from "@yt/contracts";
 import type { VideoEventsPort } from "@yt/ports";
+import { withProducerSpan } from "@yt/telemetry";
 
 type StringMessage = MessageToProduce<string, string, string, string>;
 
@@ -33,7 +34,22 @@ export class KafkaVideoEvents implements VideoEventsPort, OnModuleDestroy {
   }
 
   async publish(event: VideoEvent): Promise<void> {
-    await this.producer.send({ messages: [toKafkaMessage(this.topic, event)] });
+    const message = toKafkaMessage(this.topic, event);
+    // No Kafka instrumentation for this client: the span and its traceparent header are added here.
+    await withProducerSpan(
+      `${this.topic} publish`,
+      {
+        "messaging.system": "kafka",
+        "messaging.operation.type": "send",
+        "messaging.destination.name": this.topic,
+        "messaging.kafka.message.key": event.video.id,
+        "messaging.message.id": event.eventId,
+      },
+      (trace) =>
+        this.producer.send({
+          messages: [{ ...message, headers: { ...message.headers, ...trace } }],
+        }),
+    );
   }
 
   async onModuleDestroy(): Promise<void> {

@@ -272,6 +272,17 @@ The Node services load `@yt/telemetry/register` before the app (`--import`), and
 Each service then sends traces, metrics (every 10 s) and logs, with trace ids, to `http://localhost:4318`.
 Set `OTEL_ENABLED=true` to force it on in any environment, or `OTEL_ENABLED=false` to force it off.
 
+Follow one upload: every outbox row stores the trace it was written in, so
+
+```sql
+select type, trace_context->>'traceparent' from outbox order by created_at desc limit 2;
+```
+
+gives `00-<trace id>-<span id>-01`. Paste the trace id into Grafana → Explore → Tempo. The trace runs
+from `POST /uploads/:videoId/complete` through the RabbitMQ command, the transcoder, the status event and
+the Kafka `video.ready` to search and notifications. In Explore → Loki, `{service_name=~".+"} | trace_id="<id>"`
+shows the log lines of the same journey.
+
 ## 4. Set up the database
 
 Needs Postgres running (step 3). Run these from the repo root:

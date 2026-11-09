@@ -8,6 +8,7 @@ import {
 import { Cron, CronExpression } from "@nestjs/schedule";
 import type { VideoEvent } from "@yt/contracts";
 import type { TranscodeCommand, TranscodeQueuePort, VideoEventsPort } from "@yt/ports";
+import { untraced, withStoredContext } from "@yt/telemetry";
 import { APP_CONFIG, type AppConfig } from "../config/app.config.js";
 import { TRANSCODE_QUEUE_PORT, VIDEO_EVENTS_PORT } from "../messaging/messaging.module.js";
 import { TRANSCODE_MESSAGE_TYPE } from "../messaging/transcode-topology.js";
@@ -53,9 +54,9 @@ export class OutboxRelay implements OnApplicationBootstrap, BeforeApplicationShu
     await this.running;
   }
 
-  // Overlapping ticks share the run in progress.
+  // Overlapping ticks share the run in progress. Polling is untraced: a span per second is noise.
   drain(): Promise<number> {
-    this.running ??= this.drainAll().finally(() => {
+    this.running ??= untraced(() => this.drainAll()).finally(() => {
       this.running = null;
     });
     return this.running;
@@ -110,7 +111,12 @@ export class OutboxRelay implements OnApplicationBootstrap, BeforeApplicationShu
       }, PUBLISH_TIMEOUT_MS);
     });
     try {
-      await Promise.race([this.publishers[message.type]?.(message.payload), timeout]);
+      // Publish inside the trace of the request that wrote the row, seconds or minutes ago.
+      const publish = this.publishers[message.type];
+      await Promise.race([
+        withStoredContext(message.traceContext, async () => publish?.(message.payload)),
+        timeout,
+      ]);
       await this.store.markSent(message.id);
       return "sent";
     } catch (error) {

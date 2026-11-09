@@ -17,6 +17,7 @@ import { TRANSCODE_MESSAGE_TYPE } from "../messaging/transcode-topology.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { STORAGE_PORT } from "../storage/storage.module.js";
 import { VIDEO_CACHE, type VideoCachePort } from "../cache/video-cache.js";
+import { currentTraceContext } from "../outbox/trace-context.js";
 import {
   MAX_PARTS,
   type MultipartInitRequest,
@@ -190,7 +191,12 @@ export class UploadsService {
         requestedAt: new Date().toISOString(),
       };
       await tx.outboxMessage.create({
-        data: { id: messageId, type: TRANSCODE_MESSAGE_TYPE, payload: { ...command } },
+        data: {
+          id: messageId,
+          type: TRANSCODE_MESSAGE_TYPE,
+          payload: { ...command },
+          traceContext: currentTraceContext(),
+        },
       });
       return true;
     });

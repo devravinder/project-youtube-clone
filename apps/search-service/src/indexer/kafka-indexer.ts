@@ -13,6 +13,7 @@ import {
   stringSerializers,
 } from "@platformatic/kafka";
 import { APP_CONFIG, type AppConfig } from "../config/app.config.js";
+import { withConsumerSpan } from "@yt/telemetry";
 import { SEARCH_INDEX_PORT, type SearchIndexPort } from "../search/search-index.port.js";
 import {
   EventProcessor,
@@ -107,7 +108,20 @@ export class KafkaIndexer implements OnApplicationBootstrap, OnApplicationShutdo
     );
     // One at a time keeps each partition in order and gives natural back-pressure.
     for await (const message of this.stream) {
-      await this.processor.process(message as IncomingEvent);
+      // Continues the trace the producer put in the headers: the upload, all the way here.
+      await withConsumerSpan(
+        `${message.topic} process`,
+        message.headers,
+        {
+          "messaging.system": "kafka",
+          "messaging.operation.type": "process",
+          "messaging.destination.name": message.topic,
+          "messaging.consumer.group.name": this.config.KAFKA_GROUP_ID,
+          "messaging.destination.partition.id": String(message.partition),
+          "messaging.kafka.offset": Number(message.offset),
+        },
+        () => this.processor.process(message as IncomingEvent),
+      );
     }
   }
 

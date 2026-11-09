@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { VIDEO_CACHE, type VideoCachePort } from "../cache/video-cache.js";
+import { currentTraceContext } from "../outbox/trace-context.js";
 import { VideoStatus } from "../generated/prisma/enums.js";
 import { buildVideoReadyEvent, VIDEO_READY_MESSAGE_TYPE } from "../messaging/video-ready-event.js";
 import type { VideoStatusEvent } from "../messaging/video-status-event.js";
@@ -47,7 +48,13 @@ export class VideoStatusService {
         const eventId = randomUUID();
         const ready = buildVideoReadyEvent(eventId, video, event.renditions, event.occurredAt);
         await tx.outboxMessage.create({
-          data: { id: eventId, type: VIDEO_READY_MESSAGE_TYPE, payload: ready },
+          data: {
+            id: eventId,
+            type: VIDEO_READY_MESSAGE_TYPE,
+            payload: ready,
+            // The trace of the transcoder's READY, so search and notifications join it.
+            traceContext: currentTraceContext(),
+          },
         });
       }
       return true;

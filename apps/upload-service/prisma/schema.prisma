@@ -50,6 +50,8 @@ model OutboxMessage {
   lockedUntil   DateTime? @map("locked_until")
   sentAt        DateTime? @map("sent_at")
   createdAt     DateTime  @default(now()) @map("created_at")
+  // W3C trace context of the request that wrote the row; the relay publishes inside it.
+  traceContext  Json?     @map("trace_context")
 
   @@index([sentAt, nextAttemptAt])
   @@map("outbox")

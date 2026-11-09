@@ -1136,3 +1136,60 @@ Rejected:
 - The OTel Java agent: Boot's starter covers the same signals and is configured like any other Boot
   property.
 - Prometheus scraping: see ADR-043.
+
+## ADR-045 - Trace context through the outbox, RabbitMQ and Kafka
+
+Date: 2026-11-09 - Status: Accepted
+
+**Goal:** one upload, one trace, across all four services.
+
+```mermaid
+sequenceDiagram
+  participant U as upload-service
+  participant DB as outbox
+  participant T as transcoder
+  participant S as search
+  participant N as notification
+  U->>DB: POST /complete writes command + traceparent
+  U->>T: relay publishes inside that trace (amqplib span, traceparent header)
+  T->>U: READY on yt.video-status (Spring AMQP observation)
+  U->>DB: status consumer writes video.ready + traceparent
+  U->>S: relay publishes to Kafka (producer span, traceparent header)
+  U->>N: same Kafka record
+```
+
+- **The outbox breaks context.** The relay publishes later, from a timer, where the request's trace
+  context no longer exists. Each outbox row therefore stores the W3C trace context of the transaction
+  that wrote it (`outbox.trace_context`, JSONB, migration `add_outbox_trace_context`). The relay restores
+  it (`withStoredContext`) around each publish.
+- **RabbitMQ:**
+  - Node: the amqplib auto-instrumentation creates the producer span inside the restored context and
+    writes `traceparent` into the message headers.
+  - Java: Spring AMQP observation (`listener.simple.` and `template.observation-enabled`, on in the
+    `local-observability` profile) continues the trace on `@RabbitListener` and injects it into the
+    status messages. The upload service's status consumer gets a consumer span from the same
+    instrumentation, and the `video.ready` row it writes stores that context. The chain continues.
+- **Kafka:** `@platformatic/kafka` has no instrumentation, so `withProducerSpan` and `withConsumerSpan`
+  in `@yt/telemetry` create the spans and carry `traceparent` in the record headers. The span names and
+  attributes follow the messaging semantic conventions (`<topic> publish` and `<topic> process`, plus
+  `messaging.system`, `messaging.destination.name`, `messaging.consumer.group.name`).
+- **Housekeeping is untraced.** The outbox poll (every 1 s) and the view flush (every 10 s) run in a
+  `suppressTracing` context, so idle services don't produce a root trace per tick. A publish inside a
+  poll is still traced, because its context is rebuilt from the row on top of the root context, which
+  doesn't carry the suppression flag.
+
+Verified with one real upload on isolated e2e resources (17 checks):
+
+- Both outbox rows held a `traceparent` with the same trace id.
+- That one trace (82 spans) contained, in order: the confirm request; the amqplib publish; the
+  transcoder's `transcoder.transcode-video receive` and its `yt.video-status send`; the upload service's
+  status consume; `e2e.otel-events publish`; search's `process` with its Elasticsearch `index`/`PUT`; and
+  notification's `process`.
+- Loki returned log lines with that trace id from the upload service and the transcoder.
+- Over 41 s, 0 traces were rooted in a Prisma query, so polling no longer produces noise.
+
+Rejected:
+
+- A new trace per hop, linked with span links: each part is visible, but nobody can follow one upload.
+- Putting `traceparent` inside the event payload: it is transport metadata, and headers keep the
+  contract clean.
