@@ -221,6 +221,11 @@ Elasticsearch (`yt-elasticsearch`, 8.19.16, <http://localhost:9200>) is the sear
 single node with security off and a 512 MB heap (about 1.2 GB of RAM in total). Requests to try are in
 `http/elasticsearch.http`.
 
+Redis (`yt-redis`, 6.2.24, `localhost:6379`) caches video rows and buffers view counts. It runs with AOF on,
+a 128 MB limit and `maxmemory-policy volatile-lru`, so under memory pressure only keys with a TTL (cache
+entries) are evicted, never the view counters. Look inside with
+`docker exec -it yt-redis redis-cli --scan --pattern 'video:*'` or `... get views:pending:<videoId>`.
+
 ```bash
 pnpm start:l:pods
 ```
@@ -281,6 +286,13 @@ topic `KAFKA_VIDEO_EVENTS_TOPIC`, default `yt.video-events`). A publish that get
 10 s counts as a failed attempt, so a hung Kafka cannot hold up the transcode commands. Delivery is at
 least once: after a Kafka outage the same event (same `eventId`) can appear more than once.
 Inspect the backlog with `select type, attempts, last_error, sent_at from outbox order by created_at desc;`.
+
+`GET /videos/:id` reads through Redis (`REDIS_URL`, default `redis://localhost:6379`): the row is cached
+for `VIDEO_CACHE_TTL_SECONDS` (60) and evicted on every change. `POST /videos/:id/views` (public, 202)
+counts one view per viewer per `VIEW_DEDUPE_MINUTES` (30) in Redis; every `VIEW_FLUSH_INTERVAL_MS`
+(10000) the counts are added to `videos.view_count`. The detail shows Postgres plus pending, the list
+shows Postgres only, so it lags by up to one flush. If Redis is down or hangs, each call gives up after
+500 ms, Redis is skipped for 5 s, reads go to Postgres and views are written there directly.
 
 After that the video moves `UPLOADED → PROCESSING → READY` (or `FAILED`). `GET /videos/:id` then returns
 `renditions` (signed URLs, highest first) and `playbackUrl` points at the highest one; a failed video keeps
@@ -535,6 +547,7 @@ proxy) and pushes a message for every new `video.ready` on `yt.video-events`:
 | HLS edge       | <http://localhost:8088/healthz>         | none (public, read-only)                                |
 | Kafka          | `localhost:9094` (bootstrap)            | none (PLAINTEXT, local only)                            |
 | Elasticsearch  | <http://localhost:9200>                 | none (security off, local only)                         |
+| Redis          | `localhost:6379`                        | none (local only)                                       |
 
 > Credentials are local dev defaults only — never use them outside local.
 

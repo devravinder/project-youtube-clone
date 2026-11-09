@@ -23,6 +23,10 @@ export const testConfig = {
   HLS_PUBLIC_BASE_URL: "https://cdn.test/hls-videos",
   KAFKA_BROKERS: ["localhost:1"],
   KAFKA_VIDEO_EVENTS_TOPIC: "test.video-events",
+  REDIS_URL: "redis://unused:6379",
+  VIDEO_CACHE_TTL_SECONDS: 60,
+  VIEW_FLUSH_INTERVAL_MS: 10_000,
+  VIEW_DEDUPE_MINUTES: 30,
 } as unknown as AppConfig;
 
 export const alice = { id: "user-alice", username: "alice" };

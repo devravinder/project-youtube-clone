@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import type { StoragePort } from "@yt/ports";
+import { VIDEO_CACHE, type VideoCachePort } from "../cache/video-cache.js";
 import { APP_CONFIG, type AppConfig } from "../config/app.config.js";
 import { VideoStatus } from "../generated/prisma/enums.js";
 import { PrismaService } from "../prisma/prisma.service.js";
@@ -19,6 +20,7 @@ export class CleanupService {
     @Inject(STORAGE_PORT) private readonly storage: StoragePort,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
     @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(VIDEO_CACHE) private readonly cache: VideoCachePort,
   ) {}
 
   @Cron(CronExpression.EVERY_10_MINUTES)
@@ -60,6 +62,7 @@ export class CleanupService {
           }
           await this.storage.deleteObject(video.rawBucket, video.rawKey);
           await this.prisma.video.delete({ where: { id: video.id } });
+          await this.cache.evict(video.id);
           removed += 1;
         } catch (error) {
           failedIds.push(video.id);

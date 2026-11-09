@@ -595,3 +595,10 @@ GET {{baseUrl}}/videos/00000000-0000-4000-8000-000000000000
 GET {{baseUrl}}/videos/not-a-uuid
 
 ?? status == 400
+
+### Count a view (public). 202; counted is false for the same viewer within 30 minutes
+# @ref presign
+POST {{baseUrl}}/videos/{{presign.videoId}}/views
+
+?? status == 202
+?? js typeof response.parsedBody.counted == boolean

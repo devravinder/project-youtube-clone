@@ -1,5 +1,7 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type { StoragePort } from "@yt/ports";
+import { VIDEO_CACHE, type VideoCachePort } from "../cache/video-cache.js";
+import { VIEW_COUNTER, type ViewCounterPort } from "../cache/view-counter.js";
 import { APP_CONFIG, type AppConfig } from "../config/app.config.js";
 import type { Video } from "../generated/prisma/client.js";
 import { VideoStatus } from "../generated/prisma/enums.js";
@@ -15,6 +17,8 @@ export class VideosService {
     @Inject(STORAGE_PORT) private readonly storage: StoragePort,
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
+    @Inject(VIDEO_CACHE) private readonly cache: VideoCachePort,
+    @Inject(VIEW_COUNTER) private readonly views: ViewCounterPort,
   ) {}
 
   async list({ limit, cursor }: ListVideosQuery): Promise<VideoPage> {
@@ -33,7 +37,7 @@ export class VideosService {
   }
 
   async get(id: string): Promise<VideoDetail> {
-    const video = await this.prisma.video.findUnique({ where: { id } });
+    const video = await this.find(id);
     if (!video) {
       throw new NotFoundException(`Video ${id} not found`);
     }
@@ -65,11 +69,26 @@ export class VideosService {
 
     return {
       ...toSummary(video),
+      // Postgres plus what is still waiting in Redis, so a viewer sees their own view at once.
+      viewCount: Number(video.viewCount) + (await this.views.pending(id)),
       contentType: video.contentType,
       playbackUrl,
       renditions,
       failureReason: video.failureReason,
     };
+  }
+
+  /** Cache-aside: Redis first, then Postgres, which fills the cache. Signed URLs are never cached. */
+  async find(id: string): Promise<Video | null> {
+    const cached = await this.cache.get(id);
+    if (cached) {
+      return cached;
+    }
+    const video = await this.prisma.video.findUnique({ where: { id } });
+    if (video) {
+      await this.cache.set(video);
+    }
+    return video;
   }
 }
 

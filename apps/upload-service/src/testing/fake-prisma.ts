@@ -128,7 +128,17 @@ export class FakePrisma {
       if (!row || !allowed) {
         return Promise.resolve({ count: 0 });
       }
-      this.rows.set(where.id, { ...row, ...data, updatedAt: new Date() });
+      // Prisma's { increment: n } for numeric columns.
+      const increments = Object.fromEntries(
+        Object.entries(data)
+          .filter(([, v]) => typeof v === "object" && v !== null && "increment" in v)
+          .map(([k, v]) => [
+            k,
+            BigInt((row as Record<string, unknown>)[k] as bigint) +
+              BigInt((v as { increment: number }).increment),
+          ]),
+      );
+      this.rows.set(where.id, { ...row, ...data, ...increments, updatedAt: new Date() });
       return Promise.resolve({ count: 1 });
     },
 

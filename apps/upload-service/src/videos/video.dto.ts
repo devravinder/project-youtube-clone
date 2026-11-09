@@ -59,3 +59,9 @@ export const videoDetailSchema = videoSummarySchema
   .meta({ id: "VideoDetail" });
 
 export type VideoDetail = z.infer<typeof videoDetailSchema>;
+
+export const viewRecordedSchema = z
+  .object({ counted: z.boolean().describe("false when this viewer was counted recently") })
+  .meta({ id: "ViewRecorded" });
+
+export type ViewRecorded = z.infer<typeof viewRecordedSchema>;

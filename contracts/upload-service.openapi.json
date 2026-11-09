@@ -571,6 +571,58 @@
           "videos"
         ]
       }
+    },
+    "/videos/{id}/views": {
+      "post": {
+        "operationId": "recordView",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted; counted is false for a repeat view",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewRecorded"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "id is not a UUID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Video does not exist or is not READY",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Count a view (once per viewer per 30 minutes); totals catch up within seconds",
+        "tags": [
+          "videos"
+        ]
+      }
     }
   },
   "info": {
@@ -1018,6 +1070,19 @@
           "playbackUrl",
           "renditions",
           "failureReason"
+        ],
+        "additionalProperties": false
+      },
+      "ViewRecorded": {
+        "type": "object",
+        "properties": {
+          "counted": {
+            "type": "boolean",
+            "description": "false when this viewer was counted recently"
+          }
+        },
+        "required": [
+          "counted"
         ],
         "additionalProperties": false
       },

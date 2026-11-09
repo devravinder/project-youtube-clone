@@ -56,6 +56,22 @@ beforeEach(() => {
 });
 
 describe("HlsVideo", () => {
+  it("reports the first play once per source, not on every resume", () => {
+    const onFirstPlay = vi.fn();
+    const { rerender } = render(<HlsVideo src={MASTER} title="Clip" onFirstPlay={onFirstPlay} />);
+    const video = screen.getByLabelText("Clip");
+
+    fireEvent.playing(video);
+    fireEvent.playing(video);
+    expect(onFirstPlay).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <HlsVideo src="https://cdn.test/other/master.m3u8" title="Clip" onFirstPlay={onFirstPlay} />,
+    );
+    fireEvent.playing(video);
+    expect(onFirstPlay).toHaveBeenCalledTimes(2);
+  });
+
   it("loads the master playlist into hls.js with the size cap", () => {
     render(<HlsVideo src={MASTER} title="Clip" />);
 

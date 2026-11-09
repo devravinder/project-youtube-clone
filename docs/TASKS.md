@@ -102,7 +102,7 @@ Concepts: event log, consumer groups/replay, search sync, real-time notification
 Goal: reproduce load, watch the system scale and absorb back-pressure.
 Concepts: caching, eventual consistency, back-pressure, autoscaling, load testing.
 
-- [ ] Redis caching (hot metadata) + view counts (eventual consistency)
+- [x] Redis caching (hot metadata) + view counts (eventual consistency): cache-aside `video:<id>` (60 s TTL, evicted on every write), views via an atomic Lua `SET NX` + `INCR` flushed to Postgres every 10 s (`SPOP`/`GETDEL`, exactly once across instances), `volatile-lru`, 500 ms guard with Postgres fallback
 - [ ] kind cluster + Helm umbrella chart (per-service subcharts)
 - [ ] HPA on CPU/memory, then on queue depth
 - [ ] k6 load scripts (smoke / cpu / throughput)

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { Inject, Injectable, Logger } from "@nestjs/common";
+import { VIDEO_CACHE, type VideoCachePort } from "../cache/video-cache.js";
 import { VideoStatus } from "../generated/prisma/enums.js";
 import { buildVideoReadyEvent, VIDEO_READY_MESSAGE_TYPE } from "../messaging/video-ready-event.js";
 import type { VideoStatusEvent } from "../messaging/video-status-event.js";
@@ -17,7 +18,10 @@ const ALLOWED_FROM: Record<VideoStatusEvent["status"], VideoStatus[]> = {
 export class VideoStatusService {
   private readonly logger = new Logger(VideoStatusService.name);
 
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(VIDEO_CACHE) private readonly cache: VideoCachePort,
+  ) {}
 
   /** Returns false when the event was stale or for an unknown video, which is not an error. */
   async apply(event: VideoStatusEvent): Promise<boolean> {
@@ -52,6 +56,8 @@ export class VideoStatusService {
       this.logger.debug(`Ignored ${event.status} for video ${event.videoId} (stale or unknown)`);
       return false;
     }
+    // After the commit, so a reader cannot cache the old row again from an open transaction.
+    await this.cache.evict(event.videoId);
     this.logger.log(`Video ${event.videoId} is now ${event.status}`);
     return true;
   }

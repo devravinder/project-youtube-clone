@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { FakeVideoCache } from "../testing/fake-cache.js";
 import { FakePrisma } from "../testing/fake-prisma.js";
 import { FakeStorage } from "../testing/fake-storage.js";
 import { testConfig } from "../testing/test-data.js";
@@ -9,12 +10,14 @@ const daysAgo = (days: number) => new Date(Date.now() - days * DAY_MS);
 
 let storage: FakeStorage;
 let prisma: FakePrisma;
+let cache: FakeVideoCache;
 let cleanup: CleanupService;
 
 beforeEach(() => {
   storage = new FakeStorage();
   prisma = new FakePrisma();
-  cleanup = new CleanupService(storage, testConfig, prisma.asPrismaService());
+  cache = new FakeVideoCache();
+  cleanup = new CleanupService(storage, testConfig, prisma.asPrismaService(), cache);
 });
 
 const seed = (overrides: Record<string, unknown> = {}) =>

@@ -133,6 +133,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/videos/{id}/views": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Count a view (once per viewer per 30 minutes); totals catch up within seconds */
+        post: operations["recordView"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -235,6 +252,10 @@ export interface components {
             renditions: components["schemas"]["Rendition"][];
             /** @description Why transcoding failed when FAILED */
             failureReason: string | null;
+        };
+        ViewRecorded: {
+            /** @description false when this viewer was counted recently */
+            counted: boolean;
         };
         /** @description Error body returned by every failing request */
         ErrorResponse: {
@@ -667,6 +688,46 @@ export interface operations {
                 };
             };
             /** @description Video does not exist */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    recordView: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted; counted is false for a repeat view */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ViewRecorded"];
+                };
+            };
+            /** @description id is not a UUID */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Video does not exist or is not READY */
             404: {
                 headers: {
                     [name: string]: unknown;

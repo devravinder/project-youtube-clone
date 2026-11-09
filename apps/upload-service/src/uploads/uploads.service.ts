@@ -16,6 +16,7 @@ import type { Video } from "../generated/prisma/client.js";
 import { TRANSCODE_MESSAGE_TYPE } from "../messaging/transcode-topology.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { STORAGE_PORT } from "../storage/storage.module.js";
+import { VIDEO_CACHE, type VideoCachePort } from "../cache/video-cache.js";
 import {
   MAX_PARTS,
   type MultipartInitRequest,
@@ -35,6 +36,7 @@ export class UploadsService {
     @Inject(STORAGE_PORT) private readonly storage: StoragePort,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
     @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(VIDEO_CACHE) private readonly cache: VideoCachePort,
   ) {}
 
   async createPresignedUpload(request: PresignRequest, user: AuthUser): Promise<PresignResponse> {
@@ -151,6 +153,7 @@ export class UploadsService {
     }
     await this.storage.deleteObject(video.rawBucket, video.rawKey);
     await this.prisma.video.delete({ where: { id: videoId } });
+    await this.cache.evict(videoId);
   }
 
   async confirmUpload(videoId: string, user: AuthUser): Promise<ConfirmUploadResponse> {
@@ -192,6 +195,7 @@ export class UploadsService {
       return true;
     });
     if (confirmed) {
+      await this.cache.evict(videoId);
       return { videoId, status: VideoStatus.UPLOADED };
     }
     const current = await this.findOwned(videoId, user);

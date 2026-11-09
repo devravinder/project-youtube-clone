@@ -1,14 +1,47 @@
-import { BadRequestException, Controller, Get, Inject, Param, Query } from "@nestjs/common";
+import {
+  BadRequestException,
+  Controller,
+  Get,
+  HttpCode,
+  Inject,
+  Param,
+  Post,
+  Query,
+  Req,
+} from "@nestjs/common";
 import { ApiOperation, ApiParam, ApiQuery, ApiTags } from "@nestjs/swagger";
 import { z } from "zod";
 import { ApiErrorResponse, ApiJsonResponse } from "../openapi/decorators.js";
-import { listVideosQuerySchema, type VideoDetail, type VideoPage } from "./video.dto.js";
+import {
+  listVideosQuerySchema,
+  type VideoDetail,
+  type VideoPage,
+  type ViewRecorded,
+} from "./video.dto.js";
 import { VideosService } from "./videos.service.js";
+import { viewerKey, ViewsService } from "./views.service.js";
+
+// The two request fields a view needs (Express request).
+interface ViewRequest {
+  readonly ip?: string;
+  get(header: string): string | undefined;
+}
+
+function parseId(id: string): string {
+  const parsed = z.uuid().safeParse(id);
+  if (!parsed.success) {
+    throw new BadRequestException("id must be a UUID");
+  }
+  return parsed.data;
+}
 
 @ApiTags("videos")
 @Controller("videos")
 export class VideosController {
-  constructor(@Inject(VideosService) private readonly videos: VideosService) {}
+  constructor(
+    @Inject(VideosService) private readonly videos: VideosService,
+    @Inject(ViewsService) private readonly views: ViewsService,
+  ) {}
 
   @Get()
   @ApiOperation({
@@ -38,10 +71,21 @@ export class VideosController {
   @ApiErrorResponse(400, "id is not a UUID")
   @ApiErrorResponse(404, "Video does not exist")
   get(@Param("id") id: string): Promise<VideoDetail> {
-    const parsed = z.uuid().safeParse(id);
-    if (!parsed.success) {
-      throw new BadRequestException("id must be a UUID");
-    }
-    return this.videos.get(parsed.data);
+    return this.videos.get(parseId(id));
+  }
+
+  @Post(":id/views")
+  @HttpCode(202)
+  @ApiOperation({
+    operationId: "recordView",
+    summary: "Count a view (once per viewer per 30 minutes); totals catch up within seconds",
+  })
+  @ApiParam({ name: "id", schema: { type: "string", format: "uuid" } })
+  @ApiJsonResponse(202, "Accepted; counted is false for a repeat view", "ViewRecorded")
+  @ApiErrorResponse(400, "id is not a UUID")
+  @ApiErrorResponse(404, "Video does not exist or is not READY")
+  async recordView(@Param("id") id: string, @Req() req: ViewRequest): Promise<ViewRecorded> {
+    const viewer = viewerKey(req.ip ?? "", req.get("user-agent") ?? "");
+    return { counted: await this.views.record(parseId(id), viewer) };
   }
 }

@@ -3,12 +3,13 @@ import { BackButton } from "../components/back-button";
 import { HlsVideo } from "../components/hls-video";
 import { ProcessingStatus } from "../components/processing-status";
 import { StatusBadge } from "../components/status-badge";
-import { isProcessing, useVideo } from "../queries/videos";
+import { isProcessing, useRecordView, useVideo } from "../queries/videos";
 import { ApiError } from "../services/api";
 
 export function WatchPage() {
   const { id = "" } = useParams();
   const { data: video, error, status } = useVideo(id);
+  const view = useRecordView(id);
 
   if (status === "pending") {
     return (
@@ -38,8 +39,13 @@ export function WatchPage() {
           <ProcessingStatus video={video} />
         </div>
       ) : video.playbackUrl ? (
-        // READY: the master playlist (adaptive); FAILED: the original file.
-        <HlsVideo key={video.playbackUrl} src={video.playbackUrl} title={video.title} />
+        // READY: the master playlist (adaptive); FAILED: the original file. Only READY counts views.
+        <HlsVideo
+          key={video.playbackUrl}
+          src={video.playbackUrl}
+          title={video.title}
+          onFirstPlay={video.status === "READY" ? () => view.mutate() : undefined}
+        />
       ) : (
         <div className="flex aspect-video items-center justify-center rounded-md bg-muted text-muted-foreground">
           The file has not been uploaded yet.

@@ -24,6 +24,11 @@ const schema = z.object({
   OUTBOX_RETENTION_HOURS: z.coerce.number().int().positive().default(72),
   // Where players fetch HLS: the nginx edge cache (infra/edge), which reads the public hls bucket.
   HLS_PUBLIC_BASE_URL: z.url().default("http://localhost:8088/hls-videos"),
+  REDIS_URL: z.url().default("redis://localhost:6379"),
+  VIDEO_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(60),
+  // Views reach Postgres in batches this often; until then they sit in Redis.
+  VIEW_FLUSH_INTERVAL_MS: z.coerce.number().int().min(100).default(10_000),
+  VIEW_DEDUPE_MINUTES: z.coerce.number().int().positive().default(30),
 });
 
 export type AppConfig = z.infer<typeof schema>;

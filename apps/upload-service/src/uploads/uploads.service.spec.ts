@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import { beforeEach, describe, expect, it } from "vitest";
 import { transcodeCommandSchema } from "../messaging/transcode-command.js";
+import { FakeVideoCache } from "../testing/fake-cache.js";
 import { FakePrisma } from "../testing/fake-prisma.js";
 import { FakeStorage } from "../testing/fake-storage.js";
 import { alice, bob, testConfig } from "../testing/test-data.js";
@@ -18,12 +19,14 @@ const COMPLETE_SIZES = [8 * MiB, 8 * MiB, 8 * MiB, 4_834_176];
 
 let storage: FakeStorage;
 let prisma: FakePrisma;
+let cache: FakeVideoCache;
 let service: UploadsService;
 
 beforeEach(() => {
   storage = new FakeStorage();
   prisma = new FakePrisma();
-  service = new UploadsService(storage, testConfig, prisma.asPrismaService());
+  cache = new FakeVideoCache();
+  service = new UploadsService(storage, testConfig, prisma.asPrismaService(), cache);
 });
 
 const onlyRow = () => [...prisma.rows.values()][0];

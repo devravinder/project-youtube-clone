@@ -10,16 +10,19 @@ import {
   type VideoStatusEvent,
   videoStatusEventJsonSchema,
 } from "../messaging/video-status-event.js";
+import { FakeVideoCache } from "../testing/fake-cache.js";
 import { FakePrisma } from "../testing/fake-prisma.js";
 import { handleDelivery } from "./amqp-video-status.consumer.js";
 import { VideoStatusService } from "./video-status.service.js";
 
 let prisma: FakePrisma;
+let cache: FakeVideoCache;
 let service: VideoStatusService;
 
 beforeEach(() => {
   prisma = new FakePrisma();
-  service = new VideoStatusService(prisma.asPrismaService());
+  cache = new FakeVideoCache();
+  service = new VideoStatusService(prisma.asPrismaService(), cache);
 });
 
 const video = (status: string) =>

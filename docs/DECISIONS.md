@@ -1007,3 +1007,66 @@ Not verified:
   here has no network to install Node or a JDK. Node, Java and bash behave the same on glibc.
 - The full running stack on a Linux Docker Engine. The compose file is the same one Docker Desktop
   already runs on its Linux VM.
+
+## ADR-042 - Redis: cache-aside video rows and eventually consistent view counts
+
+Date: 2026-11-09 - Status: Accepted
+
+`yt-redis` (`redis:6.2.24`) runs with AOF on, 128 MB of memory, and `maxmemory-policy volatile-lru`.
+
+**Cache-aside for `GET /videos/:id`:**
+
+- Reads try Redis first, then Postgres, which fills `video:<id>` with a 60 s TTL. The cached value is the
+  database row; signed URLs are still built on every request, because they expire.
+- Writes evict after their transaction commits: confirm, abort, cleanup, every status change, and every
+  view flush.
+- The TTL bounds staleness when an eviction is missed (Redis down) or loses a race: a reader that loaded
+  the old row just before an update can put it back after the eviction. The e2e run shows this on purpose:
+  a title changed behind the cache stayed stale until the TTL expired.
+
+**View counts:**
+
+- `POST /videos/:id/views` returns 202. One Lua script does `SET views:seen:<id>:<viewer> NX EX 1800`
+  and, only if that was new, `INCR views:pending:<id>` + `SADD views:dirty`. The viewer key is a SHA-256
+  hash of IP and user agent, so no raw IP is stored. Behind a real proxy, set `trust proxy`, or every
+  viewer looks the same.
+- A flusher on every instance runs every 10 s and on shutdown. Another Lua script does `SPOP` +
+  `GETDEL`, so two instances never take the same counts (40 views split over 2 instances landed exactly
+  once). The counts are added to Postgres with `increment`. If Postgres fails they are put back; a crash
+  between take and write loses that batch, which is acceptable for view counts.
+- Reads show the Postgres count plus the pending count, so a viewer sees their own view at once
+  (read-your-writes) while the list catches up within a flush interval: eventual consistency. The web
+  app bumps the shown count locally on a counted view instead of refetching, which would restart a
+  player whose URL is signed.
+- `volatile-lru` lets Redis evict only keys that have a TTL (cache entries and dedupe markers), never the
+  counters, which have no TTL. With `allkeys-lru`, memory pressure would silently delete unflushed views.
+
+**Failure handling, found by pausing Redis:**
+
+- The first version hung for 10 s per request. `disableOfflineQueue` only helps once the client knows
+  it is disconnected, and a paused Redis keeps the TCP connection open. node-redis's `timeout` command
+  option didn't help either: it covers only the time before a command is written.
+- `RedisGuard` now races every call against its own 500 ms timer. After any failure it skips Redis for
+  5 s, so the second request during the outage took 115 ms instead of waiting again.
+- It distinguishes two failures:
+  - `RedisUnavailableError`: the command was not sent. The view is safely written straight to Postgres.
+  - `RedisTimeoutError`: the command was sent and may still run when Redis recovers. The view is accepted
+    but **not** also written to Postgres, which could count it twice. Being off by one in rare cases is
+    better than double counting.
+- The cache fails open on both: a miss, never an error.
+
+Verified:
+
+- 148 upload-service tests, including a live spec on Redis database 15 that checks TTLs, dedupe, the
+  Lua scripts and concurrent takers.
+- 17 end-to-end checks on two instances with real Redis and Postgres: cache fill and hits, bounded
+  staleness, dedupe, read-your-writes, flush without double counting, exactly-once across two
+  flushers, behaviour while Redis was paused, recovery, and the eviction policy.
+
+Rejected:
+
+- Caching the HTTP response (it contains signed URLs).
+- Write-through (couples every write to Redis).
+- `allkeys-lru` (it can evict unflushed counts).
+- Postgres `UPDATE ... +1` per view (row lock contention on a popular video).
+- Redis Streams for views: more machinery than a counter, for durability that view counts don't need.

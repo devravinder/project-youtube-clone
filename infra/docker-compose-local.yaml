@@ -195,6 +195,32 @@ services:
       timeout: 10s
       retries: 12
 
+  # Cache + view counters (Stage 5). volatile-lru: only keys with a TTL (the cache) may be evicted,
+  # never the view counters, which have none and are flushed to Postgres.
+  redis:
+    image: redis:6.2.24
+    container_name: yt-redis
+    restart: unless-stopped
+    command:
+      [
+        "redis-server",
+        "--appendonly",
+        "yes",
+        "--maxmemory",
+        "128mb",
+        "--maxmemory-policy",
+        "volatile-lru",
+      ]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   postgres-data:
   minio-data:
@@ -202,3 +228,4 @@ volumes:
   edge-cache:
   kafka-data:
   elasticsearch-data:
+  redis-data:

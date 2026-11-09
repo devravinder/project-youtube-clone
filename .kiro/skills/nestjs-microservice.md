@@ -166,6 +166,18 @@ Never proxy big files through the service. Put multipart operations on the stora
 header access. Store `uploadId`, `partSize` and `partCount` on the row. Complete only when every planned part is stored with exactly the planned size (store the declared file size), make abort idempotent (treat `NoSuchUpload` as success), and abort
 multipart uploads in the cleanup job. See ADR-020.
 
+## Redis (cache + counters)
+
+- Client: `redis` (node-redis, official). `disableOfflineQueue: true`, and wrap every call in a guard that
+  races its own timer (500 ms) and then skips Redis for a cool-down. node-redis's `timeout` option only
+  covers queueing; a paused or hung Redis keeps the socket open and would block requests.
+- Tell "not sent" (unavailable: safe to fall back) from "sent, no answer" (timeout: may still apply; do
+  not also write the fallback or you double count).
+- Cache-aside the DB row (not responses with signed URLs), short TTL, evict after commit on every write.
+- Counters: one Lua script for check-and-increment, a dirty set plus `SPOP`/`GETDEL` for multi-instance
+  flushing, no TTL on counters, `maxmemory-policy volatile-lru`.
+- Integration specs use their own Redis database (`/15`) and skip when Redis is not reachable.
+
 ## Kafka consumer service (search-service pattern)
 
 - Split three ways: a pure `handleX(value, typeHeader, port)` that returns an outcome (indexed / stale /

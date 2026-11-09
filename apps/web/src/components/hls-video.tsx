@@ -12,6 +12,8 @@ interface Quality {
 interface HlsVideoProps {
   readonly src: string;
   readonly title: string;
+  /** Called once per source, when frames first play. */
+  readonly onFirstPlay?: () => void;
 }
 
 const isPlaylist = (src: string) => new URL(src, window.location.href).pathname.endsWith(".m3u8");
@@ -20,9 +22,12 @@ const isPlaylist = (src: string) => new URL(src, window.location.href).pathname.
  * Plays HLS through hls.js (adaptive bitrate, pinnable quality), native HLS on Safari, and any
  * other source (e.g. the original MP4) through the plain video element.
  */
-export function HlsVideo({ src, title }: HlsVideoProps) {
+export function HlsVideo({ src, title, onFirstPlay }: HlsVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
+  const playedRef = useRef(false);
+  const onFirstPlayRef = useRef(onFirstPlay);
+  onFirstPlayRef.current = onFirstPlay;
   const [qualities, setQualities] = useState<Quality[]>([]);
   const [choice, setChoice] = useState(AUTO);
   const [playing, setPlaying] = useState<number | null>(null);
@@ -37,6 +42,7 @@ export function HlsVideo({ src, title }: HlsVideoProps) {
     setChoice(AUTO);
     setPlaying(null);
     setError(null);
+    playedRef.current = false;
 
     if (!isPlaylist(src) || !Hls.isSupported()) {
       // Safari plays HLS natively; it adapts on its own but exposes no levels.
@@ -112,6 +118,11 @@ export function HlsVideo({ src, title }: HlsVideoProps) {
           aria-label={title}
           className="size-full"
           data-testid="video"
+          onPlaying={() => {
+            if (playedRef.current) return;
+            playedRef.current = true;
+            onFirstPlayRef.current?.();
+          }}
         />
       </div>
       {error && (

@@ -68,6 +68,9 @@ export const listVideos = async (params: { cursor?: string; limit?: number } = {
 export const getVideo = async (id: string) =>
   bodyOf(await client.GET("/videos/{id}", { params: { path: { id } } }));
 
+export const recordView = async (id: string) =>
+  bodyOf(await client.POST("/videos/{id}/views", { params: { path: { id } } }));
+
 export const createPresignedUpload = async (body: PresignRequest) =>
   bodyOf(await client.POST("/uploads/presign", { body }));
 

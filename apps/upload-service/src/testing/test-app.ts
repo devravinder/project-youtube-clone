@@ -8,6 +8,8 @@ import {
 import { Test } from "@nestjs/testing";
 import request from "supertest";
 import { AuthGuard } from "../auth/auth.guard.js";
+import { VIDEO_CACHE } from "../cache/video-cache.js";
+import { VIEW_COUNTER } from "../cache/view-counter.js";
 import { APP_CONFIG } from "../config/app.config.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { STORAGE_PORT } from "../storage/storage.module.js";
@@ -15,6 +17,8 @@ import { UploadsController } from "../uploads/uploads.controller.js";
 import { UploadsService } from "../uploads/uploads.service.js";
 import { VideosController } from "../videos/videos.controller.js";
 import { VideosService } from "../videos/videos.service.js";
+import { ViewsService } from "../videos/views.service.js";
+import { FakeVideoCache, FakeViewCounter } from "./fake-cache.js";
 import { FakePrisma } from "./fake-prisma.js";
 import { FakeStorage } from "./fake-storage.js";
 import { alice, bob, testConfig } from "./test-data.js";
@@ -43,6 +47,8 @@ export interface TestApp {
   readonly app: INestApplication;
   readonly storage: FakeStorage;
   readonly prisma: FakePrisma;
+  readonly cache: FakeVideoCache;
+  readonly views: FakeViewCounter;
   readonly http: () => ReturnType<typeof request>;
   readonly as: (user: TestUser) => {
     readonly [method in "get" | "post" | "delete"]: (url: string) => request.Test;
@@ -53,14 +59,19 @@ export interface TestApp {
 export async function createTestApp(): Promise<TestApp> {
   const storage = new FakeStorage();
   const prisma = new FakePrisma();
+  const cache = new FakeVideoCache();
+  const views = new FakeViewCounter();
   const moduleRef = await Test.createTestingModule({
     controllers: [UploadsController, VideosController],
     providers: [
       UploadsService,
       VideosService,
+      ViewsService,
       { provide: STORAGE_PORT, useValue: storage },
       { provide: PrismaService, useValue: prisma },
       { provide: APP_CONFIG, useValue: testConfig },
+      { provide: VIDEO_CACHE, useValue: cache },
+      { provide: VIEW_COUNTER, useValue: views },
     ],
   })
     .overrideGuard(AuthGuard)
@@ -76,5 +87,5 @@ export async function createTestApp(): Promise<TestApp> {
     post: (url: string) => http().post(url).set("x-test-user", user),
     delete: (url: string) => http().delete(url).set("x-test-user", user),
   });
-  return { app, storage, prisma, http, as };
+  return { app, storage, prisma, cache, views, http, as };
 }

@@ -1,9 +1,9 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { getAccessToken, userManager } from "../auth/user-manager";
-import { ApiError, getVideo, listVideos } from "../services/api";
+import { ApiError, getVideo, listVideos, recordView } from "../services/api";
 import { cancelUpload, uploadVideo } from "../services/upload";
-import type { VideoStatus } from "../types";
+import type { VideoDetail, VideoStatus } from "../types";
 
 const PAGE_SIZE = 12;
 const PLAYBACK_URL_STALE_MS = 30 * 60 * 1000;
@@ -38,6 +38,20 @@ export function useVideo(id: string) {
     refetchOnWindowFocus: false,
     // Poll only until transcoding ends; nothing plays meanwhile, so new URLs do no harm.
     refetchInterval: (query) => (isProcessing(query.state.data?.status) ? STATUS_POLL_MS : false),
+  });
+}
+
+// Bumps the shown count locally; a refetch would sign new URLs and could restart the player.
+export function useRecordView(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => recordView(id),
+    onSuccess: ({ counted }) => {
+      if (!counted) return;
+      queryClient.setQueryData<VideoDetail>(videoKeys.detail(id), (video) =>
+        video ? { ...video, viewCount: video.viewCount + 1 } : video,
+      );
+    },
   });
 }
 
