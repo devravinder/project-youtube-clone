@@ -65,6 +65,10 @@ class FakeOutboxStore implements OutboxStore {
     return before - this.rows.length;
   }
 
+  async countPending() {
+    return this.rows.filter((r) => !r.sentAt).length;
+  }
+
   find(id: string): StoredRow {
     const row = this.rows.find((r) => r.id === id);
     if (!row) throw new Error(`no row ${id}`);

@@ -1,9 +1,14 @@
 import { Logger } from "@nestjs/common";
+import { metrics } from "@opentelemetry/api";
 import { EVENT_TYPE_HEADER } from "@yt/contracts";
 import type { SearchIndexPort } from "../search/search-index.port.js";
 import { handleVideoEvent, type Outcome } from "./video-event-handler.js";
 
 const MAX_BACKOFF_MS = 30_000;
+
+const eventsHandled = metrics
+  .getMeter("search-service")
+  .createCounter("yt.search.events", { description: "Kafka events handled, by outcome" });
 
 export interface IncomingEvent {
   topic: string;
@@ -53,6 +58,7 @@ export class EventProcessor {
       this.logger.debug(`${outcome.kind} ${where}`);
     }
     await event.commit();
+    eventsHandled.add(1, { outcome: outcome.kind });
     return outcome;
   }
 

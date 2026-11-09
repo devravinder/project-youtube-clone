@@ -13,6 +13,7 @@ import { APP_CONFIG, type AppConfig } from "../config/app.config.js";
 import { TRANSCODE_QUEUE_PORT, VIDEO_EVENTS_PORT } from "../messaging/messaging.module.js";
 import { TRANSCODE_MESSAGE_TYPE } from "../messaging/transcode-topology.js";
 import { VIDEO_READY_MESSAGE_TYPE } from "../messaging/video-ready-event.js";
+import { outboxPendingGauge, outboxPublished } from "../telemetry/metrics.js";
 import { type ClaimedMessage, OUTBOX_STORE, type OutboxStore } from "./outbox.store.js";
 
 const BATCH_SIZE = 50;
@@ -45,6 +46,10 @@ export class OutboxRelay implements OnApplicationBootstrap, BeforeApplicationShu
 
   onApplicationBootstrap(): void {
     this.timer = setInterval(() => void this.drain(), this.config.OUTBOX_POLL_INTERVAL_MS);
+    // Read by the metrics SDK every export; untraced, like the poll itself.
+    outboxPendingGauge().addCallback(async (result) => {
+      result.observe(await untraced(() => this.store.countPending()).catch(() => 0));
+    });
   }
 
   async beforeApplicationShutdown(): Promise<void> {
@@ -118,6 +123,7 @@ export class OutboxRelay implements OnApplicationBootstrap, BeforeApplicationShu
         timeout,
       ]);
       await this.store.markSent(message.id);
+      outboxPublished.add(1, { type: message.type, outcome: "sent" });
       return "sent";
     } catch (error) {
       const delay = backoffMs(message.attempts);
@@ -130,6 +136,7 @@ export class OutboxRelay implements OnApplicationBootstrap, BeforeApplicationShu
         (error as Error).message,
         new Date(Date.now() + delay),
       );
+      outboxPublished.add(1, { type: message.type, outcome: timedOut ? "timed-out" : "failed" });
       return timedOut ? "timed-out" : "failed";
     } finally {
       clearTimeout(timer);

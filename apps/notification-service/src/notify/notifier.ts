@@ -1,8 +1,15 @@
 import { Logger } from "@nestjs/common";
+import { metrics } from "@opentelemetry/api";
 import { VIDEO_READY, videoEventSchema } from "@yt/contracts";
 import type { ClientHub } from "./client-hub.js";
 
 const SEEN_LIMIT = 1000;
+
+const meter = metrics.getMeter("notification-service");
+const handled = meter.createCounter("yt.notifications", {
+  description:
+    "Video events turned into socket messages (delivered) or dropped (ignored), by reason",
+});
 
 export type Delivery =
   { kind: "delivered"; published: number; owner: number } | { kind: "ignored"; reason: string };
@@ -17,9 +24,24 @@ export class Notifier {
     private readonly hub: ClientHub,
     private readonly maxAgeMs: number,
     private readonly now: () => number = Date.now,
-  ) {}
+  ) {
+    meter
+      .createObservableGauge("yt.notifications.sockets", {
+        description: "Open sockets on this instance",
+      })
+      .addCallback((result) => result.observe(this.hub.size));
+  }
 
   handle(value: string | undefined, typeHeader: string | undefined): Delivery {
+    const delivery = this.route(value, typeHeader);
+    handled.add(1, {
+      result: delivery.kind,
+      reason: delivery.kind === "ignored" ? delivery.reason : "",
+    });
+    return delivery;
+  }
+
+  private route(value: string | undefined, typeHeader: string | undefined): Delivery {
     if (typeHeader && typeHeader !== VIDEO_READY) {
       return { kind: "ignored", reason: `type ${typeHeader}` };
     }

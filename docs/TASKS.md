@@ -117,7 +117,7 @@ Concepts: metrics, traces, logs; context propagation across brokers.
 - [x] Add `grafana/otel-lgtm` to `docker-compose-local-observability.yaml`: `yt-lgtm` (collector + Tempo + Prometheus + Loki + Grafana 11.2) on 3000/4317/4318, the file `include`s the local stack
 - [x] NestJS OTel SDK + Spring Micrometer OTLP export: `@yt/telemetry` (`--import` register, NodeSDK 0.300, auto-instrumentations + Prisma, Nest logger → OTel logs) and `spring-boot-starter-opentelemetry` + Logback appender; traces, metrics and logs from all four services reach Tempo, Prometheus and Loki
 - [x] Context propagation across HTTP + RabbitMQ + Kafka: outbox rows store the W3C trace context and the relay publishes inside it; amqplib instrumentation and Spring AMQP observation for RabbitMQ, manual producer/consumer spans for Kafka; polling untraced; one upload = one trace over all four services
-- [ ] Grafana dashboards; trace one upload end to end
+- [x] Grafana dashboards; trace one upload end to end: provisioned "Mini YouTube - pipeline" (HTTP RED, outbox backlog/publishes, transcode jobs, search events, notifications, views, runtime, recent-upload traces, warnings from Loki) plus business metrics (`yt.outbox.*`, `yt.search.events`, `yt.notifications*`, `yt.views.*`); every panel query checked against live data
 - [ ] `local` vs `local-observability` profile gating
 
 ## Stage 7 — Phase 6: Cloud (optional)

@@ -205,6 +205,9 @@ importers:
       '@nestjs/websockets':
         specifier: 12.2.0
         version: 12.2.0(@nestjs/common@12.2.0(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.2.0)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@opentelemetry/api':
+        specifier: 1.10.0
+        version: 1.10.0
       '@platformatic/kafka':
         specifier: 2.14.0
         version: 2.14.0
@@ -272,6 +275,9 @@ importers:
       '@nestjs/swagger':
         specifier: 12.0.4
         version: 12.0.4(@nestjs/common@12.2.0(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.2.0)(reflect-metadata@0.2.2)(typescript@7.0.2)
+      '@opentelemetry/api':
+        specifier: 1.10.0
+        version: 1.10.0
       '@platformatic/kafka':
         specifier: 2.14.0
         version: 2.14.0
@@ -344,6 +350,9 @@ importers:
       '@nestjs/swagger':
         specifier: 12.0.4
         version: 12.0.4(@nestjs/common@12.2.0(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.2.0)(reflect-metadata@0.2.2)(typescript@7.0.2)
+      '@opentelemetry/api':
+        specifier: 1.10.0
+        version: 1.10.0
       '@platformatic/kafka':
         specifier: 2.14.0
         version: 2.14.0

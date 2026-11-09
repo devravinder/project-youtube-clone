@@ -1193,3 +1193,42 @@ Rejected:
 - A new trace per hop, linked with span links: each part is visible, but nobody can follow one upload.
 - Putting `traceparent` inside the event payload: it is transport metadata, and headers keep the
   contract clean.
+
+## ADR-046 - One provisioned pipeline dashboard, plus business metrics
+
+Date: 2026-11-09 - Status: Accepted
+
+`infra/observability/dashboards/mini-youtube.json` is provisioned read-only into Grafana (folder "Mini
+YouTube") through `dashboards.yaml`, mounted into `yt-lgtm`.
+
+**Panels:**
+
+- HTTP: rate, p95 and 5xx, with Node's semantic-convention histogram and the transcoder's Micrometer
+  `http.server.requests` on the same panel.
+- Pipeline: outbox backlog and publishes, transcode jobs (Spring listener timer), search events by
+  outcome, notifications, views.
+- Runtime: Node event loop p99, JVM heap, DB p95.
+- A Tempo table of recent `POST /uploads/:videoId/complete` traces, linked to the trace view.
+- A Loki panel of warnings and errors from every service.
+
+**Business metrics** (OTel metrics API; no-ops when telemetry is off):
+
+- `yt.outbox.published` {type, outcome}, plus the `yt.outbox.pending` gauge. The gauge counts unsent rows
+  in Postgres from the SDK's collection timer, untraced, so it doesn't create a new root trace every
+  10 s.
+- `yt.views.recorded` {outcome: counted, repeat, postgres, unconfirmed} and `yt.views.flushed`.
+- `yt.search.events` {outcome: indexed, stale, skipped, dead-letter}.
+- `yt.notifications` {result, reason} and the `yt.notifications.sockets` gauge.
+
+Infrastructure metrics say whether a service is up. These say whether the pipeline works: a stuck broker
+shows as a rising backlog, poison data as `dead-letter`, and a Redis outage as `postgres` views.
+
+Verified (23 checks plus a screenshot): with live load (an upload, views, searches, a held-open socket and
+one poison event), every Prometheus query in the dashboard JSON returned data. The exception is 5xx, which
+was valid and empty because nothing failed. The Tempo table found the upload, and the Loki panel showed
+the dead-letter warning.
+
+Rejected:
+
+- Hand-built dashboards kept only in Grafana's database: lost when the container is recreated.
+- A per-service dashboard set: one pipeline view answers "where is my upload stuck?" faster.

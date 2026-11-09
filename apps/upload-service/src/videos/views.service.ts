@@ -10,6 +10,7 @@ import {
 import { RedisTimeoutError } from "../cache/redis.client.js";
 import { VIDEO_CACHE, type VideoCachePort } from "../cache/video-cache.js";
 import { untraced } from "@yt/telemetry";
+import { viewsFlushed, viewsRecorded } from "../telemetry/metrics.js";
 import { VIEW_COUNTER, type ViewCounterPort } from "../cache/view-counter.js";
 import { APP_CONFIG, type AppConfig } from "../config/app.config.js";
 import { VideoStatus } from "../generated/prisma/enums.js";
@@ -55,25 +56,34 @@ export class ViewsService implements OnApplicationBootstrap, OnApplicationShutdo
       throw new NotFoundException(`Video ${videoId} is not playable`);
     }
     try {
-      return await this.counter.record(videoId, viewer);
+      const counted = await this.counter.record(videoId, viewer);
+      viewsRecorded.add(1, { outcome: counted ? "counted" : "repeat" });
+      return counted;
     } catch (error) {
       // Sent but unanswered: it may still count in Redis, so writing Postgres too could count twice.
       if (error instanceof RedisTimeoutError) {
         this.logger.warn(`View for ${videoId} accepted without confirmation: ${error.message}`);
+        viewsRecorded.add(1, { outcome: "unconfirmed" });
         return true;
       }
       // Not applied in Redis: count straight into Postgres. Slower and not deduped, but not lost.
       this.logger.warn(`Counting view in Postgres, Redis failed: ${(error as Error).message}`);
       await this.increment(videoId, 1);
+      viewsRecorded.add(1, { outcome: "postgres" });
       return true;
     }
   }
 
   // Overlapping ticks share the run in progress; untraced, like the outbox poll.
   flush(): Promise<number> {
-    this.flushing ??= untraced(() => this.flushAll()).finally(() => {
-      this.flushing = null;
-    });
+    this.flushing ??= untraced(() => this.flushAll())
+      .then((n) => {
+        if (n > 0) viewsFlushed.add(n);
+        return n;
+      })
+      .finally(() => {
+        this.flushing = null;
+      });
     return this.flushing;
   }
 

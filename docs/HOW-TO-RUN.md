@@ -283,6 +283,22 @@ from `POST /uploads/:videoId/complete` through the RabbitMQ command, the transco
 the Kafka `video.ready` to search and notifications. In Explore → Loki, `{service_name=~".+"} | trace_id="<id>"`
 shows the log lines of the same journey.
 
+Grafana → Dashboards → **Mini YouTube → Mini YouTube - pipeline** (provisioned from
+`infra/observability/dashboards/`) shows:
+
+- HTTP rate, p95 latency and 5xx for every service.
+- The outbox backlog (`yt_outbox_pending`) and publishes by type and outcome. A growing backlog means a
+  broker is down.
+- Transcode job duration and rate.
+- Search events by outcome. `dead-letter` above 0 means bad events are landing on the DLT.
+- Notifications delivered or ignored, and open sockets.
+- Views recorded, by Redis or Postgres fallback, and flushed.
+- Runtime health: Node event loop, JVM heap, DB p95.
+- A table of recent upload traces and a Loki panel of warnings and errors.
+
+The image's own RED and JVM dashboards are there too. Edit a panel in Grafana, then export the JSON over
+the file to keep the change; provisioned dashboards are read-only.
+
 ## 4. Set up the database
 
 Needs Postgres running (step 3). Run these from the repo root:

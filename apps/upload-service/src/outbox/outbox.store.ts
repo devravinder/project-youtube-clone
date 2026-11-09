@@ -15,6 +15,7 @@ export interface OutboxStore {
   markSent(id: string): Promise<void>;
   markFailed(id: string, error: string, nextAttemptAt: Date): Promise<void>;
   deleteSentBefore(cutoff: Date): Promise<number>;
+  countPending(): Promise<number>;
 }
 
 export const OUTBOX_STORE = Symbol("OUTBOX_STORE");
@@ -74,5 +75,9 @@ export class PrismaOutboxStore implements OutboxStore {
       where: { sentAt: { lt: cutoff } },
     });
     return count;
+  }
+
+  countPending(): Promise<number> {
+    return this.prisma.outboxMessage.count({ where: { sentAt: null } });
   }
 }
