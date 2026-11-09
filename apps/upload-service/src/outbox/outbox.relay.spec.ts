@@ -1,7 +1,8 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { FakeTranscodeQueue } from "../testing/fake-transcode-queue.js";
+import { FakeVideoEvents } from "../testing/fake-video-events.js";
 import { testConfig } from "../testing/test-data.js";
-import { backoffMs, OutboxRelay } from "./outbox.relay.js";
+import { backoffMs, OutboxRelay, PUBLISH_TIMEOUT_MS } from "./outbox.relay.js";
 import type { ClaimedMessage, OutboxStore } from "./outbox.store.js";
 
 interface StoredRow extends ClaimedMessage {
@@ -73,12 +74,14 @@ class FakeOutboxStore implements OutboxStore {
 
 let store: FakeOutboxStore;
 let queue: FakeTranscodeQueue;
+let events: FakeVideoEvents;
 let relay: OutboxRelay;
 
 beforeEach(() => {
   store = new FakeOutboxStore();
   queue = new FakeTranscodeQueue();
-  relay = new OutboxRelay(store, queue, testConfig);
+  events = new FakeVideoEvents();
+  relay = new OutboxRelay(store, queue, events, testConfig);
 });
 
 describe("OutboxRelay", () => {
@@ -98,7 +101,32 @@ describe("OutboxRelay", () => {
   it("only claims message types it can publish", async () => {
     await relay.drain();
 
-    expect(store.claims[0]).toEqual({ types: ["transcode.command.v1"], limit: 50 });
+    expect(store.claims[0]).toEqual({
+      types: ["transcode.command.v1", "video.ready.v1"],
+      limit: 50,
+    });
+  });
+
+  it("sends commands to RabbitMQ and video events to Kafka", async () => {
+    const ready = { eventId: "e1", type: "video.ready", video: { id: "v1" } };
+    store.add("m1");
+    store.add("e1", "video.ready.v1", ready);
+
+    expect(await relay.drain()).toBe(2);
+
+    expect(queue.commands).toHaveLength(1);
+    expect(events.events).toEqual([ready]);
+  });
+
+  it("retries a video event when Kafka is down, without holding back commands", async () => {
+    store.add("e1", "video.ready.v1", { eventId: "e1" });
+    store.add("m1");
+    events.failWith = new Error("broker unavailable");
+
+    expect(await relay.drain()).toBe(1);
+
+    expect(store.find("e1")).toMatchObject({ sentAt: null, attempts: 1 });
+    expect(store.find("m1").sentAt).not.toBeNull();
   });
 
   it("drains more than one batch in a single run", async () => {
@@ -128,6 +156,28 @@ describe("OutboxRelay", () => {
     row.nextAttemptAt = new Date(0);
     expect(await relay.drain()).toBe(1);
     expect(row.sentAt).not.toBeNull();
+  });
+
+  it("times out a hung broker, skips its other rows, and still sends commands", async () => {
+    vi.useFakeTimers();
+    try {
+      store.add("e1", "video.ready.v1", { eventId: "e1" });
+      store.add("e2", "video.ready.v1", { eventId: "e2" });
+      store.add("m1");
+      events.publish = () => new Promise(() => undefined);
+
+      const run = relay.drain();
+      await vi.advanceTimersByTimeAsync(PUBLISH_TIMEOUT_MS);
+
+      expect(await run).toBe(1);
+      expect(store.find("e1")).toMatchObject({ sentAt: null, attempts: 1 });
+      expect(store.find("e1").lastError).toContain("No broker answer");
+      // Not tried: it stays leased and comes back when the lease expires.
+      expect(store.find("e2")).toMatchObject({ attempts: 0, leased: true });
+      expect(store.find("m1").sentAt).not.toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("does not lose the rest of a batch when one publish fails", async () => {
@@ -176,7 +226,7 @@ describe("OutboxRelay", () => {
 
   it("starts polling on bootstrap and stops on shutdown", async () => {
     store.add("m1");
-    relay = new OutboxRelay(store, queue, { ...testConfig, OUTBOX_POLL_INTERVAL_MS: 20 });
+    relay = new OutboxRelay(store, queue, events, { ...testConfig, OUTBOX_POLL_INTERVAL_MS: 20 });
 
     relay.onApplicationBootstrap();
     await new Promise((resolve) => setTimeout(resolve, 100));

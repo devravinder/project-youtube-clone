@@ -1,5 +1,13 @@
 import { Global, Module } from "@nestjs/common";
-import { baseEnv, keycloakEnv, loadConfig, minioEnv, postgresEnv, rabbitmqEnv } from "@yt/config";
+import {
+  baseEnv,
+  kafkaEnv,
+  keycloakEnv,
+  loadConfig,
+  minioEnv,
+  postgresEnv,
+  rabbitmqEnv,
+} from "@yt/config";
 import { z } from "zod";
 
 const schema = z.object({
@@ -8,6 +16,7 @@ const schema = z.object({
   ...postgresEnv.shape,
   ...keycloakEnv.shape,
   ...rabbitmqEnv.shape,
+  ...kafkaEnv.shape,
   UPLOAD_PENDING_TTL_MINUTES: z.coerce.number().int().positive().default(1440),
   // Storage rejects smaller parts, except the last.
   UPLOAD_PART_SIZE_MB: z.coerce.number().int().min(5).default(8),

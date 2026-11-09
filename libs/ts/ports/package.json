@@ -9,6 +9,7 @@
     ".": "./src/index.ts"
   },
   "devDependencies": {
+    "@yt/contracts": "workspace:*",
     "typescript": "7.0.2"
   }
 }

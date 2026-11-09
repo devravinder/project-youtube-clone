@@ -692,3 +692,69 @@ Rejected:
 - `apache/kafka` and Redpanda: not in the image list (IMAGES.md).
 - A Kafka web UI: not in the image list; the CLIs inside the container are documented instead.
 - OpenSearch: Elasticsearch is the image we have, and the APIs used here are the same.
+
+## ADR-036 - `video.ready` goes from the outbox to Kafka
+
+Date: 2026-11-09 - Status: Accepted
+
+When a `READY` status event moves a video forward, the upload service writes a `video.ready.v1` outbox row
+in the same transaction. The existing `OutboxRelay` publishes it to `yt.video-events`.
+
+```mermaid
+sequenceDiagram
+  participant T as Transcoder
+  participant U as upload-service
+  participant DB as Postgres
+  participant K as Kafka
+  T->>U: READY (RabbitMQ yt.video-status)
+  U->>DB: TX { video -> READY; insert outbox video.ready.v1 }
+  loop OutboxRelay, every 1 s
+    U->>DB: claim due rows
+    U->>K: yt.video-events, key = videoId, acks=all
+    U->>DB: mark sent
+  end
+  K-->>K: search-service, notification-service (own groups)
+```
+
+- **Producer:** the upload service, not the transcoder. It owns the title, description and owner that
+  search and notifications need, and only it knows that a READY is new and not a duplicate. A duplicate
+  READY changes no row, so it writes no event.
+- **Contract:** `libs/ts/contracts` (`@yt/contracts`) holds the Zod schema, the topic names and the
+  header names. Producer and consumers import the same code, and `contracts/video-events.schema.json` is
+  generated from it. The event is built by parsing against the schema, so a row that would break the
+  contract never reaches the outbox.
+- **Envelope:** `eventId` (the outbox row id), `type`, `version`, `occurredAt`, and a `video` object with
+  id, title, description, ownerId, renditions (highest first) and createdAt. This is event-carried state:
+  consumers never call back into the upload service. Headers `event-type` and `event-id` let a consumer
+  skip types it doesn't know without parsing the value.
+- **Tolerant reader:** the schema is not strict. Consumers ignore fields they don't know, so a producer
+  can add a field before every consumer is updated.
+- **Producer settings:** `@platformatic/kafka` 2.14.0 (pure TypeScript), `idempotent: true` and
+  `acks: -1`, so a send is acknowledged only once every in-sync replica has it.
+
+Found while testing with Kafka paused (`docker pause yt-kafka`):
+
+- A send to a broker that doesn't answer hangs; it does not fail. The relay runs one drain at a time, so
+  a hung Kafka also stopped transcode commands from reaching RabbitMQ. A send longer than the 30 s lease
+  would also let a second relay claim the same row.
+- Fix: every publish now has a 10 s timeout, inside the lease. A timeout counts as a failed attempt with
+  the usual backoff. After a timeout, the rest of the batch of that message type is skipped and stays
+  leased, so it comes back after 30 s instead of costing 10 s per row. A normal per-message failure still
+  doesn't hold back the rest of the batch.
+- The timed-out sends were still queued in the client and went through once Kafka resumed: 3 copies of
+  one event. The idempotent producer only removes duplicates when it retries the same batch itself, and
+  each outbox attempt is a new `send()`. Delivery is therefore at-least-once, every copy has the same
+  `eventId`, and consumers must be idempotent (ADR-037 and later).
+
+Verified end to end on an isolated vhost and topic, with no transcoder: READY creates exactly one record,
+keyed by the video id, with both headers and a valid payload. A duplicate READY adds nothing. While Kafka
+was paused the video still became READY and the event waited in the outbox (2 attempts); it went out 2 s
+after Kafka resumed.
+
+Rejected:
+
+- Publishing from the status consumer directly (the dual-write problem again).
+- The transcoder publishing to Kafka: it doesn't have the metadata, and it would need its own outbox.
+- Kafka transactions: they don't cover the Postgres write, so they buy nothing here.
+- kafkajs: no release since 2023.
+- `@confluentinc/kafka-javascript`: downloads a native binary from GitHub at install time.

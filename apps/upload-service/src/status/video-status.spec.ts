@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import type { Channel } from "amqplib";
+import { type VideoReadyEvent, videoEventsJsonSchema, videoReadyEventSchema } from "@yt/contracts";
 import { beforeEach, describe, expect, it } from "vitest";
-import { VIDEO_STATUS_FILE } from "../contracts/contract-files.js";
+import { VIDEO_EVENTS_FILE, VIDEO_STATUS_FILE } from "../contracts/contract-files.js";
+import { toKafkaMessage } from "../messaging/kafka-video-events.adapter.js";
 import { declareStatusTopology } from "../messaging/transcode-topology.js";
 import {
   type VideoStatusEvent,
@@ -94,6 +96,89 @@ describe("VideoStatusService", () => {
   });
 });
 
+describe("video.ready in the outbox", () => {
+  const outboxRows = () => [...prisma.outbox.values()];
+
+  it("writes one contract-valid event with the status change", async () => {
+    const { id, createdAt } = prisma.seed({
+      title: "Cats",
+      description: "Two cats",
+      ownerId: "user-alice",
+      rawBucket: "raw-videos",
+      rawKey: "k",
+      contentType: "video/mp4",
+      status: "PROCESSING",
+    });
+    const e = ready(id);
+
+    await service.apply(e);
+
+    expect(outboxRows()).toHaveLength(1);
+    const [row] = outboxRows();
+    expect(row?.type).toBe("video.ready.v1");
+    const event = videoReadyEventSchema.parse(row?.payload);
+    expect(event).toEqual({
+      eventId: row?.id,
+      type: "video.ready",
+      version: 1,
+      occurredAt: e.occurredAt,
+      video: {
+        id,
+        title: "Cats",
+        description: "Two cats",
+        ownerId: "user-alice",
+        renditions: ["720p", "360p"],
+        createdAt: createdAt.toISOString(),
+      },
+    });
+  });
+
+  it("writes nothing for PROCESSING, FAILED, or a duplicate READY", async () => {
+    const { id } = video("UPLOADED");
+    await service.apply(event(id));
+    await service.apply(event(id, { status: "FAILED", reason: "x" }));
+    expect(outboxRows()).toHaveLength(0);
+
+    await service.apply(ready(id));
+    await service.apply(ready(id));
+    expect(outboxRows()).toHaveLength(1);
+  });
+
+  it("rolls back the status change when the event cannot be written", async () => {
+    const { id } = video("PROCESSING");
+    prisma.outboxMessage.create = () => Promise.reject(new Error("db down"));
+
+    await expect(service.apply(ready(id))).rejects.toThrow("db down");
+    expect(prisma.rows.get(id)?.status).toBe("PROCESSING");
+  });
+});
+
+describe("toKafkaMessage", () => {
+  it("keys by video id and carries the type and id as headers", () => {
+    const e: VideoReadyEvent = {
+      eventId: randomUUID(),
+      type: "video.ready",
+      version: 1,
+      occurredAt: new Date().toISOString(),
+      video: {
+        id: randomUUID(),
+        title: "t",
+        description: null,
+        ownerId: null,
+        renditions: ["360p"],
+        createdAt: new Date().toISOString(),
+      },
+    };
+
+    expect(toKafkaMessage("yt.video-events", e)).toEqual({
+      topic: "yt.video-events",
+      key: e.video.id,
+      value: JSON.stringify(e),
+      headers: { "event-type": "video.ready", "event-id": e.eventId },
+    });
+  });
+});
+
 describe("handleDelivery", () => {
   const logger = { warn: () => undefined, error: () => undefined };
   const body = (value: unknown) => Buffer.from(JSON.stringify(value));
@@ -133,6 +218,11 @@ describe("status contract and topology", () => {
   it("matches the committed contracts/video-status.schema.json", async () => {
     const committed = JSON.parse(await readFile(VIDEO_STATUS_FILE, "utf8"));
     expect(videoStatusEventJsonSchema()).toEqual(committed);
+  });
+
+  it("matches the committed contracts/video-events.schema.json", async () => {
+    const committed = JSON.parse(await readFile(VIDEO_EVENTS_FILE, "utf8"));
+    expect(videoEventsJsonSchema()).toEqual(committed);
   });
 
   it("declares the queue the transcoder publishes to, with its own DLQ", async () => {

@@ -6,14 +6,17 @@ import {
   type OnApplicationBootstrap,
 } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
-import type { TranscodeCommand, TranscodeQueuePort } from "@yt/ports";
+import type { VideoEvent } from "@yt/contracts";
+import type { TranscodeCommand, TranscodeQueuePort, VideoEventsPort } from "@yt/ports";
 import { APP_CONFIG, type AppConfig } from "../config/app.config.js";
-import { TRANSCODE_QUEUE_PORT } from "../messaging/messaging.module.js";
+import { TRANSCODE_QUEUE_PORT, VIDEO_EVENTS_PORT } from "../messaging/messaging.module.js";
 import { TRANSCODE_MESSAGE_TYPE } from "../messaging/transcode-topology.js";
+import { VIDEO_READY_MESSAGE_TYPE } from "../messaging/video-ready-event.js";
 import { type ClaimedMessage, OUTBOX_STORE, type OutboxStore } from "./outbox.store.js";
 
 const BATCH_SIZE = 50;
 const LEASE_SECONDS = 30;
+export const PUBLISH_TIMEOUT_MS = 10_000;
 const MAX_BACKOFF_MS = 5 * 60_000;
 const MS_PER_HOUR = 3_600_000;
 
@@ -29,11 +32,13 @@ export class OutboxRelay implements OnApplicationBootstrap, BeforeApplicationShu
 
   private readonly publishers: Record<string, (payload: unknown) => Promise<void>> = {
     [TRANSCODE_MESSAGE_TYPE]: (payload) => this.queue.requestTranscode(payload as TranscodeCommand),
+    [VIDEO_READY_MESSAGE_TYPE]: (payload) => this.events.publish(payload as VideoEvent),
   };
 
   constructor(
     @Inject(OUTBOX_STORE) private readonly store: OutboxStore,
     @Inject(TRANSCODE_QUEUE_PORT) private readonly queue: TranscodeQueuePort,
+    @Inject(VIDEO_EVENTS_PORT) private readonly events: VideoEventsPort,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
@@ -64,6 +69,7 @@ export class OutboxRelay implements OnApplicationBootstrap, BeforeApplicationShu
 
   private async drainAll(): Promise<number> {
     let sent = 0;
+    const unresponsive = new Set<string>();
     try {
       while (true) {
         const batch = await this.store.claimDue(
@@ -75,7 +81,15 @@ export class OutboxRelay implements OnApplicationBootstrap, BeforeApplicationShu
           return sent;
         }
         for (const message of batch) {
-          sent += (await this.publish(message)) ? 1 : 0;
+          // Skipped rows stay leased, so they are due again once the lease runs out.
+          if (unresponsive.has(message.type)) {
+            continue;
+          }
+          const result = await this.publish(message);
+          sent += result === "sent" ? 1 : 0;
+          if (result === "timed-out") {
+            unresponsive.add(message.type);
+          }
         }
       }
     } catch (error) {
@@ -85,11 +99,20 @@ export class OutboxRelay implements OnApplicationBootstrap, BeforeApplicationShu
     }
   }
 
-  private async publish(message: ClaimedMessage): Promise<boolean> {
+  private async publish(message: ClaimedMessage): Promise<"sent" | "failed" | "timed-out"> {
+    let timedOut = false;
+    let timer: NodeJS.Timeout | undefined;
+    // A hung broker must fail well inside the lease, or another relay re-claims the row.
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        timedOut = true;
+        reject(new Error(`No broker answer within ${PUBLISH_TIMEOUT_MS} ms`));
+      }, PUBLISH_TIMEOUT_MS);
+    });
     try {
-      await this.publishers[message.type]?.(message.payload);
+      await Promise.race([this.publishers[message.type]?.(message.payload), timeout]);
       await this.store.markSent(message.id);
-      return true;
+      return "sent";
     } catch (error) {
       const delay = backoffMs(message.attempts);
       this.logger.warn(
@@ -101,7 +124,9 @@ export class OutboxRelay implements OnApplicationBootstrap, BeforeApplicationShu
         (error as Error).message,
         new Date(Date.now() + delay),
       );
-      return false;
+      return timedOut ? "timed-out" : "failed";
+    } finally {
+      clearTimeout(timer);
     }
   }
 }

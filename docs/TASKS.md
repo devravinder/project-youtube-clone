@@ -91,7 +91,7 @@ Goal: one event fans out to independent consumers.
 Concepts: event log, consumer groups/replay, search sync, real-time notifications.
 
 - [x] Add Kafka (Bitnami, KRaft) + Elasticsearch to compose: `yt-kafka` (host `localhost:9094`), topics `yt.video-events` (3 partitions, key videoId, compacted) and `.dlt` from a one-shot `kafka-setup`; `yt-elasticsearch` 8.19.16 single node on 9200
-- [ ] Emit `video.ready` event (from outbox) to Kafka
+- [x] Emit `video.ready` event (from outbox) to Kafka: written with the READY transition, keyed by videoId, schema in `@yt/contracts`; publishes time out after 10 s so a hung broker cannot stall the relay
 - [ ] `apps/search-service` (NestJS) — Kafka consumer → Elasticsearch indexer
 - [ ] `apps/notification-service` (NestJS) — Kafka consumer → WebSocket
 - [ ] Search UI (query + autocomplete)

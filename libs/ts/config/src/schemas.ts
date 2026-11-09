@@ -34,3 +34,12 @@ export const keycloakEnv = z.object({
 export const rabbitmqEnv = z.object({
   RABBITMQ_URL: z.string().url(),
 });
+
+export const kafkaEnv = z.object({
+  // Comma-separated bootstrap list; the client discovers the other brokers from any one of them.
+  KAFKA_BROKERS: z
+    .string()
+    .min(1)
+    .transform((v) => v.split(",").map((b) => b.trim())),
+  KAFKA_VIDEO_EVENTS_TOPIC: z.string().min(1).default("yt.video-events"),
+});

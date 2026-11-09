@@ -59,6 +59,9 @@ The RabbitMQ message is a contract too: `contracts/transcode-command.schema.json
 schema in `apps/upload-service/src/messaging/transcode-command.ts` by the same `pnpm api:generate`. A
 transcoder test reads it and fails if the Java record `TranscodeCommandMessage` drifts from it.
 
+Kafka events have one too: `contracts/video-events.schema.json`, generated from the Zod schema in
+`libs/ts/contracts` (`@yt/contracts`), which the producer (upload service) and every consumer import.
+
 It stays current automatically:
 
 - Starting the upload service (any non-`aws` env) rewrites the spec if the API changed.
@@ -234,6 +237,12 @@ transcode command to the `outbox` table in the same transaction, then answers 20
 the upload service publishes due outbox rows to RabbitMQ every `OUTBOX_POLL_INTERVAL_MS` (default 1000).
 If RabbitMQ is down, the rows wait and are retried with backoff (1 s doubling, at most 5 min); nothing is
 lost and the client sees no error. Sent rows are deleted after `OUTBOX_RETENTION_HOURS` (default 72).
+
+When the transcoder reports `READY`, the same transaction that marks the video `READY` writes a
+`video.ready` event to the outbox; the relay sends it to Kafka (`KAFKA_BROKERS`, default `localhost:9094`;
+topic `KAFKA_VIDEO_EVENTS_TOPIC`, default `yt.video-events`). A publish that gets no broker answer within
+10 s counts as a failed attempt, so a hung Kafka cannot hold up the transcode commands. Delivery is at
+least once: after a Kafka outage the same event (same `eventId`) can appear more than once.
 Inspect the backlog with `select type, attempts, last_error, sent_at from outbox order by created_at desc;`.
 
 After that the video moves `UPLOADED → PROCESSING → READY` (or `FAILED`). `GET /videos/:id` then returns

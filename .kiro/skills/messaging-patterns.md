@@ -70,11 +70,17 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  TR[Transcoder] -->|video.ready| K[[Kafka topic]]
-  K --> G1[search indexer group]
-  K --> G2[notification group]
+  U[upload-service outbox] -->|video.ready, key videoId| K[[yt.video-events]]
+  K --> G1[search-service group]
+  K --> G2[notification-service group]
   K --> G3[future: analytics group]
 ```
+
+- **A hung broker does not fail, it waits.** Bound every publish with a timeout shorter than the outbox
+  lease (10 s vs 30 s here). A timed-out send can still be delivered later, so expect duplicates with the
+  same `eventId`; the idempotent producer only removes duplicates within its own retries.
+- Event schemas live in `libs/ts/contracts` (`@yt/contracts`): Zod schema, topic and header names, shared by
+  producer and consumers. Not strict (tolerant reader), so adding a field breaks nobody.
 
 ## Transactional outbox (the dual-write problem)
 
