@@ -1,0 +1,32 @@
+# Defaults for web; the umbrella chart's values override them.
+replicaCount: 1
+image:
+  pullPolicy: "IfNotPresent"
+  repository: "yt/web"
+service:
+  type: "NodePort"
+  nodePort: 30090
+securityContext:
+  runAsNonRoot: false
+  runAsUser: null
+terminationGracePeriodSeconds: 30
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 70
+port: 8080
+probes:
+  path: "/healthz"
+  startupFailureThreshold: 12
+resources:
+  requests:
+    cpu: "20m"
+    memory: "32Mi"
+  limits:
+    memory: "128Mi"
+env:
+  UPLOAD_SERVICE_URL: "http://upload-service:3001"
+  SEARCH_SERVICE_URL: "http://search-service:3003"
+  NOTIFICATION_SERVICE_URL: "http://notification-service:3004"
+secretEnv: {}

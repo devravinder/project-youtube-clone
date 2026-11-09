@@ -1,0 +1,29 @@
+# Defaults for notification-service; the umbrella chart's values override them.
+replicaCount: 1
+image:
+  pullPolicy: "IfNotPresent"
+  repository: "yt/notification-service"
+service:
+  type: "ClusterIP"
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+terminationGracePeriodSeconds: 30
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 70
+port: 3004
+probes:
+  path: "/health"
+  startupFailureThreshold: 24
+resources:
+  requests:
+    cpu: "50m"
+    memory: "128Mi"
+  limits:
+    memory: "256Mi"
+env:
+  PORT: "3004"
+secretEnv: {}

@@ -1,0 +1,34 @@
+{{- if .Values.queueScaling.enabled }}
+# Scale on work waiting, not CPU: a backlog in the queue means demand (needs KEDA in the cluster).
+# KEDA creates and owns the HPA, so the CPU HPA of this chart must be off at the same time.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ include "yt-common.name" . }}
+  labels: {{- include "yt-common.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    name: {{ include "yt-common.name" . }}
+  minReplicaCount: {{ .Values.queueScaling.minReplicas }}
+  maxReplicaCount: {{ .Values.queueScaling.maxReplicas }}
+  triggers:
+    - type: rabbitmq
+      metadata:
+        protocol: amqp
+        queueName: {{ .Values.queueScaling.queue }}
+        mode: QueueLength
+        value: {{ .Values.queueScaling.messagesPerReplica | quote }}
+      authenticationRef:
+        name: {{ include "yt-common.name" . }}-rabbitmq
+---
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: {{ include "yt-common.name" . }}-rabbitmq
+  labels: {{- include "yt-common.labels" . | nindent 4 }}
+spec:
+  secretTargetRef:
+    - parameter: host
+      name: {{ include "yt-common.name" . }}
+      key: RABBITMQ_URL
+{{- end }}

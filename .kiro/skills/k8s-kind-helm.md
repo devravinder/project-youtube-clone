@@ -1,72 +1,67 @@
 ---
 name: k8s-kind-helm
-description: Run the system locally on a kind cluster with Helm charts and HPA, including the Windows/Docker-Desktop ctr import image-loading trick. Use when working on Kubernetes manifests, Helm, or autoscaling.
+description: Run the system locally on a kind cluster with Helm charts and HPA, including the Windows/Docker-Desktop ctr import image-loading trick. Use when working on container images, Kubernetes manifests, Helm, or autoscaling.
 ---
 
-# Kubernetes — kind + Helm + HPA
+# Containers, Kubernetes - kind + Helm + HPA
 
-Local Kubernetes for the scaling and resilience lessons.
+Local Kubernetes for the scaling and resilience lessons. State: images and the chart are built and
+verified; the cluster run is pending until `kindest/node:v1.37.0` is available (see docs/TASKS.md).
+
+## Images first, then the cluster
+
+- `infra/docker/`: one parameterised `node-service.Dockerfile` (`SERVICE` arg) for the NestJS services,
+  `transcoder.Dockerfile` (bootJar + static ffmpeg binaries), `web.Dockerfile` (Vite build on nginx that
+  also proxies `/api`, `/search-api`, `/ws`). Base `alpine:latest` (what is available); run as uid 10001.
+- Build with `pnpm images:build` (`scripts/build-images.mjs`): `~/.npmrc` and the CA file it names go in
+  as BuildKit secrets (`--mount=type=secret,required=false`), plus a pnpm store cache mount. Verify after
+  building: no `.npmrc` in the image, nothing in `docker history`.
+- Prove the images with `pnpm start:c:all` (`infra/docker-compose-local-apps.yaml`) before any cluster.
+
+## Two addresses for everything
+
+In containers/pods a service uses `minio:9000` / `keycloak:8180`; the browser uses `localhost`. Keep both:
+`STORAGE_PUBLIC_ENDPOINT` (sign presigned URLs for the browser host; the signature covers the host),
+`OIDC_JWKS_URL` (keys over the internal network, issuer stays public), `TRUST_PROXY_HOPS` (client IP
+behind nginx / an ingress).
 
 ## Topology
 
-- **kind** cluster (1 control-plane + 1 worker) via `infra/k8s/kind-config.yaml`.
-- **Helm** umbrella chart with a subchart per service.
-- **Metrics Server** for HPA.
-- Stateless services as **Deployments**; Kafka/Postgres/Elasticsearch as **StatefulSets** + PVCs.
+- kind: 1 control plane + 2 workers (`infra/kind/cluster.yaml`), node port 30090 → host 8090 (web).
+- Helm: umbrella `infra/helm/youtube-clone`, a thin subchart per service in `charts/`, all depending on
+  the library chart `infra/helm/yt-common` (Deployment, Service, ConfigMap, Secret, HPA templates).
+  Helm 4 wants every subchart in `charts/` listed under `dependencies` (with `condition: <name>.enabled`).
+- Infrastructure stays in Docker Compose; `infra/kind/connect-infra` joins those containers to kind's
+  network with their compose names as aliases, so chart addresses equal the compose-apps addresses.
+- Migrations: pre-install/pre-upgrade hook Job (`prisma migrate deploy`).
 
-```mermaid
-flowchart TB
-  subgraph kind cluster
-    IG[nginx-ingress]
-    API[api gateway Deployment]
-    TR[transcoder Deployment + HPA]
-    subgraph stateful
-      PG[(Postgres STS)]
-      KA[(Kafka STS)]
-      ES[(Elasticsearch STS)]
-    end
-  end
-  IG --> API
-  API --> PG
-  TR --> KA
-```
+## HPA - the payoff lesson
 
-## HPA — the payoff lesson
-
-Autoscale the transcoder by load. Start with CPU/memory targets (e.g. CPU 50%, mem 70%,
-2→6 replicas). The advanced version: scale by **queue depth** (RabbitMQ) using a custom
-metric so workers scale to drain back-pressure. Drive it with k6 (see `testing-strategy`).
+- CPU (and memory) `autoscaling/v2` HPAs; requests are mandatory (utilisation is relative to them), no
+  CPU limit (throttling), scale-down stabilisation 300 s. Omit `replicas` in the Deployment while an HPA
+  owns it, or every `helm upgrade` resets the count.
+- Transcoder's real signal is queue depth: KEDA `ScaledObject` (rabbitmq `QueueLength`) behind
+  `queueScaling.enabled`; when on, the chart's CPU HPA must disappear (two autoscalers fight).
+- Needs metrics-server (CPU) and KEDA (queue) in the cluster. Drive it with `tests/load/cpu.ts` and
+  `throughput.ts` (k6).
 
 ## Windows / Docker Desktop image-loading trick
 
-Docker Desktop uses a containerd image store; `kind load docker-image` can misbehave.
-Load images into kind reliably by exporting and importing with `ctr`:
+BuildKit images carry an attestation manifest; `kind load docker-image` then fails with "content digest
+not found". Import into every node with containerd instead (`infra/kind/load-images.ps1` / `.sh`):
 
 ```bash
-# export built image to a tarball, then inside the kind node:
-ctr --namespace k8s.io images import --no-unpack <image>.tar
+docker save -o images.tar yt/upload-service:local ...
+docker cp images.tar <node>:/images.tar      # PowerShell pipes mangle binary, so copy, don't pipe
+docker exec <node> ctr --namespace=k8s.io images import --no-unpack --all-platforms /images.tar
 ```
 
-A `load-images.ps1` script automates: retag → export → `ctr import --no-unpack` into the
-kind node. Use `imagePullPolicy: IfNotPresent` with simple local tags.
+Use `imagePullPolicy: IfNotPresent` with the plain local tags.
 
-## Conventions
+## Checking without a cluster
 
-- Config via **ConfigMaps**; secrets via **Secrets**. The local↔cloud endpoint swap is a
-  ConfigMap change (ties to ports/adapters).
-- Resource `requests`/`limits` on ffmpeg workers — they are CPU-hungry; scheduling and HPA
-  depend on correct requests.
-- Model a transcode as either a long-running Deployment consumer **or** a K8s `Job`;
-  comparing the two is itself a lesson.
-
-## Script pattern (package.json)
-
-Mirror the `start|stop:env:service` convention:
-
-```bash
-start:k          # create cluster + build + load images + helm install
-start:k:up       # recreate cluster, images already built
-stop:k           # delete cluster
-status:k:hpa     # watch autoscaling
-logs:k:app       # tail service logs
-```
+`pnpm k8s:check` (`scripts/check-helm.mjs`): dependency build, `helm lint --strict`, `helm template`, then
+assertions on the rendered objects (selectors match pod labels, envFrom targets exist, probes/resources/
+securityContext, HPA vs replicas, node port, proxies point at real Services, hook Job, secrets only in
+Secrets, registry/tag overrides, the KEDA switch). Quote values that YAML could misread
+(`path: {{ .path | quote }}` - `?` broke a flow map; a `description:` containing a colon and a space broke Chart.yaml).

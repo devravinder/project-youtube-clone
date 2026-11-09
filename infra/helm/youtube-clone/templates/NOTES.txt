@@ -1,0 +1,8 @@
+Mini YouTube is installed in namespace {{ .Release.Namespace }}.
+
+  Web app:  http://localhost:8090   (kind maps node port 30090 there; see infra/kind/cluster.yaml)
+  Pods:     kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/part-of=mini-youtube
+  Scaling:  kubectl get hpa -n {{ .Release.Namespace }}
+
+The infrastructure (Postgres, Kafka, RabbitMQ, MinIO, Redis, Elasticsearch, Keycloak) runs in Docker
+Compose; run infra/kind/connect-infra once so the pods can reach it.

@@ -1,0 +1,5 @@
+apiVersion: v2
+name: yt-common
+description: Shared templates (Deployment, Service, HPA, ConfigMap, Secret) for the Mini YouTube services
+type: library
+version: 0.1.0

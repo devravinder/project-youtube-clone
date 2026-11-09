@@ -10,7 +10,7 @@
   },
   "scripts": {
     "prepare": "husky",
-    "help": "echo 'Scripts follow start|stop:env:service — env: l=local, lo=local-observability; service: pods=containers, <app>=a service'",
+    "help": "echo 'Scripts follow start|stop:env:service - env: l=local, lo=local-observability, c=all in containers; service: pods=infra containers, <app>=a service'",
     "start:l:pods": "docker compose -f infra/docker-compose-local.yaml up -d",
     "start:l:upload": "pnpm --filter @yt/upload-service dev",
     "start:l:web": "pnpm --filter @yt/web dev",
@@ -29,6 +29,12 @@
     "api:generate": "pnpm --filter @yt/upload-service --filter @yt/search-service openapi:generate && pnpm --filter @yt/contracts asyncapi:generate && pnpm --filter @yt/web api:types",
     "api:check": "pnpm api:generate && git diff --exit-code contracts apps/web/src/api",
     "stop:l:pods": "docker compose -f infra/docker-compose-local.yaml down -v",
+    "images:build": "node scripts/build-images.mjs",
+    "start:c:all": "docker compose -f infra/docker-compose-local-apps.yaml up -d",
+    "stop:c:all": "docker compose -f infra/docker-compose-local-apps.yaml down -v",
+    "logs:c": "docker compose -f infra/docker-compose-local-apps.yaml logs -f",
+    "k8s:check": "node scripts/check-helm.mjs",
+    "load:check": "pnpm --filter @yt/load-tests typecheck",
     "logs:l": "docker compose -f infra/docker-compose-local.yaml logs -f",
     "start:lo:pods": "docker compose -f infra/docker-compose-local-observability.yaml up -d",
     "stop:lo:pods": "docker compose -f infra/docker-compose-local-observability.yaml down -v",
@@ -45,6 +51,7 @@
     "lint-staged": "^16.1.0",
     "markdownlint-cli2": "^0.15.0",
     "oxlint": "^1.0.0",
-    "prettier": "^3.5.3"
+    "prettier": "^3.5.3",
+    "yaml": "2.9.1"
   }
 }

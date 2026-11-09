@@ -1,0 +1,3 @@
+# Packaged copies of yt-common, made by `helm dependency build` (pnpm k8s:deps).
+**/charts/*.tgz
+**/Chart.lock

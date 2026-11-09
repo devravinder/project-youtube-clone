@@ -1,0 +1,10 @@
+apiVersion: v2
+name: web
+description: "React app on nginx; proxies /api, /search-api and /ws"
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+dependencies:
+  - name: yt-common
+    version: 0.1.0
+    repository: file://../../../yt-common

@@ -1,0 +1,29 @@
+# Defaults for search-service; the umbrella chart's values override them.
+replicaCount: 1
+image:
+  pullPolicy: "IfNotPresent"
+  repository: "yt/search-service"
+service:
+  type: "ClusterIP"
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+terminationGracePeriodSeconds: 30
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 70
+port: 3003
+probes:
+  path: "/health"
+  startupFailureThreshold: 24
+resources:
+  requests:
+    cpu: "100m"
+    memory: "192Mi"
+  limits:
+    memory: "384Mi"
+env:
+  PORT: "3003"
+secretEnv: {}

@@ -1,0 +1,24 @@
+apiVersion: v2
+name: youtube-clone
+description: Mini YouTube - every service, as subcharts in charts/ (infrastructure stays in Docker Compose)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+kubeVersion: ">=1.29.0-0"
+# The subcharts live unpacked in charts/; `<name>.enabled: false` leaves one out.
+dependencies:
+  - name: upload-service
+    version: 0.1.0
+    condition: upload-service.enabled
+  - name: transcoder-service
+    version: 0.1.0
+    condition: transcoder-service.enabled
+  - name: search-service
+    version: 0.1.0
+    condition: search-service.enabled
+  - name: notification-service
+    version: 0.1.0
+    condition: notification-service.enabled
+  - name: web
+    version: 0.1.0
+    condition: web.enabled

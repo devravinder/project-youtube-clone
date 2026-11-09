@@ -1,0 +1,29 @@
+{{- if .Values.migrations.enabled }}
+# Applies Prisma migrations before the new pods start; never resets anything.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "yt-common.name" . }}-migrate
+  labels: {{- include "yt-common.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+      containers:
+        - name: migrate
+          image: {{ include "yt-common.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["node_modules/.bin/prisma", "migrate", "deploy"]
+          env:
+            # A hook runs before the ConfigMap/Secret of this release exist, so the URL is inline.
+            - name: DATABASE_URL
+              value: {{ (include "yt-common.secretEnv" . | fromYaml).DATABASE_URL | quote }}
+{{- end }}

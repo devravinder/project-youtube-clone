@@ -1,0 +1,19 @@
+# kind create cluster --config infra/kind/cluster.yaml
+# One control plane + two workers, so pods (and the HPA) spread over more than one node.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: yt
+nodes:
+  - role: control-plane
+    # The default for kind 0.33, pulled and tagged by infra/retag-images (no digest: a retagged copy
+    # from a private registry has a different digest).
+    image: kindest/node:v1.37.0
+    extraPortMappings:
+      # The web Service's node port (charts/web) -> http://localhost:8090 on the host.
+      - containerPort: 30090
+        hostPort: 8090
+        protocol: TCP
+  - role: worker
+    image: kindest/node:v1.37.0
+  - role: worker
+    image: kindest/node:v1.37.0

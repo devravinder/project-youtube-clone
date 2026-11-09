@@ -1,0 +1,10 @@
+apiVersion: v2
+name: transcoder-service
+description: "ffmpeg workers: RabbitMQ command in, HLS out"
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+dependencies:
+  - name: yt-common
+    version: 0.1.0
+    repository: file://../../../yt-common

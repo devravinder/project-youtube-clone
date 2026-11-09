@@ -1,0 +1,44 @@
+# Umbrella values. global.* reaches every subchart; per-service blocks override their defaults.
+# The infrastructure keeps running in Docker Compose; infra/kind/connect-infra joins those containers to
+# the kind network under their compose names, so the addresses below match docker-compose-local-apps.yaml.
+
+global:
+  # Empty = the plain names images get from scripts/build-images.mjs, loaded into kind.
+  imageRegistry: ""
+  imageTag: local
+
+  env:
+    NODE_ENV: production
+    APP_ENV: local
+    LOG_LEVEL: info
+    KAFKA_BROKERS: kafka:9092
+    ELASTICSEARCH_URL: http://elasticsearch:9200
+    STORAGE_ENDPOINT: http://minio:9000
+    # Browsers open presigned URLs and HLS through the host's ports, not the cluster's.
+    STORAGE_PUBLIC_ENDPOINT: http://localhost:9000
+    HLS_PUBLIC_BASE_URL: http://localhost:8088/hls-videos
+    OIDC_ISSUER_URL: http://localhost:8180/realms/youtube-clone
+    OIDC_JWKS_URL: http://keycloak:8180/realms/youtube-clone/protocol/openid-connect/certs
+    OIDC_AUDIENCE: yt-api
+    REDIS_URL: redis://redis:6379
+    SPRING_RABBITMQ_HOST: rabbitmq
+    SPRING_RABBITMQ_PORT: "5672"
+    OTEL_SDK_DISABLED: "true"
+
+  # Local defaults only. Anywhere shared, set these with --set or an external secret store.
+  secretEnv:
+    DATABASE_URL: postgresql://yt:yt_password@postgres:5432/youtube_clone
+    RABBITMQ_URL: amqp://yt:yt_password@rabbitmq:5672
+    STORAGE_ACCESS_KEY: minioadmin
+    STORAGE_SECRET_KEY: minioadmin
+
+upload-service:
+  enabled: true
+transcoder-service:
+  enabled: true
+search-service:
+  enabled: true
+notification-service:
+  enabled: true
+web:
+  enabled: true
