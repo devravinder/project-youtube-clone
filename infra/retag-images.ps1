@@ -27,6 +27,8 @@ $map = [ordered]@{
   "mwader/static-ffmpeg:latest"           = "mwader/static-ffmpeg:latest"
   # Edge cache for HLS (infra/edge).
   "nginx:1.26.3"                          = "nginx:1.26.3"
+  # Node image kind 0.33 runs each cluster node in (Stage 5).
+  "kindest/node:v1.37.0"                  = "kindest/node:v1.37.0"
 }
 
 # Registry-specific paths stay on this machine: infra/retag-images.local.json (git-ignored),

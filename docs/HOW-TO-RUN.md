@@ -38,17 +38,17 @@ Scripts follow `start|stop:env:service`:
 
 ## What runs today
 
-| Capability                                        | How                       | Status                                              |
-| ------------------------------------------------- | ------------------------- | --------------------------------------------------- |
-| Local infra (Postgres, MinIO, Keycloak, RabbitMQ) | `pnpm start:l:pods`       | ✅ available                                        |
-| Kafka (KRaft) + Elasticsearch                     | `pnpm start:l:pods`       | ✅ available                                        |
-| HLS edge cache (nginx, port 8088)                 | `pnpm start:l:pods`       | ✅ available                                        |
-| Upload service (NestJS)                           | `pnpm start:l:upload`     | ✅ available                                        |
-| Web UI (React)                                    | `pnpm start:l:web`        | ✅ available                                        |
-| Transcoder (Spring Boot)                          | `pnpm start:l:transcoder` | ✅ transcodes to MP4 renditions (ffmpeg in Docker)  |
-| Search service (NestJS, Kafka → Elasticsearch)    | `pnpm start:l:search`     | ✅ indexes `video.ready`, search + autocomplete API |
-| Notification service (NestJS, Kafka → WebSocket)  | `pnpm start:l:notify`     | ✅ live toasts in the web app                       |
-| Observability (otel-lgtm)                         | `pnpm start:lo:pods`      | ✅ local stack + Grafana, Tempo, Loki, Prometheus   |
+| Capability                                        | How                                 | Status                                              |
+| ------------------------------------------------- | ----------------------------------- | --------------------------------------------------- |
+| Local infra (Postgres, MinIO, Keycloak, RabbitMQ) | `pnpm start:l:pods`                 | ✅ available                                        |
+| Kafka (KRaft) + Elasticsearch                     | `pnpm start:l:pods`                 | ✅ available                                        |
+| HLS edge cache (nginx, port 8088)                 | `pnpm start:l:pods`                 | ✅ available                                        |
+| Upload service (NestJS)                           | `pnpm start:l:upload`               | ✅ available                                        |
+| Web UI (React)                                    | `pnpm start:l:web`                  | ✅ available                                        |
+| Transcoder (Spring Boot)                          | `pnpm start:l:transcoder`           | ✅ transcodes to MP4 renditions (ffmpeg in Docker)  |
+| Search service (NestJS, Kafka → Elasticsearch)    | `pnpm start:l:search`               | ✅ indexes `video.ready`, search + autocomplete API |
+| Notification service (NestJS, Kafka → WebSocket)  | `pnpm start:l:notify`               | ✅ live toasts in the web app                       |
+| Observability (otel-lgtm)                         | `pnpm start:lo:pods` + `start:lo:*` | ✅ see [Quick start](#with-observability)           |
 
 Web app settings live in `apps/web/.env.development` (public values only). Override any of them
 in a git-ignored `apps/web/.env.local`. Restart `pnpm start:l:web` after changing either file.
@@ -63,6 +63,83 @@ in a git-ignored `apps/web/.env.local`. Restart `pnpm start:l:web` after changin
 | `API_PROXY_TARGET`           | Where the Vite dev proxy forwards `/api`                                        |
 | `NOTIFICATIONS_PROXY_TARGET` | Where the Vite dev proxy forwards the `/ws` WebSocket (`http://localhost:3004`) |
 | `SEARCH_PROXY_TARGET`        | Where the Vite dev proxy forwards `/search-api` (`http://localhost:3003`)       |
+
+## Quick start
+
+There are two ways to run everything. Pick one and use **only** its commands, containers and services
+alike. Both use the same containers and data, so you can switch modes without losing anything (see
+[Switching and mixing](#switching-and-mixing)).
+
+### Without observability (default)
+
+```bash
+pnpm install
+pnpm start:l:pods        # infrastructure containers
+pnpm db:generate         # first time, or after a schema change
+pnpm db:migrate          # first time, and after every stop:l:pods (it deletes the database)
+```
+
+Then one terminal per service:
+
+```bash
+pnpm start:l:upload
+pnpm start:l:transcoder
+pnpm start:l:search
+pnpm start:l:notify
+pnpm start:l:web         # http://localhost:5173
+```
+
+Stop the services with Ctrl+C. Then stop the containers:
+
+| Command                                                  | Keeps your data?                                                |
+| -------------------------------------------------------- | --------------------------------------------------------------- |
+| `docker compose -f infra/docker-compose-local.yaml stop` | yes                                                             |
+| `pnpm stop:l:pods`                                       | **no**, deletes every volume (database, uploads, topics, index) |
+
+### With observability
+
+```bash
+pnpm install
+pnpm start:lo:pods       # the same containers, plus yt-lgtm (Grafana, Tempo, Loki, Prometheus)
+pnpm db:generate         # first time, or after a schema change
+pnpm db:migrate          # first time, and after every stop:lo:pods (it deletes the database)
+```
+
+Then one terminal per service. The services use the `lo` scripts, all except the web app:
+
+```bash
+pnpm start:lo:upload
+pnpm start:lo:transcoder
+pnpm start:lo:search
+pnpm start:lo:notify
+pnpm start:l:web         # http://localhost:5173 (the browser is not instrumented)
+```
+
+Open Grafana at <http://localhost:3000> (`admin` / `admin`) → Dashboards → Mini YouTube. See
+[Observability](#observability) for what is collected and how to follow one upload.
+
+Stop the services with Ctrl+C. Then stop the containers:
+
+| Command                                                                | Keeps your data?             |
+| ---------------------------------------------------------------------- | ---------------------------- |
+| `docker compose -f infra/docker-compose-local-observability.yaml stop` | yes                          |
+| `pnpm stop:lo:pods`                                                    | **no**, deletes every volume |
+
+### Switching and mixing
+
+Both compose files share the project name `youtube-clone-local`, so `start:lo:pods` reuses the same
+Postgres, MinIO, Kafka and other containers, and only adds `yt-lgtm`. Switching modes keeps your data and
+needs no new migration.
+
+| Containers started with | Services started with | Result                                                                   |
+| ----------------------- | --------------------- | ------------------------------------------------------------------------ |
+| `start:l:pods`          | `start:l:*`           | Normal local run, no telemetry                                           |
+| `start:lo:pods`         | `start:lo:*`          | Normal local run, plus traces, metrics and logs in Grafana               |
+| `start:lo:pods`         | `start:l:*`           | The app works, but Grafana stays empty: the services send nothing        |
+| `start:l:pods`          | `start:lo:*`          | The app works, but nothing listens on port 4318, so telemetry is dropped |
+
+To turn telemetry on after starting with `start:lo:pods` and `start:l:*`, restart each service with its
+`start:lo:*` script. The containers can stay as they are.
 
 ## Run the tests
 
@@ -241,63 +318,6 @@ Tail logs:
 ```bash
 pnpm logs:l
 ```
-
-### With observability
-
-`pnpm start:lo:pods` starts the same stack plus `yt-lgtm` (`grafana/otel-lgtm:1.3`): an OpenTelemetry
-Collector in front of Tempo (traces), Prometheus (metrics) and Loki (logs), with Grafana on top.
-`infra/docker-compose-local-observability.yaml` includes the local file, so there is only one place to
-change the stack. `pnpm stop:lo:pods` stops everything.
-
-| Item         | Value                                                                 |
-| ------------ | --------------------------------------------------------------------- |
-| Grafana      | <http://localhost:3000> (`admin` / `admin`)                           |
-| OTLP         | `http://localhost:4318` (HTTP), `localhost:4317` (gRPC)               |
-| Data sources | Tempo, Prometheus, Loki (provisioned; trace ids link logs and traces) |
-| Retention    | In the container only; recreating it starts empty                     |
-
-Run the services with telemetry by using the `lo` scripts instead of `l`:
-
-```bash
-pnpm start:lo:upload
-pnpm start:lo:transcoder
-pnpm start:lo:search
-pnpm start:lo:notify
-pnpm start:l:web   # the browser is not instrumented
-```
-
-The Node services load `@yt/telemetry/register` before the app (`--import`), and it does nothing unless
-`APP_ENV=local-observability`. The `dev:lo` scripts get that from `.env.observability`, loaded after
-`.env.sample`, where the later file wins. The transcoder gets the `local-observability` Spring profile.
-Each service then sends traces, metrics (every 10 s) and logs, with trace ids, to `http://localhost:4318`.
-Set `OTEL_ENABLED=true` to force it on in any environment, or `OTEL_ENABLED=false` to force it off.
-
-Follow one upload: every outbox row stores the trace it was written in, so
-
-```sql
-select type, trace_context->>'traceparent' from outbox order by created_at desc limit 2;
-```
-
-gives `00-<trace id>-<span id>-01`. Paste the trace id into Grafana → Explore → Tempo. The trace runs
-from `POST /uploads/:videoId/complete` through the RabbitMQ command, the transcoder, the status event and
-the Kafka `video.ready` to search and notifications. In Explore → Loki, `{service_name=~".+"} | trace_id="<id>"`
-shows the log lines of the same journey.
-
-Grafana → Dashboards → **Mini YouTube → Mini YouTube - pipeline** (provisioned from
-`infra/observability/dashboards/`) shows:
-
-- HTTP rate, p95 latency and 5xx for every service.
-- The outbox backlog (`yt_outbox_pending`) and publishes by type and outcome. A growing backlog means a
-  broker is down.
-- Transcode job duration and rate.
-- Search events by outcome. `dead-letter` above 0 means bad events are landing on the DLT.
-- Notifications delivered or ignored, and open sockets.
-- Views recorded, by Redis or Postgres fallback, and flushed.
-- Runtime health: Node event loop, JVM heap, DB p95.
-- A table of recent upload traces and a Loki panel of warnings and errors.
-
-The image's own RED and JVM dashboards are there too. Edit a panel in Grafana, then export the JSON over
-the file to keep the change; provisioned dashboards are read-only.
 
 ## 4. Set up the database
 
@@ -589,6 +609,65 @@ proxy) and pushes a message for every new `video.ready` on `yt.video-events`:
   `NOTIFY_MAX_EVENT_AGE_SECONDS` (default 600) are dropped.
 - Dead connections are found by a ping every 30 s and closed if the pong never comes.
 - `GET /health` reports the number of open sockets. Requests to try: `http/notification-service.http`.
+
+## Observability
+
+Only in the [with observability](#with-observability) mode.
+
+`pnpm start:lo:pods` starts the same stack plus `yt-lgtm` (`grafana/otel-lgtm:1.3`): an OpenTelemetry
+Collector in front of Tempo (traces), Prometheus (metrics) and Loki (logs), with Grafana on top.
+`infra/docker-compose-local-observability.yaml` includes the local file, so there is only one place to
+change the stack. `pnpm stop:lo:pods` stops everything.
+
+| Item         | Value                                                                 |
+| ------------ | --------------------------------------------------------------------- |
+| Grafana      | <http://localhost:3000> (`admin` / `admin`)                           |
+| OTLP         | `http://localhost:4318` (HTTP), `localhost:4317` (gRPC)               |
+| Data sources | Tempo, Prometheus, Loki (provisioned; trace ids link logs and traces) |
+| Retention    | In the container only; recreating it starts empty                     |
+
+Run the services with telemetry by using the `lo` scripts instead of `l`:
+
+```bash
+pnpm start:lo:upload
+pnpm start:lo:transcoder
+pnpm start:lo:search
+pnpm start:lo:notify
+pnpm start:l:web   # the browser is not instrumented
+```
+
+The Node services load `@yt/telemetry/register` before the app (`--import`), and it does nothing unless
+`APP_ENV=local-observability`. The `dev:lo` scripts get that from `.env.observability`, loaded after
+`.env.sample`, where the later file wins. The transcoder gets the `local-observability` Spring profile.
+Each service then sends traces, metrics (every 10 s) and logs, with trace ids, to `http://localhost:4318`.
+Set `OTEL_ENABLED=true` to force it on in any environment, or `OTEL_ENABLED=false` to force it off.
+
+Follow one upload: every outbox row stores the trace it was written in, so
+
+```sql
+select type, trace_context->>'traceparent' from outbox order by created_at desc limit 2;
+```
+
+gives `00-<trace id>-<span id>-01`. Paste the trace id into Grafana → Explore → Tempo. The trace runs
+from `POST /uploads/:videoId/complete` through the RabbitMQ command, the transcoder, the status event and
+the Kafka `video.ready` to search and notifications. In Explore → Loki, `{service_name=~".+"} | trace_id="<id>"`
+shows the log lines of the same journey.
+
+Grafana → Dashboards → **Mini YouTube → Mini YouTube - pipeline** (provisioned from
+`infra/observability/dashboards/`) shows:
+
+- HTTP rate, p95 latency and 5xx for every service.
+- The outbox backlog (`yt_outbox_pending`) and publishes by type and outcome. A growing backlog means a
+  broker is down.
+- Transcode job duration and rate.
+- Search events by outcome. `dead-letter` above 0 means bad events are landing on the DLT.
+- Notifications delivered or ignored, and open sockets.
+- Views recorded, by Redis or Postgres fallback, and flushed.
+- Runtime health: Node event loop, JVM heap, DB p95.
+- A table of recent upload traces and a Loki panel of warnings and errors.
+
+The image's own RED and JVM dashboards are there too. Edit a panel in Grafana, then export the JSON over
+the file to keep the change; provisioned dashboards are read-only.
 
 ## Local service URLs & credentials
 

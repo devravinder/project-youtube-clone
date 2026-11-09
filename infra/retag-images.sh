@@ -24,6 +24,7 @@ defaults=(
   "2462402/otel-lgtm:1.3=grafana/otel-lgtm:1.3"
   "mwader/static-ffmpeg:latest=mwader/static-ffmpeg:latest"
   "nginx:1.26.3=nginx:1.26.3"
+  "kindest/node:v1.37.0=kindest/node:v1.37.0"
 )
 
 # Local overrides replace the default entry for the same plain name. Node is a prerequisite anyway.

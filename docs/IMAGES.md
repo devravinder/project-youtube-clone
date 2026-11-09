@@ -20,6 +20,7 @@ environment (see `ADR-013`).
 | 3     | Elasticsearch | `elasticsearch:8.19.16`       | 8.x, single-node locally                                       |
 | 4     | Redis         | `redis:6.2.24`                | Cache + counters                                               |
 | 5     | Observability | `grafana/otel-lgtm:1.3`       | Loki + Grafana + Tempo + Prometheus + OTLP                     |
+| 4     | kind node     | `kindest/node:v1.37.0`        | One container per Kubernetes node; the default for kind 0.33   |
 
 ## Not used
 
