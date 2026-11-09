@@ -925,3 +925,41 @@ Rejected:
 - A combobox library (Downshift, React Aria): one widget, and the pattern is short enough to own.
 - Server-side highlighting (renders markup).
 - Search-as-you-type on the results page (too many full queries; suggestions cover typing).
+
+## ADR-040 - AsyncAPI 3.1 document generated from the Zod contracts
+
+Date: 2026-11-09 - Status: Accepted
+
+`libs/ts/contracts/src/asyncapi.ts` builds `contracts/asyncapi.json`, one AsyncAPI 3.1 document for the
+whole event-driven surface. OpenAPI does the same job for HTTP.
+
+- **Channels:** `yt.video-events` (Kafka bindings: 3 partitions, compacted, key = videoId),
+  `yt.video-events.dlt`, and the `/ws` notification socket.
+- **Operations,** one per producer or consumer:
+  - `publishVideoReady`: upload-service, via the outbox.
+  - `indexVideoEvents`: search-service, shared group `search-service`.
+  - `deadLetterVideoEvents`: search-service.
+  - `notifyVideoEvents`: notification-service, one group per instance; its group id pattern is in the
+    binding.
+  - `receiveAuth`, with an `authResult` reply.
+  - `pushNotifications`.
+
+  The document therefore answers "who reads this topic, and how" without anyone reading code.
+
+- **Single source:** payloads are `z.toJSONSchema(..., { target: "draft-7" })` of the schemas the
+  services already validate with. AsyncAPI 3 payloads default to the AsyncAPI schema format, a superset
+  of draft-07. The document can't drift from the code: a test fails if the committed file differs from the
+  generated one, and `pnpm api:generate` (also run by the pre-commit hook when contracts, upload or search
+  code changes) rewrites it.
+- **Validated** by the official `@asyncapi/parser` 3.6.6 in the test; any error-severity diagnostic fails
+  the build. The first draft used 3.0.0, and the parser's only remark was that 3.1.0 is current, so it was
+  bumped.
+- **Lives in `contracts/`** with the other generated contracts. The source is in `libs/ts/contracts`, next
+  to the schemas it describes.
+
+Rejected:
+
+- Hand-written YAML: it drifts from the code.
+- `@asyncapi/cli` for generation: heavy, and the document is about 200 lines of plain TypeScript.
+- A schema registry with Avro: it means one more container, and JSON with a tolerant reader is enough at
+  this scale.

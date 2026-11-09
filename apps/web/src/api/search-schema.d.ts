@@ -4,145 +4,145 @@
  */
 
 export interface paths {
-  "/search": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Full-text search over titles and descriptions, typo-tolerant, best match first */
+        get: operations["searchVideos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Full-text search over titles and descriptions, typo-tolerant, best match first */
-    get: operations["searchVideos"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/search/suggest": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/search/suggest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Autocomplete: titles whose words start with what was typed so far */
+        get: operations["suggestVideos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Autocomplete: titles whose words start with what was typed so far */
-    get: operations["suggestVideos"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-  schemas: {
-    SearchHit: {
-      /** Format: uuid */
-      id: string;
-      title: string;
-      description: string | null;
-      /** @description Rendition names, highest first */
-      renditions: string[];
-      /** Format: date-time */
-      createdAt: string;
+    schemas: {
+        SearchHit: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            description: string | null;
+            /** @description Rendition names, highest first */
+            renditions: string[];
+            /** Format: date-time */
+            createdAt: string;
+        };
+        SearchResult: {
+            /** @description Matching videos, not just this page */
+            total: number;
+            items: components["schemas"]["SearchHit"][];
+        };
+        Suggestion: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+        };
+        SuggestResult: {
+            items: components["schemas"]["Suggestion"][];
+        };
+        /** @description Error body returned by every failing request */
+        ErrorResponse: {
+            statusCode: number;
+            error: string;
+            message: string | unknown[];
+        };
     };
-    SearchResult: {
-      /** @description Matching videos, not just this page */
-      total: number;
-      items: components["schemas"]["SearchHit"][];
-    };
-    Suggestion: {
-      /** Format: uuid */
-      id: string;
-      title: string;
-    };
-    SuggestResult: {
-      items: components["schemas"]["Suggestion"][];
-    };
-    /** @description Error body returned by every failing request */
-    ErrorResponse: {
-      statusCode: number;
-      error: string;
-      message: string | unknown[];
-    };
-  };
-  responses: never;
-  parameters: never;
-  requestBodies: never;
-  headers: never;
-  pathItems: never;
+    responses: never;
+    parameters: never;
+    requestBodies: never;
+    headers: never;
+    pathItems: never;
 }
 export type $defs = Record<string, never>;
 export interface operations {
-  searchVideos: {
-    parameters: {
-      query: {
-        offset?: number;
-        limit?: number;
-        q: string;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
+    searchVideos: {
+        parameters: {
+            query: {
+                offset?: number;
+                limit?: number;
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Matching videos and the total count */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchResult"];
+                };
+            };
+            /** @description Query parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
     };
-    requestBody?: never;
-    responses: {
-      /** @description Matching videos and the total count */
-      200: {
-        headers: {
-          [name: string]: unknown;
+    suggestVideos: {
+        parameters: {
+            query: {
+                limit?: number;
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        content: {
-          "application/json": components["schemas"]["SearchResult"];
+        requestBody?: never;
+        responses: {
+            /** @description Up to limit suggestions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuggestResult"];
+                };
+            };
+            /** @description Query parameters failed validation */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
         };
-      };
-      /** @description Query parameters failed validation */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorResponse"];
-        };
-      };
     };
-  };
-  suggestVideos: {
-    parameters: {
-      query: {
-        limit?: number;
-        q: string;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Up to limit suggestions */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["SuggestResult"];
-        };
-      };
-      /** @description Query parameters failed validation */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorResponse"];
-        };
-      };
-    };
-  };
 }

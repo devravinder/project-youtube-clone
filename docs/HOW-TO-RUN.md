@@ -68,6 +68,13 @@ transcoder test reads it and fails if the Java record `TranscodeCommandMessage` 
 Kafka events have one too: `contracts/video-events.schema.json`, generated from the Zod schema in
 `libs/ts/contracts` (`@yt/contracts`), which the producer (upload service) and every consumer import.
 
+`contracts/asyncapi.json` (AsyncAPI 3.1) describes the whole event surface in one place: the Kafka
+topics `yt.video-events` and `yt.video-events.dlt`, the `/ws` notification socket, who sends and who
+receives each message (with consumer groups), headers, keys and payloads. It is generated from the same
+Zod schemas by `pnpm api:generate`, and `pnpm --filter @yt/contracts test` fails if the committed file is
+stale or the official `@asyncapi/parser` reports an error. Paste it into <https://studio.asyncapi.com> to
+browse it (that sends the file to the site; it holds no secrets).
+
 It stays current automatically:
 
 - Starting the upload service (any non-`aws` env) rewrites the spec if the API changed.

@@ -130,4 +130,7 @@ Every consumer must be idempotent:
   (same `pnpm api:generate` as OpenAPI). The Java side tests its record against that file, so drift on either
   side fails a build. Example: `contracts/transcode-command.schema.json`.
 - Give every message a `messageId` and an ISO timestamp; set them as AMQP properties too.
-- AsyncAPI (`@asyncapi/cli`) is the next step once there are several channels.
+- AsyncAPI: `contracts/asyncapi.json` (3.1) is built from the same Zod schemas in `libs/ts/contracts/src/asyncapi.ts`
+  (payloads via `z.toJSONSchema(schema, { target: "draft-7" })`). A test compares it with the committed file and
+  runs `@asyncapi/parser`; severity 0 diagnostics fail the build. Describe every producer and consumer as an
+  operation, and put the consumer group in the Kafka operation binding.

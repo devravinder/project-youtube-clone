@@ -1,0 +1,500 @@
+{
+  "asyncapi": "3.1.0",
+  "info": {
+    "title": "Mini YouTube events",
+    "version": "1.0.0",
+    "description": "Events between services (Kafka) and live notifications to browsers (WebSocket). Generated from the Zod schemas in libs/ts/contracts; do not edit by hand."
+  },
+  "defaultContentType": "application/json",
+  "servers": {
+    "kafkaLocal": {
+      "host": "localhost:9094",
+      "protocol": "kafka",
+      "description": "Local compose broker (EXTERNAL listener); containers use kafka:9092"
+    },
+    "notificationsLocal": {
+      "host": "localhost:3004",
+      "protocol": "ws",
+      "description": "notification-service; the web app reaches it as /ws on its own origin"
+    }
+  },
+  "channels": {
+    "videoEvents": {
+      "address": "yt.video-events",
+      "title": "Video events",
+      "description": "Facts about videos. Key = videoId, so one video's events stay in order. Compacted: the latest event per video is kept, so a new consumer group can rebuild its state from the start.",
+      "servers": [
+        {
+          "$ref": "#/servers/kafkaLocal"
+        }
+      ],
+      "messages": {
+        "videoReady": {
+          "$ref": "#/components/messages/VideoReady"
+        }
+      },
+      "bindings": {
+        "kafka": {
+          "topic": "yt.video-events",
+          "partitions": 3,
+          "replicas": 1,
+          "topicConfiguration": {
+            "cleanup.policy": [
+              "compact"
+            ]
+          },
+          "bindingVersion": "0.5.0"
+        }
+      }
+    },
+    "videoEventsDeadLetter": {
+      "address": "yt.video-events.dlt",
+      "title": "Dead letters",
+      "description": "Events a consumer could not handle, unchanged, with dlt-* headers saying who, where and why. Kept 14 days.",
+      "servers": [
+        {
+          "$ref": "#/servers/kafkaLocal"
+        }
+      ],
+      "messages": {
+        "deadLetter": {
+          "$ref": "#/components/messages/DeadLetter"
+        }
+      }
+    },
+    "notifications": {
+      "address": "/ws",
+      "title": "Browser notifications",
+      "description": "One socket per browser tab; { event, data } messages both ways.",
+      "servers": [
+        {
+          "$ref": "#/servers/notificationsLocal"
+        }
+      ],
+      "messages": {
+        "auth": {
+          "$ref": "#/components/messages/Auth"
+        },
+        "authResult": {
+          "$ref": "#/components/messages/AuthResult"
+        },
+        "videoPublished": {
+          "$ref": "#/components/messages/VideoPublished"
+        },
+        "yourVideoReady": {
+          "$ref": "#/components/messages/YourVideoReady"
+        }
+      }
+    }
+  },
+  "operations": {
+    "publishVideoReady": {
+      "action": "send",
+      "channel": {
+        "$ref": "#/channels/videoEvents"
+      },
+      "title": "upload-service publishes video.ready",
+      "description": "Written to the outbox in the same transaction as the READY status, then sent by OutboxRelay (acks=all, idempotent producer). At least once: consumers dedupe on eventId.",
+      "messages": [
+        {
+          "$ref": "#/channels/videoEvents/messages/videoReady"
+        }
+      ]
+    },
+    "indexVideoEvents": {
+      "action": "receive",
+      "channel": {
+        "$ref": "#/channels/videoEvents"
+      },
+      "title": "search-service indexes videos",
+      "description": "One shared group, so instances split the partitions. Commits after indexing; external versions make replays harmless.",
+      "messages": [
+        {
+          "$ref": "#/channels/videoEvents/messages/videoReady"
+        }
+      ],
+      "bindings": {
+        "kafka": {
+          "groupId": {
+            "type": "string",
+            "enum": [
+              "search-service"
+            ]
+          },
+          "bindingVersion": "0.5.0"
+        }
+      }
+    },
+    "deadLetterVideoEvents": {
+      "action": "send",
+      "channel": {
+        "$ref": "#/channels/videoEventsDeadLetter"
+      },
+      "title": "search-service dead-letters bad events",
+      "messages": [
+        {
+          "$ref": "#/channels/videoEventsDeadLetter/messages/deadLetter"
+        }
+      ]
+    },
+    "notifyVideoEvents": {
+      "action": "receive",
+      "channel": {
+        "$ref": "#/channels/videoEvents"
+      },
+      "title": "notification-service fans out to sockets",
+      "description": "A group per instance (notification-service-<random>), latest offset, never commits: every instance sees every event.",
+      "messages": [
+        {
+          "$ref": "#/channels/videoEvents/messages/videoReady"
+        }
+      ],
+      "bindings": {
+        "kafka": {
+          "groupId": {
+            "type": "string",
+            "pattern": "^notification-service-[0-9a-f]{8}$"
+          },
+          "bindingVersion": "0.5.0"
+        }
+      }
+    },
+    "receiveAuth": {
+      "action": "receive",
+      "channel": {
+        "$ref": "#/channels/notifications"
+      },
+      "title": "notification-service accepts a token",
+      "messages": [
+        {
+          "$ref": "#/channels/notifications/messages/auth"
+        }
+      ],
+      "reply": {
+        "channel": {
+          "$ref": "#/channels/notifications"
+        },
+        "messages": [
+          {
+            "$ref": "#/channels/notifications/messages/authResult"
+          }
+        ]
+      }
+    },
+    "pushNotifications": {
+      "action": "send",
+      "channel": {
+        "$ref": "#/channels/notifications"
+      },
+      "title": "notification-service pushes to browsers",
+      "description": "video.ready to the uploader's signed-in sockets, video.published to everyone else.",
+      "messages": [
+        {
+          "$ref": "#/channels/notifications/messages/videoPublished"
+        },
+        {
+          "$ref": "#/channels/notifications/messages/yourVideoReady"
+        }
+      ]
+    }
+  },
+  "components": {
+    "messages": {
+      "VideoReady": {
+        "name": "video.ready",
+        "title": "Video ready",
+        "summary": "A video finished transcoding and can be played",
+        "contentType": "application/json",
+        "headers": {
+          "type": "object",
+          "required": [
+            "event-type",
+            "event-id"
+          ],
+          "properties": {
+            "event-type": {
+              "type": "string",
+              "description": "Event type; consumers skip types they do not know"
+            },
+            "event-id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Same as the payload's eventId"
+            }
+          }
+        },
+        "payload": {
+          "type": "object",
+          "properties": {
+            "eventId": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "Unique per event; consumers dedupe on it"
+            },
+            "type": {
+              "type": "string",
+              "const": "video.ready"
+            },
+            "version": {
+              "type": "number",
+              "const": 1
+            },
+            "occurredAt": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+              "description": "When the video became playable"
+            },
+            "video": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "title": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "description": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 2000
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "ownerId": {
+                  "description": "Keycloak subject of the uploader",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "renditions": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^\\d+p$"
+                  },
+                  "description": "Rendition names, highest first"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                }
+              },
+              "required": [
+                "id",
+                "title",
+                "description",
+                "ownerId",
+                "renditions",
+                "createdAt"
+              ]
+            }
+          },
+          "required": [
+            "eventId",
+            "type",
+            "version",
+            "occurredAt",
+            "video"
+          ],
+          "title": "VideoReadyEvent",
+          "description": "A video finished transcoding and can be played. Key: the video id."
+        },
+        "bindings": {
+          "kafka": {
+            "key": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "bindingVersion": "0.5.0"
+          }
+        }
+      },
+      "DeadLetter": {
+        "name": "dead-letter",
+        "title": "Dead letter",
+        "summary": "The original key, value and headers, plus why it failed",
+        "headers": {
+          "type": "object",
+          "properties": {
+            "dlt-reason": {
+              "type": "string"
+            },
+            "dlt-source": {
+              "type": "string",
+              "description": "topic/partition@offset of the original"
+            },
+            "dlt-consumer": {
+              "type": "string",
+              "description": "Group that gave up on it"
+            }
+          }
+        },
+        "payload": {
+          "type": "string",
+          "description": "The original value, possibly not even JSON"
+        }
+      },
+      "Auth": {
+        "name": "auth",
+        "title": "auth",
+        "summary": "Browser -> server: sign this socket in",
+        "contentType": "application/json",
+        "payload": {
+          "type": "object",
+          "properties": {
+            "event": {
+              "type": "string",
+              "const": "auth"
+            },
+            "data": {
+              "type": "object",
+              "properties": {
+                "token": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "token"
+              ]
+            }
+          },
+          "required": [
+            "event",
+            "data"
+          ],
+          "title": "AuthMessage",
+          "description": "Sent by the browser after connecting; tokens never go in the URL"
+        }
+      },
+      "AuthResult": {
+        "name": "auth-result",
+        "title": "auth-result",
+        "summary": "Server -> browser: whether it worked",
+        "contentType": "application/json",
+        "payload": {
+          "type": "object",
+          "properties": {
+            "event": {
+              "type": "string",
+              "const": "auth"
+            },
+            "data": {
+              "type": "object",
+              "properties": {
+                "ok": {
+                  "type": "boolean"
+                },
+                "userId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "ok",
+                "userId"
+              ]
+            }
+          },
+          "required": [
+            "event",
+            "data"
+          ],
+          "title": "AuthResult",
+          "description": "Reply to an auth message"
+        }
+      },
+      "VideoPublished": {
+        "name": "video.published",
+        "title": "video.published",
+        "summary": "A new video is up",
+        "contentType": "application/json",
+        "payload": {
+          "type": "object",
+          "properties": {
+            "event": {
+              "type": "string",
+              "const": "video.published"
+            },
+            "data": {
+              "type": "object",
+              "properties": {
+                "videoId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "videoId",
+                "title"
+              ]
+            }
+          },
+          "required": [
+            "event",
+            "data"
+          ],
+          "title": "VideoPublished",
+          "description": "To everyone except the uploader: a new video is up"
+        }
+      },
+      "YourVideoReady": {
+        "name": "video.ready",
+        "title": "video.ready",
+        "summary": "Your upload is ready",
+        "contentType": "application/json",
+        "payload": {
+          "type": "object",
+          "properties": {
+            "event": {
+              "type": "string",
+              "const": "video.ready"
+            },
+            "data": {
+              "type": "object",
+              "properties": {
+                "videoId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "title": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "videoId",
+                "title"
+              ]
+            }
+          },
+          "required": [
+            "event",
+            "data"
+          ],
+          "title": "YourVideoReady",
+          "description": "To the uploader's signed-in sockets only"
+        }
+      }
+    }
+  }
+}

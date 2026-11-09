@@ -21,7 +21,10 @@ export const authResultMessageSchema = z
 
 export const videoPublishedMessageSchema = z
   .object({ event: z.literal("video.published"), data: videoRef })
-  .meta({ title: "VideoPublished", description: "To everyone except the uploader: a new video is up" });
+  .meta({
+    title: "VideoPublished",
+    description: "To everyone except the uploader: a new video is up",
+  });
 
 export const yourVideoReadyMessageSchema = z
   .object({ event: z.literal("video.ready"), data: videoRef })
