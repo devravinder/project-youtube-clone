@@ -48,7 +48,7 @@ Scripts follow `start|stop:env:service`:
 | Transcoder (Spring Boot)                          | `pnpm start:l:transcoder` | ✅ transcodes to MP4 renditions (ffmpeg in Docker)  |
 | Search service (NestJS, Kafka → Elasticsearch)    | `pnpm start:l:search`     | ✅ indexes `video.ready`, search + autocomplete API |
 | Notification service (NestJS, Kafka → WebSocket)  | `pnpm start:l:notify`     | ✅ live toasts in the web app                       |
-| Observability (otel-lgtm)                         | `pnpm start:lo:pods`      | ⏳ compose file not added yet                       |
+| Observability (otel-lgtm)                         | `pnpm start:lo:pods`      | ✅ local stack + Grafana, Tempo, Loki, Prometheus   |
 
 Web app settings live in `apps/web/.env.development` (public values only). Override any of them
 in a git-ignored `apps/web/.env.local`. Restart `pnpm start:l:web` after changing either file.
