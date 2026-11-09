@@ -5,7 +5,23 @@ reviewed and then committed (see the `git-commit-convention` skill). Detailed ex
 tasks for a feature live in its Kiro spec (`.kiro/specs/<feature>/tasks.md`); this file is
 the project-level roadmap and status.
 
-Legend: `[x]` done · `[~]` in progress · `[ ]` not started
+Legend: `[x]` done · `[~]` in progress · `[ ]` not started · `⏸ pending` blocked, to do later
+
+---
+
+## Pending (blocked, to do later)
+
+Everything else up to Stage 6 is done. These wait for tools that are not available yet:
+
+| Needs                                    | Tasks                                                               |
+| ---------------------------------------- | ------------------------------------------------------------------- |
+| `kindest/node:v1.37.0` image (kind 0.33) | Stage 5: kind cluster + Helm chart, HPA, `ctr import` image loading |
+| k6 (`grafana/k6` image or `k6` binary)   | Stage 5: k6 load scripts                                            |
+| kind cluster + k6                        | Stage 5: observe DLQ depth, retries and autoscaling under load      |
+| AWS account                              | Stage 7 (optional): EKS, MinIO → S3, `aws` profile                  |
+
+Already in place for them: kind 0.33 and Helm 4.3 are installed, the node image is in
+`infra/retag-images.ps1`/`.sh` and `IMAGES.md`, and the storage adapter and `aws` profile exist.
 
 ---
 
@@ -103,11 +119,11 @@ Goal: reproduce load, watch the system scale and absorb back-pressure.
 Concepts: caching, eventual consistency, back-pressure, autoscaling, load testing.
 
 - [x] Redis caching (hot metadata) + view counts (eventual consistency): cache-aside `video:<id>` (60 s TTL, evicted on every write), views via an atomic Lua `SET NX` + `INCR` flushed to Postgres every 10 s (`SPOP`/`GETDEL`, exactly once across instances), `volatile-lru`, 500 ms guard with Postgres fallback
-- [ ] kind cluster + Helm umbrella chart (per-service subcharts)
-- [ ] HPA on CPU/memory, then on queue depth
-- [ ] k6 load scripts (smoke / cpu / throughput)
-- [ ] Windows `ctr import --no-unpack` image-loading script
-- [ ] Observe DLQ depth, retries, autoscaling under load
+- [ ] kind cluster + Helm umbrella chart (per-service subcharts) — ⏸ pending: needs the `kindest/node:v1.37.0` image
+- [ ] HPA on CPU/memory, then on queue depth — ⏸ pending: needs the `kindest/node:v1.37.0` image (runs on the cluster)
+- [ ] k6 load scripts (smoke / cpu / throughput) — ⏸ pending: needs k6 (the `grafana/k6` image or the `k6` binary)
+- [ ] Windows `ctr import --no-unpack` image-loading script — ⏸ pending: needs the `kindest/node:v1.37.0` image (loads images into its nodes)
+- [ ] Observe DLQ depth, retries, autoscaling under load — ⏸ pending: needs the kind cluster and k6
 
 ## Stage 6 — Phase 5: Observability (otel-lgtm)
 
@@ -125,6 +141,6 @@ Concepts: metrics, traces, logs; context propagation across brokers.
 Goal: deploy the same open-source tools to AWS.
 Concepts: ports/adapters payoff (config swap, not rewrite).
 
-- [ ] EKS deploy target
-- [ ] Optional: swap MinIO → S3 via the storage adapter (config change)
-- [ ] Verify everything runs with the `aws` environment profile
+- [ ] EKS deploy target — ⏸ pending: needs an AWS account
+- [ ] Optional: swap MinIO → S3 via the storage adapter (config change) — ⏸ pending: needs an AWS account
+- [ ] Verify everything runs with the `aws` environment profile — ⏸ pending: needs an AWS account
