@@ -40,7 +40,8 @@ class TranscodeConfig {
     AppProperties.Ffmpeg ffmpeg = properties.transcode().ffmpeg();
     FfmpegLauncher launcher =
         ffmpeg.useDocker()
-            ? new FfmpegLauncher.Docker(ffmpeg.dockerImage(), properties.transcode().workDir())
+            ? FfmpegLauncher.Docker.forCurrentUser(
+                ffmpeg.dockerImage(), properties.transcode().workDir())
             : new FfmpegLauncher.Binaries(ffmpeg.path(), ffmpeg.probePath());
     log.info("ffmpeg runs via {}", launcher);
     return new FfmpegTranscoder(new SystemProcessRunner(), launcher, ffmpeg.timeout());

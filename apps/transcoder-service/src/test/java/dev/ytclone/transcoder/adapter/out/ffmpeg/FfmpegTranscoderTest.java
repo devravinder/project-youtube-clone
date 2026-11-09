@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import dev.ytclone.transcoder.application.PermanentFailureException;
 import dev.ytclone.transcoder.domain.Rendition;
 import dev.ytclone.transcoder.domain.VideoInfo;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -105,6 +106,39 @@ class FfmpegTranscoderTest {
     String name = spec.command().get(spec.command().indexOf("--name") + 1);
     assertThat(name).startsWith("yt-ffmpeg-");
     assertThat(spec.onTimeout()).containsExactly("docker", "rm", "-f", name);
+  }
+
+  @Test
+  void dockerModeRunsAsTheGivenUserWhenSet() {
+    next = new ProcessRunner.Result(0, "640,360");
+    new FfmpegTranscoder(
+            fakeRunner, new FfmpegLauncher.Docker("ffmpeg-image:1", workRoot, "1000:1000"), TIMEOUT)
+        .probe(workRoot.resolve("j/source"));
+
+    assertThat(specs.getFirst().command())
+        .containsSequence("--user", "1000:1000", "-v")
+        .doesNotContain("--privileged");
+  }
+
+  @Test
+  void dockerModeOmitsUserWhenUnknown() {
+    next = new ProcessRunner.Result(0, "640,360");
+    withDocker().probe(workRoot.resolve("j/source"));
+
+    assertThat(specs.getFirst().command()).doesNotContain("--user");
+  }
+
+  @Test
+  void forCurrentUserUsesTheWorkRootOwnerWhereTheOsHasUids() throws Exception {
+    FfmpegLauncher.Docker launcher = FfmpegLauncher.Docker.forCurrentUser("img", workRoot);
+
+    assertThat(workRoot).isDirectory();
+    if (workRoot.getFileSystem().supportedFileAttributeViews().contains("unix")) {
+      Object uid = Files.getAttribute(workRoot, "unix:uid");
+      assertThat(launcher.user()).startsWith(uid + ":");
+    } else {
+      assertThat(launcher.user()).isNull();
+    }
   }
 
   @Test

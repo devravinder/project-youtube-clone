@@ -1,5 +1,8 @@
 package dev.ytclone.transcoder.adapter.out.ffmpeg;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,7 +38,7 @@ public sealed interface FfmpegLauncher {
   }
 
   /** Mounts the work root at /work; the image needs /ffmpeg and /ffprobe (mwader/static-ffmpeg). */
-  record Docker(String image, Path workRoot) implements FfmpegLauncher {
+  record Docker(String image, Path workRoot, String user) implements FfmpegLauncher {
 
     static final String MOUNT = "/work";
 
@@ -43,17 +46,35 @@ public sealed interface FfmpegLauncher {
       workRoot = workRoot.toAbsolutePath().normalize();
     }
 
+    public Docker(String image, Path workRoot) {
+      this(image, workRoot, null);
+    }
+
+    /** On Linux/macOS run as the work root's owner, so output files are not left owned by root. */
+    public static Docker forCurrentUser(String image, Path workRoot) {
+      try {
+        Files.createDirectories(workRoot);
+        Object uid = Files.getAttribute(workRoot, "unix:uid");
+        Object gid = Files.getAttribute(workRoot, "unix:gid");
+        return new Docker(image, workRoot, uid + ":" + gid);
+      } catch (UnsupportedOperationException | IllegalArgumentException e) {
+        // Windows: Docker Desktop maps file ownership itself.
+        return new Docker(image, workRoot);
+      } catch (IOException e) {
+        throw new UncheckedIOException("Cannot prepare " + workRoot, e);
+      }
+    }
+
     @Override
     public ProcessRunner.Spec spec(Tool tool, List<String> args) {
       String name = "yt-ffmpeg-" + UUID.randomUUID();
       List<String> command = new ArrayList<>();
+      command.addAll(List.of("docker", "run", "--rm", "--name", name));
+      if (user != null) {
+        command.addAll(List.of("--user", user));
+      }
       command.addAll(
           List.of(
-              "docker",
-              "run",
-              "--rm",
-              "--name",
-              name,
               "-v",
               workRoot + ":" + MOUNT,
               "--entrypoint",

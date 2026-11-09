@@ -5,10 +5,29 @@ runnable pieces are added — check the **Status** column for what actually work
 
 ## Prerequisites
 
-- Docker Desktop (running)
+- Docker: Docker Desktop on Windows/macOS, Docker Engine (or Docker Desktop) on Linux
 - Node.js >= 22 and **pnpm** (`npm i -g pnpm`)
 - JDK 21 (for example Temurin) for the Spring Boot transcoder; no separate Gradle install, the wrapper downloads it
 - (Later phases) `kind` + `helm` for the k8s stage
+
+Every command in this guide works on Windows (PowerShell) and Linux/macOS (bash); where they differ both
+are shown.
+
+### Linux (Ubuntu) notes
+
+- Docker Engine: install `docker-ce` and the compose plugin from Docker's apt repository, then
+  `sudo usermod -aG docker $USER` and log in again, so `docker` (and the transcoder's ffmpeg containers)
+  run without sudo.
+- Node: use `nvm` (or NodeSource) for Node 22+; Ubuntu's own `nodejs` package is usually older.
+- JDK 21: `sudo apt install openjdk-21-jdk` (or Temurin). Gradle runs through `./gradlew`, which is
+  committed with its executable bit.
+- Elasticsearch runs as a single node, which skips the production bootstrap checks, so it starts with
+  Ubuntu's default `vm.max_map_count`. If it logs a `max virtual memory areas` warning, raise it with
+  `sudo sysctl -w vm.max_map_count=262144`.
+- Docker Desktop for Linux only shares your home directory with containers. If the transcoder logs
+  "No such file" for `/work/...`, set `TRANSCODE_WORK_DIR=$HOME/.cache/yt-transcoder` (the default is
+  under `/tmp`). Docker Engine has no such limit.
+- Scripts: `infra/retag-images.sh` replaces `infra/retag-images.ps1`; everything else is a `pnpm` script.
 
 ## Script convention
 
@@ -104,6 +123,11 @@ registry or mirror, tag the images to their plain names once after pulling:
 ```powershell
 $env:IMAGE_REGISTRY = "<registry-host>[:port]"
 pwsh -File infra/retag-images.ps1
+```
+
+```bash
+# Linux / macOS (same image list, same infra/retag-images.local.json)
+IMAGE_REGISTRY="<registry-host>[:port]" ./infra/retag-images.sh
 ```
 
 The script reports any image that has not been pulled yet; pull it and re-run. If your registry keeps an
@@ -283,6 +307,10 @@ Set the file used for the upload request once:
 Copy-Item http/.env.sample http/.env
 ```
 
+```bash
+cp http/.env.sample http/.env   # Linux / macOS
+```
+
 Edit `VIDEO_FILE` in `http/.env` (git-ignored) to point at any local video. A relative path
 resolves from the `http/` folder, so use `../tmp/sample.mp4` or an absolute path. A wrong path
 uploads 0 bytes yet still returns 200, so check the object size in the MinIO console.
@@ -294,6 +322,10 @@ Full recordings can be 0.7 to 2 GB. For quick checks, cut a small slice into the
 $buf = New-Object byte[] (5MB)
 $fs = [IO.File]::OpenRead("<path to a recording>"); [void]$fs.Read($buf, 0, $buf.Length); $fs.Dispose()
 [IO.File]::WriteAllBytes("tmp/sample.mp4", $buf)
+```
+
+```bash
+head -c 5M "<path to a recording>" > tmp/sample.mp4   # Linux / macOS
 ```
 
 The slice is not playable but is enough to test uploads. Run all requests from the terminal:
@@ -367,6 +399,16 @@ must be running. Get the image once, then tag it with its plain name:
 docker pull <registry>/mwader/static-ffmpeg:latest
 pwsh -File infra/retag-images.ps1 -Registry <registry>
 ```
+
+```bash
+# Linux / macOS
+docker pull <registry>/mwader/static-ffmpeg:latest
+./infra/retag-images.sh <registry>
+```
+
+On Linux the container runs as your user (`--user <uid>:<gid>`, read from the owner of the work directory),
+so the segments it writes are not left owned by root. Windows and macOS Docker Desktop map ownership
+themselves; there `--user` is only added where the OS has Unix ids.
 
 Leave `FFMPEG_DOCKER_IMAGE` empty to call installed binaries instead (`FFMPEG_PATH`, `FFPROBE_PATH`); the
 `aws` profile does that, and its image will copy `/ffmpeg` and `/ffprobe` from the same image. The
