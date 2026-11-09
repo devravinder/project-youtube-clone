@@ -227,7 +227,8 @@ const sentinel = useInView<HTMLDivElement>(
 
 ### Video player (hls.js)
 
-`components/hls-video.tsx` attaches hls.js to a plain `<video>`: `new Hls({ capLevelToPlayerSize: true })`,
+`components/hls-video.tsx` attaches hls.js to a plain `<video>`:
+`new Hls({ capLevelToPlayerSize: true, maxMaxBufferLength: 30 })` (the default prefetches ~160 s at 720p),
 `loadSource(master)`, `attachMedia(video)`. Build the quality list from `MANIFEST_PARSED`, show the playing
 level from `LEVEL_SWITCHED`, pin with `hls.nextLevel = index` (`-1` = Auto), retry fatal network errors with
 `startLoad()`, recover one media error, and `destroy()` on unmount. Fall back to native HLS

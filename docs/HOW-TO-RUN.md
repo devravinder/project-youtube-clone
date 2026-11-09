@@ -266,6 +266,19 @@ file, with progress), and **Watch** (plays the video). The dev server proxies `/
 upload service on port 3001, so the browser needs no CORS setup for the API. Uploads go
 straight from the browser to MinIO, which allows cross-origin requests by default.
 
+### Check adaptive playback by hand
+
+1. Upload a clip of a minute or more; ABR has nothing to adapt on a clip shorter than the 30 s buffer.
+2. On the Watch page, open DevTools > Network, filter on `seg_`, and add the `X-Cache-Status` column.
+3. Let it play on "No throttling": the picker shows `Auto (720p)` (the level is capped to the player size).
+4. Pick a custom throttle profile of about 1200 kbps. Within about 25 s the requests switch to `360p/`, and
+   the picture follows once the buffered 720p runs out.
+5. Seek far ahead. The first request is the segment holding that time (`seg_NNN` = seconds / 4), with
+   nothing in between.
+6. Pin 720p: only `720p/` requests from then on, slow but obeyed. Back to Auto, then "No throttling", and
+   it climbs again.
+7. Open the same video in a private window: every segment already fetched shows `HIT`.
+
 ## 7. Run the transcoder service
 
 Needs JDK 21 on `PATH`. The first run downloads Gradle 9.8.2 and the dependencies, which can take a few

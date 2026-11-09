@@ -605,3 +605,47 @@ origin down) and a Chrome run where a second, cache-less browser got every previ
 
 Not yet: the video list and API are not cached (Redis is Stage 5), and private/unlisted videos would need
 signed URLs or cookies checked at the edge.
+
+## ADR-034 - Cap the player's forward buffer at 30 s
+
+Date: 2026-11-09 - Status: Accepted
+
+`HlsVideo` sets `maxMaxBufferLength: 30`. hls.js otherwise sizes its forward buffer from `maxBufferSize`
+(60 MB) divided by the level bitrate, so a 720p viewer (~3 Mbps) prefetches about 160 s.
+
+Found while verifying playback under a 1.2 Mbps throttle (Chrome DevTools Protocol). With the default:
+
+- The player had 116 s buffered 4 s into playback, and later the whole 150 s clip. After the throttle it kept
+  showing 720p for over a minute, so the drop to a lower level never showed on screen.
+- Every viewer who stops early has already downloaded up to 2.5 min they never watch. That is egress paid
+  at the edge and at the origin.
+
+With the 30 s cap the same run shows:
+
+```mermaid
+sequenceDiagram
+  participant V as Viewer (hls.js)
+  participant E as Edge
+  Note over V: full bandwidth, Auto
+  V->>E: 360p seg 0, then 720p segs 1-9 (36 s buffered)
+  Note over V: throttled to 1.2 Mbps
+  V->>E: 720p seg 10 (~10 s to download)
+  V->>E: 360p segs 11-16 (ABR steps down 23 s after the throttle)
+  Note over V: picture is 360p 40 s later, playback never paused
+  V->>E: seek to 100 s - 360p seg 25, nothing in between
+  Note over V: pin 720p
+  V->>E: 720p segs 27-28 (picture switches in 12 s)
+```
+
+- Seeking to an unbuffered spot fetches the target segment first (`seg_025` for 100 s at 4 s segments) and
+  resumes in about 5 s at 1.2 Mbps.
+- A pinned level overrides ABR even when the link cannot sustain it. Switching back to Auto drops again in
+  under 2 s, and lifting the throttle climbs back to 720p.
+- A second, throttled viewer seeking to the same spot got every segment viewer 1 had pulled as an edge HIT.
+  Its first attempt at `720p/seg_025` was abandoned by hls.js and refetched at 360p, which shows the
+  emergency down-switch working.
+- No byte ranges are involved: hls.js fetches whole segments, and seeking picks a segment from the
+  playlist. Ranges matter only for the plain-MP4 fallback, and ADR-033 already verified them at the edge.
+
+Rejected: a larger cap such as 60 s (it delays the visible drop and wastes more egress, and segments are
+only 4 s) and lowering `maxBufferSize` (the effect then depends on the level's bitrate).

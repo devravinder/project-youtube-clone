@@ -52,7 +52,8 @@ export function HlsVideo({ src, title }: HlsVideoProps) {
     }
 
     // capLevelToPlayerSize: no 1080p into a 400 px wide player.
-    const hls = new Hls({ capLevelToPlayerSize: true });
+    // maxMaxBufferLength: default lets 720p prefetch ~160 s; 30 s saves egress, adapts sooner.
+    const hls = new Hls({ capLevelToPlayerSize: true, maxMaxBufferLength: 30 });
     hlsRef.current = hls;
     let networkRetries = 0;
     let recoveredMedia = false;

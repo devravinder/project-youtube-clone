@@ -60,7 +60,7 @@ describe("HlsVideo", () => {
     render(<HlsVideo src={MASTER} title="Clip" />);
 
     expect(instance().calls).toEqual([`load ${MASTER}`, "attach"]);
-    expect(instance().config).toEqual({ capLevelToPlayerSize: true });
+    expect(instance().config).toEqual({ capLevelToPlayerSize: true, maxMaxBufferLength: 30 });
     expect(screen.getByLabelText("Clip").tagName).toBe("VIDEO");
   });
 

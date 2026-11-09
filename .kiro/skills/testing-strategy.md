@@ -29,6 +29,9 @@ advanced-starter. Fast tests run on build; slow/integration tests run on demand.
   provider (Node). No live Keycloak needed for controller tests.
 - **Do not use REST Assured on JDK 21+** (Groovy NPE). Use Java built-in `HttpClient`.
 - **Playwright, not Selenium**, for E2E (auto-wait, faster, SPA-friendly).
+- **Streaming under bad networks**: throttle with CDP `Network.emulateNetworkConditions` after the page
+  loads, use a clip longer than the player buffer, and assert on the segment requests (what ABR loads), not
+  only the picture (which lags by the buffer).
 - **Idempotency/retry tests** for queue consumers — simulate duplicate delivery and failure.
 
 ## Coverage
