@@ -1232,3 +1232,30 @@ Rejected:
 
 - Hand-built dashboards kept only in Grafana's database: lost when the container is recreated.
 - A per-service dashboard set: one pipeline view answers "where is my upload stuck?" faster.
+
+## ADR-047 - Telemetry is opt-in per environment
+
+Date: 2026-11-09 - Status: Accepted
+
+| Run                                                      | Node services                                           | Transcoder                            |
+| -------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------- |
+| `pnpm start:l:*` (`local`)                               | preload loaded, SDK **not** started                     | export disabled in `application.yaml` |
+| `pnpm start:lo:*`                                        | `.env.observability` sets `APP_ENV=local-observability` | `local-observability` profile         |
+| any + `OTEL_ENABLED=true`                                | on                                                      | (set the profile)                     |
+| any + `OTEL_ENABLED=false` (or `OTEL_SDK_DISABLED=true`) | off, even in local-observability                        | -                                     |
+
+- **One switch per stack:** the Node preload is always passed (`--import @yt/telemetry/register`) and
+  decides at startup. The scripts differ only in which env files they load, so no shell-specific
+  `VAR=x` syntax is needed; that's the same reasoning as ADR-041 for Windows and Linux.
+- **What "off" means:** no SDK, no loader hook, no exporters. The OTel API calls in the code (spans,
+  counters, `injectContext`) are the API's no-ops, and outbox rows store no trace context.
+- **Why opt-in:** a plain local run stays quiet and fast, needs no `yt-lgtm`, and doesn't log export
+  errors when it's missing.
+
+Verified live (8 checks), each run under its own service name:
+
+- `local` sent no traces or metrics.
+- `local-observability` sent both.
+- `OTEL_ENABLED=false` beat `local-observability`.
+- `OTEL_ENABLED=true` turned telemetry on in `local`.
+- The transcoder on its default profile sent nothing.

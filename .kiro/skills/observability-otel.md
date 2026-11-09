@@ -36,17 +36,29 @@ flowchart LR
 
 ## Node (NestJS)
 
-- Use the `@opentelemetry/sdk-node` + auto-instrumentations.
-- Set `OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-lgtm:4318`,
-  `OTEL_SERVICE_NAME=<service>`.
-- Propagate trace context across HTTP and across RabbitMQ/Kafka messages (inject/extract
-  headers) so a trace spans the whole pipeline.
+- Shared preload `@yt/telemetry/register` passed with `--import` in every script; it starts `NodeSDK`
+  (0.300) only when `telemetryEnabled()` (`APP_ENV=local-observability` or `OTEL_ENABLED=true`). ESM needs
+  `import-in-the-middle/register-hooks.mjs` (sync `module.registerHooks`; fall back to `module.register`).
+- `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318`, `OTEL_SERVICE_NAME=<service>` in `.env.sample`.
+- Logs API lives in `@opentelemetry/api` now (`logs`, `SeverityNumber`); `@opentelemetry/api-logs`
+  silently yields a no-op logger. `OtelConsoleLogger` mirrors Nest logs to OTel with the active context.
+- sdk-* 3.0 processors take options objects: `new BatchLogRecordProcessor({ exporter })`,
+  `new SimpleSpanProcessor({ exporter })`; the provider class is `TracerProvider`.
+- Brokers: amqplib is auto-instrumented; `@platformatic/kafka` is not, so use `withProducerSpan` /
+  `withConsumerSpan` (W3C `traceparent` in record headers). Through an outbox, store `injectContext()` on
+  the row and publish inside `withStoredContext(row.traceContext, ...)`.
+- Wrap pollers and metric-gauge callbacks that hit the DB in `untraced(...)`, or every tick is a root trace.
 
 ## Java (Spring Boot)
 
-- Micrometer Tracing + OTLP exporter (`management.otlp.tracing.endpoint`).
-- Expose Prometheus via Actuator if scraping; otherwise push via OTLP.
-- Same `OTEL_SERVICE_NAME` convention.
+- `spring-boot-starter-opentelemetry` (Boot 4.1): `management.tracing.export.enabled`,
+  `management.opentelemetry.tracing.export.otlp.endpoint`, `management.otlp.metrics.export.*`,
+  `management.logging.export.otlp.enabled` — off in `application.yaml`, on in the `local-observability`
+  profile. RabbitMQ propagation: `spring.rabbitmq.{listener.simple,template}.observation-enabled: true`.
+- Logs: `opentelemetry-logback-appender-1.0` installed on Boot's `OpenTelemetry` bean. Pin its version to the
+  release built on Boot's managed SDK (check the instrumentation BOM), not the newest — a mismatch fails at
+  runtime with `NoClassDefFoundError` from `api-incubator`.
+- Service name = `spring.application.name`.
 
 ## Rules
 
