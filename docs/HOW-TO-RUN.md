@@ -256,6 +256,22 @@ change the stack. `pnpm stop:lo:pods` stops everything.
 | Data sources | Tempo, Prometheus, Loki (provisioned; trace ids link logs and traces) |
 | Retention    | In the container only; recreating it starts empty                     |
 
+Run the services with telemetry by using the `lo` scripts instead of `l`:
+
+```bash
+pnpm start:lo:upload
+pnpm start:lo:transcoder
+pnpm start:lo:search
+pnpm start:lo:notify
+pnpm start:l:web   # the browser is not instrumented
+```
+
+The Node services load `@yt/telemetry/register` before the app (`--import`), and it does nothing unless
+`APP_ENV=local-observability`. The `dev:lo` scripts get that from `.env.observability`, loaded after
+`.env.sample`, where the later file wins. The transcoder gets the `local-observability` Spring profile.
+Each service then sends traces, metrics (every 10 s) and logs, with trace ids, to `http://localhost:4318`.
+Set `OTEL_ENABLED=true` to force it on in any environment, or `OTEL_ENABLED=false` to force it off.
+
 ## 4. Set up the database
 
 Needs Postgres running (step 3). Run these from the repo root:

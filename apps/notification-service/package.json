@@ -4,8 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch --env-file=.env.sample src/main.ts",
-    "start": "tsx --env-file=.env.sample src/main.ts",
+    "dev": "tsx watch --env-file=.env.sample --import @yt/telemetry/register src/main.ts",
+    "dev:lo": "tsx watch --env-file=.env.sample --env-file=.env.observability --import @yt/telemetry/register src/main.ts",
+    "start": "tsx --env-file=.env.sample --import @yt/telemetry/register src/main.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage"
@@ -19,6 +20,7 @@
     "@platformatic/kafka": "2.14.0",
     "@yt/config": "workspace:*",
     "@yt/contracts": "workspace:*",
+    "@yt/telemetry": "workspace:*",
     "jose": "6.2.13",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2",

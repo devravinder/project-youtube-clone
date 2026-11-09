@@ -1091,3 +1091,48 @@ Rejected:
 - Separate Tempo, Loki, Prometheus and Grafana containers: four configs to keep in step, and no image list
   entries for them.
 - Jaeger: traces only.
+
+## ADR-044 - OpenTelemetry SDKs: a shared Node preload and the Spring Boot starter
+
+Date: 2026-11-09 - Status: Accepted
+
+**Node** (upload, search, notification): `libs/ts/telemetry` (`@yt/telemetry`).
+
+- `--import @yt/telemetry/register` runs before the app, which instrumentation needs: it patches modules
+  as they are first loaded. For ESM it registers `import-in-the-middle`'s synchronous
+  `module.registerHooks` loader. The older `module.register` is deprecated in Node 26 and is used only
+  as a fallback on Node versions that can't run sync hooks.
+- `NodeSDK` 0.300 exports traces, metrics (every 10 s) and logs over OTLP/HTTP, using
+  `OTEL_SERVICE_NAME` and `OTEL_EXPORTER_OTLP_ENDPOINT` from `.env.sample`. Instrumentation: the
+  auto-instrumentations (HTTP, Express, Nest, pg, Redis, amqplib, Elasticsearch) plus Prisma; fs, dns
+  and net are off as noise.
+- Nest's `ConsoleLogger` has no OTel bridge, so `OtelConsoleLogger` also emits every line as an OTel log
+  record carrying the active context. That trace id is how Grafana jumps from a log line to its trace.
+
+**Transcoder:** `spring-boot-starter-opentelemetry` (Micrometer Tracing over the OTel bridge, Micrometer
+OTLP metrics) and the OTel Logback appender, installed on Boot's `OpenTelemetry` bean in the
+`local-observability` profile.
+
+Found while verifying:
+
+- **Logs API moved:** OTel JS moved the logs API into `@opentelemetry/api` (1.10). Importing `logs` from
+  the old `@opentelemetry/api-logs` package compiles and runs, but returns a no-op logger, because the
+  SDK registers its provider with the new API. Nest logs reached Loki only after the import changed.
+- **SDK version pin:** the newest Logback appender (2.33.1) is built on OTel SDK 1.67 and pulled in
+  `api-incubator` 1.67, while Boot 4.1.2 manages SDK 1.62. The log export thread then died with
+  `NoClassDefFoundError: ExtendedAttributes`. The appender is pinned to 2.28.1, the release whose BOM
+  says SDK 1.62, with a comment in the catalog. Here "latest" would have been the wrong rule: it must
+  follow Boot's SDK.
+- **Build-script approval:** pnpm 12 blocked `protobufjs`'s postinstall, which comes in through the OTLP
+  proto exporters and is only a version notice. It is marked `false` in `allowBuilds`.
+
+Verified with all four services in `local-observability` on isolated e2e resources (13 checks): Tempo,
+Prometheus (by `job` = service name) and Loki each hold data from upload, transcoder, search and
+notification.
+
+Rejected:
+
+- Per-service SDK setup: four copies drifting apart.
+- The OTel Java agent: Boot's starter covers the same signals and is configured like any other Boot
+  property.
+- Prometheus scraping: see ADR-043.

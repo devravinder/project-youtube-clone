@@ -28,6 +28,18 @@ management:
     health:
       probes:
         enabled: true
+  # Telemetry export is off unless the local-observability profile turns it on.
+  tracing:
+    export:
+      enabled: false
+  otlp:
+    metrics:
+      export:
+        enabled: false
+  logging:
+    export:
+      otlp:
+        enabled: false
 
 # Empty defaults fail validation; an unresolved ${X} would bind as literal text.
 app:

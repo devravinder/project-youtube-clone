@@ -115,7 +115,7 @@ Goal: one trace across the whole pipeline.
 Concepts: metrics, traces, logs; context propagation across brokers.
 
 - [x] Add `grafana/otel-lgtm` to `docker-compose-local-observability.yaml`: `yt-lgtm` (collector + Tempo + Prometheus + Loki + Grafana 11.2) on 3000/4317/4318, the file `include`s the local stack
-- [ ] NestJS OTel SDK + Spring Micrometer OTLP export
+- [x] NestJS OTel SDK + Spring Micrometer OTLP export: `@yt/telemetry` (`--import` register, NodeSDK 0.300, auto-instrumentations + Prisma, Nest logger → OTel logs) and `spring-boot-starter-opentelemetry` + Logback appender; traces, metrics and logs from all four services reach Tempo, Prometheus and Loki
 - [ ] Context propagation across HTTP + RabbitMQ + Kafka
 - [ ] Grafana dashboards; trace one upload end to end
 - [ ] `local` vs `local-observability` profile gating

@@ -1,6 +1,43 @@
-# Profile local-observability: local plus metrics; also activates local (see profile group).
+# Profile local-observability: local plus traces, metrics and logs over OTLP to yt-lgtm.
+# Also activates local (see the profile group in application.yaml).
 management:
   endpoints:
     web:
       exposure:
         include: health,info,metrics
+  tracing:
+    export:
+      enabled: true
+    # Every request: this is for learning, not for a busy production service.
+    sampling:
+      probability: 1.0
+  opentelemetry:
+    resource-attributes:
+      deployment.environment.name: local-observability
+    tracing:
+      export:
+        otlp:
+          endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}/v1/traces
+    logging:
+      export:
+        otlp:
+          endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}/v1/logs
+  otlp:
+    metrics:
+      export:
+        enabled: true
+        url: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}/v1/metrics
+        step: 10s
+  logging:
+    export:
+      otlp:
+        enabled: true
+
+spring:
+  rabbitmq:
+    # Spans for every publish and delivery, with the trace context carried in message headers.
+    listener:
+      simple:
+        observation-enabled: true
+    template:
+      observation-enabled: true

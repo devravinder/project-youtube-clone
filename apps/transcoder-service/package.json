@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "node ../../scripts/gradle.mjs bootRun",
+    "dev:lo": "node ../../scripts/gradle.mjs bootRun --args=--spring.profiles.active=local-observability",
     "start": "node ../../scripts/gradle.mjs bootRun",
     "build": "node ../../scripts/gradle.mjs build",
     "test": "node ../../scripts/gradle.mjs test",
