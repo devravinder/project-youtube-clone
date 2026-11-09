@@ -1,0 +1,30 @@
+# Search service (port 3003). Public, no token. Videos appear here once their video.ready event is indexed.
+@search = http://localhost:3003
+
+### Full-text search: title counts 3x, typos are forgiven, the last word may be partial
+GET {{search}}/search?q=cats&limit=12
+
+?? status == 200
+?? js response.parsedBody.total isNumber
+?? js Array.isArray(response.parsedBody.items)
+
+### Second page
+GET {{search}}/search?q=cats&limit=12&offset=12
+
+?? status == 200
+
+### Autocomplete while typing (prefix of any word in the title)
+GET {{search}}/search/suggest?q=ca
+
+?? status == 200
+?? js response.parsedBody.items.length <= 5
+
+### Blank query is rejected
+GET {{search}}/search?q=
+
+?? status == 400
+
+### Liveness
+GET {{search}}/health
+
+?? status == 200

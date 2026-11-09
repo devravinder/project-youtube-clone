@@ -17,3 +17,26 @@ GET {{es}}/
 GET {{es}}/_cat/indices?v&s=index
 
 ?? status == 200
+
+### The search index behind the alias (created by search-service on start)
+GET {{es}}/_alias/videos
+
+?? status == 200
+
+### Mapping: strict, title.suggest is search_as_you_type
+GET {{es}}/videos/_mapping
+
+?? status == 200
+
+### Documents (id = videoId, _version = occurredAt in ms)
+GET {{es}}/videos/_search?size=5
+
+?? status == 200
+
+### What the analyzer makes of a title (the tokens search matches on)
+POST {{es}}/videos/_analyze
+Content-Type: application/json
+
+{ "field": "title", "text": "Cats Playing Piano" }
+
+?? status == 200

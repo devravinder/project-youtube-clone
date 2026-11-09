@@ -19,15 +19,16 @@ Scripts follow `start|stop:env:service`:
 
 ## What runs today
 
-| Capability                                        | How                       | Status                                             |
-| ------------------------------------------------- | ------------------------- | -------------------------------------------------- |
-| Local infra (Postgres, MinIO, Keycloak, RabbitMQ) | `pnpm start:l:pods`       | ✅ available                                       |
-| Kafka (KRaft) + Elasticsearch                     | `pnpm start:l:pods`       | ✅ available                                       |
-| HLS edge cache (nginx, port 8088)                 | `pnpm start:l:pods`       | ✅ available                                       |
-| Upload service (NestJS)                           | `pnpm start:l:upload`     | ✅ available                                       |
-| Web UI (React)                                    | `pnpm start:l:web`        | ✅ available                                       |
-| Transcoder (Spring Boot)                          | `pnpm start:l:transcoder` | ✅ transcodes to MP4 renditions (ffmpeg in Docker) |
-| Observability (otel-lgtm)                         | `pnpm start:lo:pods`      | ⏳ compose file not added yet                      |
+| Capability                                        | How                       | Status                                              |
+| ------------------------------------------------- | ------------------------- | --------------------------------------------------- |
+| Local infra (Postgres, MinIO, Keycloak, RabbitMQ) | `pnpm start:l:pods`       | ✅ available                                        |
+| Kafka (KRaft) + Elasticsearch                     | `pnpm start:l:pods`       | ✅ available                                        |
+| HLS edge cache (nginx, port 8088)                 | `pnpm start:l:pods`       | ✅ available                                        |
+| Upload service (NestJS)                           | `pnpm start:l:upload`     | ✅ available                                        |
+| Web UI (React)                                    | `pnpm start:l:web`        | ✅ available                                        |
+| Transcoder (Spring Boot)                          | `pnpm start:l:transcoder` | ✅ transcodes to MP4 renditions (ffmpeg in Docker)  |
+| Search service (NestJS, Kafka → Elasticsearch)    | `pnpm start:l:search`     | ✅ indexes `video.ready`, search + autocomplete API |
+| Observability (otel-lgtm)                         | `pnpm start:lo:pods`      | ⏳ compose file not added yet                       |
 
 Web app settings live in `apps/web/.env.development` (public values only). Override any of them
 in a git-ignored `apps/web/.env.local`. Restart `pnpm start:l:web` after changing either file.
@@ -390,12 +391,59 @@ environment and refuses to start when one is missing.
 To edit them in the dialog: **Modify options > Environment variables** shows the field; the icon at its right
 opens a table. The field only appears by default once the config has a value.
 
+## 8. Run the search service
+
+Needs Kafka and Elasticsearch running (step 3). Swagger UI: <http://localhost:3003/docs>.
+
+```bash
+pnpm start:l:search
+```
+
+On start it creates the index `videos-v1` behind the alias `videos` (if it is missing), then reads
+`yt.video-events` as consumer group `search-service`. Every `video.ready` becomes a document keyed by the
+video id. A video is searchable about a second after it turns `READY`. Requests to try are in
+`http/search-service.http` (API) and `http/elasticsearch.http` (index).
+
+| Variable                   | Default                 | Purpose                                          |
+| -------------------------- | ----------------------- | ------------------------------------------------ |
+| `PORT`                     | `3003`                  | HTTP port                                        |
+| `KAFKA_BROKERS`            | `localhost:9094`        | Kafka bootstrap list                             |
+| `KAFKA_VIDEO_EVENTS_TOPIC` | `yt.video-events`       | Topic to index; dead letters go to `<topic>.dlt` |
+| `KAFKA_GROUP_ID`           | `search-service`        | Consumer group (where reading resumes)           |
+| `ELASTICSEARCH_URL`        | `http://localhost:9200` | Elasticsearch                                    |
+| `SEARCH_INDEX`             | `videos`                | Alias the API reads; the index is `<alias>-v1`   |
+
+What happens when things go wrong:
+
+- **Elasticsearch down:** the consumer retries the same event (1 s, doubling, up to 30 s) and does not move
+  on, so nothing is skipped. Search requests fail until it is back; new events are indexed afterwards.
+- **Kafka down:** search keeps answering from the index; the consumer reconnects with backoff.
+- **A malformed event:** it goes to `yt.video-events.dlt` with the headers `dlt-reason`, `dlt-source`
+  (`topic/partition@offset`) and `dlt-consumer`, and the consumer continues. Read it with
+  `kafka-console-consumer.sh --topic yt.video-events.dlt --from-beginning --property print.headers=true`.
+- **Duplicates and replays:** the document version is the event's `occurredAt`, so a repeated or older
+  event changes nothing.
+
+Rebuild the index from Kafka (e.g. after a mapping change). The topic is compacted, so it still holds the
+latest event of every video:
+
+```bash
+# stop the search service first, then:
+curl -X DELETE http://localhost:9200/videos-v1
+docker exec yt-kafka kafka-consumer-groups.sh --bootstrap-server localhost:9092 \
+  --group search-service --topic yt.video-events --reset-offsets --to-earliest --execute
+pnpm start:l:search   # recreates the index and re-reads every event
+```
+
+Using a new `KAFKA_GROUP_ID` instead of resetting has the same effect and leaves the old group untouched.
+
 ## Local service URLs & credentials
 
 | Service        | URL                                     | Credentials                                             |
 | -------------- | --------------------------------------- | ------------------------------------------------------- |
 | Upload service | <http://localhost:3001>                 | Keycloak bearer token (see `http/keycloak.http`)        |
 | Transcoder     | <http://localhost:3002/actuator/health> | none                                                    |
+| Search service | <http://localhost:3003/docs>            | none (public, read-only)                                |
 | Postgres       | `localhost:5432`                        | user `yt` / password `yt_password` / db `youtube_clone` |
 | MinIO S3 API   | <http://localhost:9000>                 | `minioadmin` / `minioadmin`                             |
 | MinIO Console  | <http://localhost:9001>                 | `minioadmin` / `minioadmin`                             |

@@ -758,3 +758,77 @@ Rejected:
 - Kafka transactions: they don't cover the Postgres write, so they buy nothing here.
 - kafkajs: no release since 2023.
 - `@confluentinc/kafka-javascript`: downloads a native binary from GitHub at install time.
+
+## ADR-037 - search-service: Kafka consumer group into Elasticsearch
+
+Date: 2026-11-09 - Status: Accepted
+
+`apps/search-service` (NestJS, port 3003) reads `yt.video-events` as consumer group `search-service`,
+indexes each `video.ready` into Elasticsearch, and serves `GET /search` and `GET /search/suggest`.
+
+```mermaid
+flowchart LR
+  K[[yt.video-events]] -->|group search-service| P[EventProcessor]
+  P -->|index id=videoId, version=occurredAt| ES[(videos -> videos-v1)]
+  P -->|bad event| DLT[[yt.video-events.dlt]]
+  W[web] -->|/search, /search/suggest| API[SearchController] --> ES
+```
+
+Consuming:
+
+- `mode: committed`, `fallbackMode: earliest`. A group resumes where it committed; a group Kafka has never
+  seen starts at the beginning, so a new consumer (or a rebuilt index) backfills from history with no help
+  from the producer. That is the main difference from a RabbitMQ queue, where a consumed message is gone.
+- Manual commit after each event is handled (indexed, stale, skipped or dead-lettered): at-least-once.
+  Events are processed one at a time, which keeps each partition in order and gives back-pressure.
+- Elasticsearch errors are retried in place with backoff (1 s doubling, max 30 s) and the partition
+  waits. Skipping ahead would lose the event, because the committed offset would move past it.
+- Malformed events (not JSON, or failing `@yt/contracts`) go to `<topic>.dlt` with `dlt-reason`,
+  `dlt-source` and `dlt-consumer` headers, then get committed, so one poison message cannot block the
+  partition forever.
+- Unknown `event-type` headers are skipped and committed: other consumers may handle types this one doesn't.
+
+Indexing:
+
+- Document id = videoId, so writes are upserts. `version = Date.parse(occurredAt)` with
+  `version_type: external`: Elasticsearch rejects an equal or older version with 409, which is mapped to
+  "stale". Duplicates from the outbox (ADR-036) and replays are therefore harmless, and an older event can
+  never overwrite a newer document.
+- The API reads the alias `videos`, which points at `videos-v1`. A new mapping can be built as `videos-v2`
+  and the alias switched in one step. Mapping is `dynamic: strict`: an unknown field is an error, not a
+  silently guessed type.
+- `title` is `text` with a `search_as_you_type` subfield, which indexes edge n-grams and 2- and 3-word
+  shingles for prefix matching. `ownerId` and `renditions` are `keyword`.
+- One shard, 0 replicas locally: with one node a replica could never be assigned, and the index would stay
+  yellow.
+
+Querying:
+
+- `/search`: `bool.should` of a `multi_match` on `title^3` and `description` with `fuzziness: AUTO`
+  (forgives one or two typos depending on word length), plus a `bool_prefix` match on the suggest fields
+  so a half-typed last word still matches. Sorted by score, then newest. `offset` is capped at 1000,
+  because from/size paging gets expensive deep; search_after is the fix if anyone needs more.
+- `/search/suggest`: `bool_prefix` on `title.suggest`, `._2gram` and `._3gram`, titles only, 5 by default.
+- No highlighting: it returns HTML-ish fragments of user-written titles. The UI marks matches itself
+  rather than rendering markup from the index.
+- The search API is public and read-only; it only ever returns READY videos, because nothing else is
+  indexed.
+
+Verified (20 checks, real Kafka and Elasticsearch, isolated topic, index and group):
+
+- The index is created behind the alias with the strict mapping.
+- Search, typo (`pianno`), ranking (`dogs park`) and both kinds of autocomplete work.
+- Duplicate and older events don't overwrite (the version stays the same).
+- A poison message lands on the DLT with source and reason, and the consumer moves past it. An unknown
+  type is skipped.
+- An event produced while Elasticsearch was paused is indexed after it resumes.
+- A restart with the same group re-indexes nothing.
+- Deleting the index and starting a new group rebuilds all 5 documents from the topic.
+
+Rejected:
+
+- Indexing from the upload service (couples it to Elasticsearch, and there is no replay).
+- Auto-commit (it commits before the index write).
+- A shared processed-ids table (the external version already makes writes idempotent).
+- The ES `completion` suggester (prefix of the whole title only, and an extra field to keep in sync).
+- `@elastic/elasticsearch` 9.x (it sends version-9 compatibility headers, which an 8.19 server rejects).
