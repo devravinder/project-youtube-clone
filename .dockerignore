@@ -1,0 +1,19 @@
+# The build context is the repo root; keep it to sources and lockfiles.
+**/node_modules
+**/dist
+**/build
+**/coverage
+**/.gradle
+**/src/generated
+.git
+.idea
+.vscode
+.kiro
+tmp
+docs
+http
+**/*.log
+**/.env
+**/.env.local
+**/*.local
+infra/retag-images.local.json

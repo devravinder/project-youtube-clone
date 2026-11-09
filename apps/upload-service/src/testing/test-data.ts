@@ -27,6 +27,7 @@ export const testConfig = {
   VIDEO_CACHE_TTL_SECONDS: 60,
   VIEW_FLUSH_INTERVAL_MS: 10_000,
   VIEW_DEDUPE_MINUTES: 30,
+  TRUST_PROXY_HOPS: 0,
 } as unknown as AppConfig;
 
 export const alice = { id: "user-alice", username: "alice" };

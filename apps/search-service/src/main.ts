@@ -16,8 +16,8 @@ app.enableShutdownHooks();
 const config = app.get<AppConfig>(APP_CONFIG);
 const document = buildOpenApiDocument(app);
 SwaggerModule.setup("docs", app, document);
-// Keep contracts/ current in development.
-if (config.APP_ENV !== "aws") {
+// Keep contracts/ current while developing; images are read-only and run with NODE_ENV=production.
+if (config.APP_ENV !== "aws" && config.NODE_ENV !== "production") {
   await writeOpenApiFile(document);
 }
 

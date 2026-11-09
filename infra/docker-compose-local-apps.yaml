@@ -1,0 +1,141 @@
+name: youtube-clone-local
+
+# The local stack plus every service as a container, from the images scripts/build-images.mjs builds.
+# An alternative to the dev servers: run one or the other, since both use the same queues and database.
+include:
+  - docker-compose-local.yaml
+
+x-node-env: &node-env
+  NODE_ENV: production
+  APP_ENV: local
+  LOG_LEVEL: info
+  KAFKA_BROKERS: kafka:9092
+  OTEL_SDK_DISABLED: "true"
+
+services:
+  # One-shot, before the upload service: applies Prisma migrations, never resets anything.
+  db-migrate:
+    image: yt/upload-service:${IMAGE_TAG:-local}
+    container_name: yt-db-migrate
+    command: ["node_modules/.bin/prisma", "migrate", "deploy"]
+    environment:
+      DATABASE_URL: postgresql://yt:yt_password@postgres:5432/youtube_clone
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  upload-service:
+    image: yt/upload-service:${IMAGE_TAG:-local}
+    container_name: yt-upload-service
+    restart: unless-stopped
+    environment:
+      <<: *node-env
+      PORT: 3001
+      DATABASE_URL: postgresql://yt:yt_password@postgres:5432/youtube_clone
+      STORAGE_ENDPOINT: http://minio:9000
+      # Presigned URLs are opened by the browser, so they are signed for the host's address.
+      STORAGE_PUBLIC_ENDPOINT: http://localhost:9000
+      STORAGE_ACCESS_KEY: minioadmin
+      STORAGE_SECRET_KEY: minioadmin
+      # Tokens say localhost:8180 (KC_HOSTNAME); the keys are fetched over the compose network.
+      OIDC_ISSUER_URL: http://localhost:8180/realms/youtube-clone
+      OIDC_JWKS_URL: http://keycloak:8180/realms/youtube-clone/protocol/openid-connect/certs
+      OIDC_AUDIENCE: yt-api
+      RABBITMQ_URL: amqp://yt:yt_password@rabbitmq:5672
+      REDIS_URL: redis://redis:6379
+      HLS_PUBLIC_BASE_URL: http://localhost:8088/hls-videos
+      # The web nginx in front: client IPs come from X-Forwarded-For (view dedupe).
+      TRUST_PROXY_HOPS: 1
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3001/videos?limit=1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  transcoder-service:
+    image: yt/transcoder-service:${IMAGE_TAG:-local}
+    container_name: yt-transcoder-service
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      SERVER_PORT: 3002
+      STORAGE_ENDPOINT: http://minio:9000
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3002/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+
+  search-service:
+    image: yt/search-service:${IMAGE_TAG:-local}
+    container_name: yt-search-service
+    restart: unless-stopped
+    environment:
+      <<: *node-env
+      PORT: 3003
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+    depends_on:
+      kafka-setup:
+        condition: service_completed_successfully
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3003/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  notification-service:
+    image: yt/notification-service:${IMAGE_TAG:-local}
+    container_name: yt-notification-service
+    restart: unless-stopped
+    environment:
+      <<: *node-env
+      PORT: 3004
+      OIDC_ISSUER_URL: http://localhost:8180/realms/youtube-clone
+      OIDC_JWKS_URL: http://keycloak:8180/realms/youtube-clone/protocol/openid-connect/certs
+      OIDC_AUDIENCE: yt-api
+    depends_on:
+      kafka-setup:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3004/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  # The app on http://localhost:8090; nginx proxies /api, /search-api and /ws like the Vite dev server.
+  web:
+    image: yt/web:${IMAGE_TAG:-local}
+    container_name: yt-web
+    restart: unless-stopped
+    ports:
+      - "8090:8080"
+    depends_on:
+      upload-service:
+        condition: service_healthy
+      search-service:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 6

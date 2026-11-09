@@ -14,10 +14,14 @@ const app = await NestFactory.create(
 );
 app.enableShutdownHooks();
 const config = app.get<AppConfig>(APP_CONFIG);
+// Behind the web nginx or an ingress, so req.ip (view dedupe) is the client, not the proxy.
+if (config.TRUST_PROXY_HOPS > 0) {
+  app.getHttpAdapter().getInstance().set("trust proxy", config.TRUST_PROXY_HOPS);
+}
 const document = buildOpenApiDocument(app);
 SwaggerModule.setup("docs", app, document);
-// Keep contracts/ current in development.
-if (config.APP_ENV !== "aws") {
+// Keep contracts/ current while developing; images are read-only and run with NODE_ENV=production.
+if (config.APP_ENV !== "aws" && config.NODE_ENV !== "production") {
   await writeOpenApiFile(document);
   await writeMessageContractFiles();
 }

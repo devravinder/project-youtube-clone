@@ -24,11 +24,15 @@ export const minioEnv = z.object({
     .transform((v) => v === "true"),
   STORAGE_RAW_BUCKET: z.string().default("raw-videos"),
   STORAGE_HLS_BUCKET: z.string().default("hls-videos"),
+  // Where browsers reach storage, when that differs from STORAGE_ENDPOINT (containers, Kubernetes).
+  STORAGE_PUBLIC_ENDPOINT: z.string().url().optional(),
 });
 
 export const keycloakEnv = z.object({
   OIDC_ISSUER_URL: z.string().url(),
   OIDC_AUDIENCE: z.string().min(1),
+  // Tokens keep the public issuer; a container may have to fetch the keys from another address.
+  OIDC_JWKS_URL: z.string().url().optional(),
 });
 
 export const rabbitmqEnv = z.object({

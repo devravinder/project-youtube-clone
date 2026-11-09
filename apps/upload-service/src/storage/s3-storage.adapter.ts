@@ -25,19 +25,26 @@ const DEFAULT_EXPIRY_SECONDS = 900;
 // Serves MinIO and S3; only config differs.
 export class S3StorageAdapter implements StoragePort {
   private readonly client: S3Client;
+  // Signs URLs for the address browsers use; signing is local, so this client never connects.
+  private readonly signer: S3Client;
 
   constructor(config: AppConfig) {
-    this.client = new S3Client({
-      endpoint: config.STORAGE_ENDPOINT,
-      region: config.STORAGE_REGION,
-      forcePathStyle: config.STORAGE_FORCE_PATH_STYLE,
-      // Default checksums break presigned PUTs on real S3.
-      requestChecksumCalculation: "WHEN_REQUIRED",
-      credentials: {
-        accessKeyId: config.STORAGE_ACCESS_KEY,
-        secretAccessKey: config.STORAGE_SECRET_KEY,
-      },
-    });
+    const client = (endpoint: string) =>
+      new S3Client({
+        endpoint,
+        region: config.STORAGE_REGION,
+        forcePathStyle: config.STORAGE_FORCE_PATH_STYLE,
+        // Default checksums break presigned PUTs on real S3.
+        requestChecksumCalculation: "WHEN_REQUIRED",
+        credentials: {
+          accessKeyId: config.STORAGE_ACCESS_KEY,
+          secretAccessKey: config.STORAGE_SECRET_KEY,
+        },
+      });
+    this.client = client(config.STORAGE_ENDPOINT);
+    this.signer = config.STORAGE_PUBLIC_ENDPOINT
+      ? client(config.STORAGE_PUBLIC_ENDPOINT)
+      : this.client;
   }
 
   createPresignedUploadUrl(
@@ -50,7 +57,7 @@ export class S3StorageAdapter implements StoragePort {
       Key: key,
       ContentType: options?.contentType,
     });
-    return getSignedUrl(this.client, command, {
+    return getSignedUrl(this.signer, command, {
       expiresIn: options?.expiresInSeconds ?? DEFAULT_EXPIRY_SECONDS,
     });
   }
@@ -61,7 +68,7 @@ export class S3StorageAdapter implements StoragePort {
     options?: PresignedUrlOptions,
   ): Promise<string> {
     const command = new GetObjectCommand({ Bucket: bucket, Key: key });
-    return getSignedUrl(this.client, command, {
+    return getSignedUrl(this.signer, command, {
       expiresIn: options?.expiresInSeconds ?? DEFAULT_EXPIRY_SECONDS,
     });
   }
@@ -141,7 +148,7 @@ export class S3StorageAdapter implements StoragePort {
       UploadId: uploadId,
       PartNumber: partNumber,
     });
-    return getSignedUrl(this.client, command, {
+    return getSignedUrl(this.signer, command, {
       expiresIn: options?.expiresInSeconds ?? DEFAULT_EXPIRY_SECONDS,
     });
   }

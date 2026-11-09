@@ -19,7 +19,11 @@ import { KeycloakTokenVerifier, TOKEN_VERIFIER } from "./token-verifier.js";
       provide: TOKEN_VERIFIER,
       inject: [APP_CONFIG],
       useFactory: (config: AppConfig) =>
-        new KeycloakTokenVerifier(config.OIDC_ISSUER_URL, config.OIDC_AUDIENCE),
+        new KeycloakTokenVerifier(
+          config.OIDC_ISSUER_URL,
+          config.OIDC_AUDIENCE,
+          config.OIDC_JWKS_URL,
+        ),
     },
     NotificationsGateway,
     KafkaListener,

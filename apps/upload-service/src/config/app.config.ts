@@ -29,6 +29,8 @@ const schema = z.object({
   // Views reach Postgres in batches this often; until then they sit in Redis.
   VIEW_FLUSH_INTERVAL_MS: z.coerce.number().int().min(100).default(10_000),
   VIEW_DEDUPE_MINUTES: z.coerce.number().int().positive().default(30),
+  // Proxies in front that may set X-Forwarded-For; 0 = trust none (direct access).
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(0),
 });
 
 export type AppConfig = z.infer<typeof schema>;

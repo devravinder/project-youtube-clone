@@ -13,9 +13,10 @@ export class KeycloakTokenVerifier implements TokenVerifier {
   constructor(
     private readonly issuer: string,
     private readonly audience: string,
+    jwksUrl = `${issuer}/protocol/openid-connect/certs`,
   ) {
     // Cached; refetched on an unknown key id.
-    this.keys = createRemoteJWKSet(new URL(`${issuer}/protocol/openid-connect/certs`));
+    this.keys = createRemoteJWKSet(new URL(jwksUrl));
   }
 
   async verify(token: string): Promise<string | null> {

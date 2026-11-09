@@ -21,7 +21,7 @@ export class AuthGuard implements CanActivate {
   constructor(@Inject(APP_CONFIG) private readonly config: AppConfig) {
     // Cached; refetched on an unknown key id.
     this.keys = createRemoteJWKSet(
-      new URL(`${config.OIDC_ISSUER_URL}/protocol/openid-connect/certs`),
+      new URL(config.OIDC_JWKS_URL ?? `${config.OIDC_ISSUER_URL}/protocol/openid-connect/certs`),
     );
   }
 
