@@ -649,3 +649,46 @@ sequenceDiagram
 
 Rejected: a larger cap such as 60 s (it delays the visible drop and wastes more egress, and segments are
 only 4 s) and lowering `maxBufferSize` (the effect then depends on the level's bitrate).
+
+## ADR-035 - Kafka (KRaft) and Elasticsearch in local compose
+
+Date: 2026-11-09 - Status: Accepted
+
+Stage 4 adds `yt-kafka` (`bitnami/kafka:3.5.1`) and `yt-elasticsearch` (`elasticsearch:8.19.16`) to
+`infra/docker-compose-local.yaml`.
+
+Kafka:
+
+- KRaft, one node as broker and controller, so there is no ZooKeeper. The cluster id is fixed, so the
+  `kafka-data` volume stays valid when the container is re-created.
+- Two listeners: `INTERNAL` (`kafka:9092`) for containers and `EXTERNAL` (`localhost:9094`) for services
+  on the host. A client connects to the bootstrap address, then uses the address the broker advertises, so
+  one advertised name cannot serve both sides.
+- Topics come from a one-shot `kafka-setup` container, and `auto.create.topics.enable=false`, so a typo
+  in a topic name fails instead of quietly creating a new topic.
+- `yt.video-events`: 3 partitions keyed by videoId. Kafka orders messages only within a partition, and
+  the same key always goes to the same partition, so all events for one video stay in order. 3 partitions
+  allow up to 3 consumers in one group to share the work.
+- `cleanup.policy=compact` keeps at least the latest event per video forever. The search index can then
+  be rebuilt by replaying the topic from the start. `min.compaction.lag.ms=1d` keeps every recent event
+  visible to a consumer that is behind.
+- `yt.video-events.dlt` (dead-letter topic) holds events a consumer gave up on, for 14 days.
+
+Elasticsearch:
+
+- `discovery.type=single-node`, which also skips the production bootstrap checks (`vm.max_map_count`).
+- Security off and port 9200 open on the host: acceptable for a local, throwaway index that only the
+  search-service writes to. Any shared environment needs TLS and API keys.
+- 512 MB heap. The disk-threshold check is off, because a nearly full laptop disk would otherwise make
+  every index read-only.
+
+Verified: both containers become healthy. A Node client on the host produced to `localhost:9094`
+(idempotent, `acks=all`), consumed the record with its key and header, and committed the offset by hand.
+Elasticsearch reports 8.19.16, status green.
+
+Rejected:
+
+- ZooKeeper mode: deprecated, and removed in Kafka 4.
+- `apache/kafka` and Redpanda: not in the image list (IMAGES.md).
+- A Kafka web UI: not in the image list; the CLIs inside the container are documented instead.
+- OpenSearch: Elasticsearch is the image we have, and the APIs used here are the same.

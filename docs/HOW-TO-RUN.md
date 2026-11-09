@@ -22,6 +22,7 @@ Scripts follow `start|stop:env:service`:
 | Capability                                        | How                       | Status                                             |
 | ------------------------------------------------- | ------------------------- | -------------------------------------------------- |
 | Local infra (Postgres, MinIO, Keycloak, RabbitMQ) | `pnpm start:l:pods`       | ✅ available                                       |
+| Kafka (KRaft) + Elasticsearch                     | `pnpm start:l:pods`       | ✅ available                                       |
 | HLS edge cache (nginx, port 8088)                 | `pnpm start:l:pods`       | ✅ available                                       |
 | Upload service (NestJS)                           | `pnpm start:l:upload`     | ✅ available                                       |
 | Web UI (React)                                    | `pnpm start:l:web`        | ✅ available                                       |
@@ -95,7 +96,8 @@ image under a different path, map it in the git-ignored `infra/retag-images.loca
 
 ## 3. Start local infrastructure
 
-Brings up Postgres, MinIO, Keycloak and RabbitMQ, and auto-creates the `raw-videos` and `hls-videos` buckets.
+Brings up Postgres, MinIO, Keycloak, RabbitMQ, Kafka and Elasticsearch, and auto-creates the `raw-videos` and
+`hls-videos` buckets and the Kafka topics.
 `raw-videos` is private (uploads and the original go through presigned URLs). `hls-videos` allows anonymous
 `GetObject` but not listing (`infra/minio/hls-read-policy.json`), because a player fetches every segment a
 playlist names and those URLs cannot each be signed. After pulling changes to that policy, apply it with
@@ -153,6 +155,31 @@ Status flows back the other way: the transcoder publishes `PROCESSING`, `READY` 
 consumes them from `upload-service.video-status` (quorum; malformed events go to
 `upload-service.video-status.dlq`) and only moves a video forward, so late or duplicate events are ignored.
 The message schema is `contracts/video-status.schema.json`.
+
+Kafka carries **events** (facts other services react to), next to RabbitMQ's **commands** (ADR-002):
+
+| Item         | Value                                                                                    |
+| ------------ | ---------------------------------------------------------------------------------------- |
+| Container    | `yt-kafka` (Bitnami Kafka 3.5.1, KRaft: one node is both broker and controller)          |
+| Bootstrap    | `localhost:9094` from the host (`KAFKA_BROKERS`), `kafka:9092` from other containers     |
+| Events topic | `yt.video-events`: 3 partitions, key = videoId, compacted (latest event per video kept)  |
+| Dead letters | `yt.video-events.dlt`: events a consumer could not handle, kept 14 days                  |
+| Topic setup  | One-shot `kafka-setup` container; auto-create is off, so a typo in a client fails loudly |
+
+Kafka has no web UI here (none in the image list), so use the CLIs in the container:
+
+```bash
+docker exec yt-kafka kafka-topics.sh --bootstrap-server localhost:9092 --describe --topic yt.video-events
+# Read everything from the start (Ctrl+C to stop); shows the key and the headers
+docker exec -it yt-kafka kafka-console-consumer.sh --bootstrap-server localhost:9092 \
+  --topic yt.video-events --from-beginning --property print.key=true --property print.headers=true
+# Consumer groups: where each one is (CURRENT-OFFSET) and how far behind (LAG)
+docker exec yt-kafka kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --all-groups
+```
+
+Elasticsearch (`yt-elasticsearch`, 8.19.16, <http://localhost:9200>) is the search index. It runs as a
+single node with security off and a 512 MB heap (about 1.2 GB of RAM in total). Requests to try are in
+`http/elasticsearch.http`.
 
 ```bash
 pnpm start:l:pods
@@ -364,6 +391,8 @@ opens a table. The field only appears by default once the config has a value.
 | MinIO S3 API   | <http://localhost:9000>                 | `minioadmin` / `minioadmin`                             |
 | MinIO Console  | <http://localhost:9001>                 | `minioadmin` / `minioadmin`                             |
 | HLS edge       | <http://localhost:8088/healthz>         | none (public, read-only)                                |
+| Kafka          | `localhost:9094` (bootstrap)            | none (PLAINTEXT, local only)                            |
+| Elasticsearch  | <http://localhost:9200>                 | none (security off, local only)                         |
 
 > Credentials are local dev defaults only — never use them outside local.
 

@@ -1,0 +1,19 @@
+# Elasticsearch REST API (local compose, security off). Kafka has no HTTP API: see docs/HOW-TO-RUN.md.
+@es = http://localhost:9200
+
+### Cluster health (single node: green until an index has replicas, then yellow)
+GET {{es}}/_cluster/health
+
+?? status == 200
+?? js ["green", "yellow"].includes(response.parsedBody.status)
+
+### Version (must be 8.x; the search-service client is pinned to 8.19)
+GET {{es}}/
+
+?? status == 200
+?? js response.parsedBody.version.number.startsWith("8.")
+
+### All indices with doc counts and size
+GET {{es}}/_cat/indices?v&s=index
+
+?? status == 200

@@ -63,6 +63,10 @@ flowchart LR
 - **Consumer groups** read independently; add a new group later to **replay history**
   (backfill a brand-new service without touching producers).
 - Commit offsets after processing.
+- Local setup: topic `yt.video-events` (3 partitions, key = videoId, compacted) and `yt.video-events.dlt`,
+  created by the one-shot `kafka-setup` container with auto-create off. Host clients bootstrap from
+  `localhost:9094` (`EXTERNAL` listener); containers use `kafka:9092`. Kafka 3.5 = Confluent Platform 7.5,
+  which is the oldest version `@platformatic/kafka` is tested against.
 
 ```mermaid
 flowchart LR
