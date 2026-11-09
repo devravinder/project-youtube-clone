@@ -23,6 +23,13 @@ export default defineConfig(({ command, mode }) => {
         ...(env.NOTIFICATIONS_PROXY_TARGET && {
           "/ws": { target: env.NOTIFICATIONS_PROXY_TARGET, ws: true, changeOrigin: true },
         }),
+        ...(env.SEARCH_PROXY_TARGET && {
+          "/search-api": {
+            target: env.SEARCH_PROXY_TARGET,
+            changeOrigin: true,
+            rewrite: (path: string) => path.replace(/^\/search-api/, ""),
+          },
+        }),
       },
     },
   };

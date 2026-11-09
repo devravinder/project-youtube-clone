@@ -94,7 +94,7 @@ Concepts: event log, consumer groups/replay, search sync, real-time notification
 - [x] Emit `video.ready` event (from outbox) to Kafka: written with the READY transition, keyed by videoId, schema in `@yt/contracts`; publishes time out after 10 s so a hung broker cannot stall the relay
 - [x] `apps/search-service` (NestJS) — Kafka consumer → Elasticsearch indexer: group `search-service`, manual commit after indexing, external versions (idempotent), DLT for poison events, `/search` (typo-tolerant) and `/search/suggest` (search_as_you_type); rebuild = new group or offset reset
 - [x] `apps/notification-service` (NestJS) — Kafka consumer → WebSocket: own consumer group per instance (`latest`, no commits) so every instance sees every event; owner gets `video.ready`, others `video.published`; token sent in an `auth` message; deduped by eventId; toasts in the web app
-- [ ] Search UI (query + autocomplete)
+- [x] Search UI (query + autocomplete): header search box (ARIA combobox, 200 ms debounce, arrows/Enter/Escape), `/search?q=` results with infinite scroll and safe highlighting; typed client from `contracts/search-service.openapi.json`
 - [ ] AsyncAPI event contract in `libs/ts/contracts`
 
 ## Stage 5 — Phase 4: Scale & resilience (kind + Helm + HPA + k6)

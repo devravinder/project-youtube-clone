@@ -890,3 +890,38 @@ Rejected:
   and later features (live view counts) need both directions.
 - A token in the query string: it gets logged.
 - A shared consumer group: delivery would be lost, as explained above.
+
+## ADR-039 - Search UI: combobox autocomplete and a results page
+
+Date: 2026-11-09 - Status: Accepted
+
+- **Header search box:** follows the WAI-ARIA 1.2 combobox pattern (`role="combobox"`, a `listbox` popup,
+  `aria-activedescendant`). Arrow keys move through suggestions, Enter opens the highlighted video (or the
+  results page when none is highlighted), and Escape closes the list. The box sits inside a
+  `<form role="search">`.
+- **Requests:** suggestions wait for a 200 ms pause in typing, so four keystrokes cost one request
+  (checked in Chrome). TanStack Query caches each prefix for 30 s, cancels stale requests through the
+  abort signal, and keeps the previous list on screen while the next one loads, so it doesn't flicker.
+- **Results:** the results page (`/search?q=`) pages by offset through `useInfiniteQuery` (12 per page)
+  and stops when `total` is reached.
+- **Highlighting:** done in the browser by splitting text into React text nodes and `<mark>`, matching
+  only at the start of a word. Nothing from the index is rendered as HTML, so a title like `<b>x</b>`
+  stays text. The query is escaped before it is turned into a regular expression.
+- **Typed client:** `openapi-fetch` with types generated from `contracts/search-service.openapi.json`
+  (`pnpm api:generate` now builds both specs and both type files). The client sends no token; the API is
+  public. It shares the `throwOnError` middleware with the upload client.
+- **Routing:** the Vite proxy maps `/search-api` to the search service, so the page stays same-origin.
+
+Found in Chrome: Escape in an `<input type="search">` also clears the text natively, so "close the list,
+then press Enter" submitted an empty query. Now, while the list is open, the first Escape is
+`preventDefault`ed and only closes the list; a second Escape still clears the field as users expect.
+
+Verified: 84 web tests, and 10 browser checks against a real search service, Kafka and Elasticsearch.
+The checks covered autocomplete, debounce, marked prefixes, keyboard selection, Escape, results ranking,
+typo tolerance and the empty state.
+
+Rejected:
+
+- A combobox library (Downshift, React Aria): one widget, and the pattern is short enough to own.
+- Server-side highlighting (renders markup).
+- Search-as-you-type on the results page (too many full queries; suggestions cover typing).

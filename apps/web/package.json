@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "api:types": "pnpm dlx openapi-typescript@7.13.0 ../../contracts/upload-service.openapi.json -o src/api/schema.d.ts",
+    "api:types": "pnpm dlx openapi-typescript@7.13.0 ../../contracts/upload-service.openapi.json -o src/api/schema.d.ts && pnpm dlx openapi-typescript@7.13.0 ../../contracts/search-service.openapi.json -o src/api/search-schema.d.ts",
     "theme:contrast": "node scripts/check-theme-contrast.mjs"
   },
   "dependencies": {

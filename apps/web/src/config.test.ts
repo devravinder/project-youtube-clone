@@ -14,6 +14,7 @@ describe("config", () => {
       oidcAuthority: "http://localhost:8180/realms/test",
       oidcClientId: "yt-web",
       notificationsPath: "/ws",
+      searchBaseUrl: "http://search.test/search-api",
     });
   });
 
@@ -22,6 +23,7 @@ describe("config", () => {
     "VITE_OIDC_AUTHORITY",
     "VITE_OIDC_CLIENT_ID",
     "VITE_NOTIFICATIONS_PATH",
+    "VITE_SEARCH_BASE_URL",
   ])("fails loudly when %s is missing", async (name) => {
     vi.stubEnv(name, "");
     vi.resetModules();

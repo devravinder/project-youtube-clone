@@ -14,6 +14,7 @@ export default defineConfig({
       VITE_OIDC_AUTHORITY: "http://localhost:8180/realms/test",
       VITE_OIDC_CLIENT_ID: "yt-web",
       VITE_NOTIFICATIONS_PATH: "/ws",
+      VITE_SEARCH_BASE_URL: "http://search.test/search-api",
     },
     coverage: {
       provider: "v8",

@@ -4,6 +4,7 @@ import { useAuth } from "react-oidc-context";
 import { Link, NavLink, Outlet } from "react-router-dom";
 import { useNotifications } from "../hooks/use-notifications";
 import { NotificationToasts } from "./notification-toasts";
+import { SearchBox } from "./search-box";
 import { Button } from "./ui";
 
 const navClass = ({ isActive }: { isActive: boolean }) =>
@@ -73,6 +74,7 @@ export function Layout() {
               </NavLink>
             </nav>
           </div>
+          <SearchBox />
           <div className="flex items-center gap-2">
             <UserMenu />
             <ThemeToggle />

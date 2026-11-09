@@ -225,6 +225,17 @@ const sentinel = useInView<HTMLDivElement>(
 );
 ```
 
+### Search box (combobox)
+
+`components/search-box.tsx` is a hand-written WAI-ARIA 1.2 combobox: `role="combobox"` input with
+`aria-expanded`/`aria-controls`/`aria-activedescendant`, a `role="listbox"` of `role="option"`s, inside
+`<form role="search">`. Debounce the input (`hooks/use-debounced-value.ts`, 200 ms) before querying; pass the
+query's `signal` to fetch; `placeholderData: keepPreviousData` avoids flicker. On a `type="search"` input,
+`preventDefault` the first Escape while the list is open, or Chrome also clears the text. Highlight matches
+with `components/highlight.tsx` (React text + `<mark>`, escaped regex) — never render HTML from the server.
+Tests: `mockImplementation` returning a fresh `Response` per call (a body can be read once), and
+`fireEvent.keyDown(...) === false` to assert `preventDefault`.
+
 ### Live notifications (WebSocket)
 
 `services/notifications.ts` keeps one socket to `VITE_NOTIFICATIONS_PATH` on the page's own host (Vite proxies

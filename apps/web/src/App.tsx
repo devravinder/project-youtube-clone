@@ -1,6 +1,7 @@
 import { BrowserRouter, Link, Route, Routes } from "react-router-dom";
 import { AuthBoundary, RequireAuth } from "./auth/auth-boundary";
 import { Layout } from "./components/layout";
+import { SearchPage } from "./pages/search-page";
 import { UploadPage } from "./pages/upload-page";
 import { VideoListPage } from "./pages/video-list-page";
 import { WatchPage } from "./pages/watch-page";
@@ -32,6 +33,7 @@ export function App() {
               }
             />
             <Route path="watch/:id" element={<WatchPage />} />
+            <Route path="search" element={<SearchPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Routes>

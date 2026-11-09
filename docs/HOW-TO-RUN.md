@@ -40,8 +40,10 @@ in a git-ignored `apps/web/.env.local`. Restart `pnpm start:l:web` after changin
 | `VITE_OIDC_AUTHORITY`        | Keycloak realm URL                                                              |
 | `VITE_OIDC_CLIENT_ID`        | Keycloak client (`yt-web`)                                                      |
 | `VITE_NOTIFICATIONS_PATH`    | WebSocket path on the page's own host (`/ws`)                                   |
+| `VITE_SEARCH_BASE_URL`       | Search API prefix used by the browser (`/search-api`)                           |
 | `API_PROXY_TARGET`           | Where the Vite dev proxy forwards `/api`                                        |
 | `NOTIFICATIONS_PROXY_TARGET` | Where the Vite dev proxy forwards the `/ws` WebSocket (`http://localhost:3004`) |
+| `SEARCH_PROXY_TARGET`        | Where the Vite dev proxy forwards `/search-api` (`http://localhost:3003`)       |
 
 ## Run the tests
 
@@ -301,9 +303,12 @@ Needs the upload service running (step 5) and MinIO and Postgres up (step 3).
 pnpm start:l:web
 ```
 
-Open <http://localhost:5173>. The app has three pages: **Videos** (infinite-scroll list), **Upload** (pick a
-file, with progress), and **Watch** (plays the video). The dev server proxies `/api` to the
-upload service on port 3001, so the browser needs no CORS setup for the API. Uploads go
+Open <http://localhost:5173>. The app has four pages: **Videos** (infinite-scroll list), **Upload** (pick a
+file, with progress), **Watch** (plays the video) and **Search** (`/search?q=…`). The search box in the
+header suggests titles while you type (arrow keys, Enter, Escape) and opens the results page on Enter;
+it needs the search service (step 8). The dev server proxies `/api` to the
+upload service on port 3001, `/search-api` to the search service on 3003 and `/ws` to the notification
+service on 3004, so the browser needs no CORS setup. Uploads go
 straight from the browser to MinIO, which allows cross-origin requests by default.
 
 ### Check adaptive playback by hand

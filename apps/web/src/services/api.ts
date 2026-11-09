@@ -26,7 +26,7 @@ async function readErrorMessage(response: Response): Promise<string> {
   }
 }
 
-const authAndErrors: Middleware = {
+const auth: Middleware = {
   async onRequest({ request }) {
     const token = await getAccessToken();
     if (token) {
@@ -34,6 +34,10 @@ const authAndErrors: Middleware = {
     }
     return request;
   },
+};
+
+// Shared by every API client: a non-2xx response becomes an ApiError with the server's message.
+export const throwOnError: Middleware = {
   async onResponse({ response }) {
     if (!response.ok) {
       throw new ApiError(response.status, await readErrorMessage(response.clone()));
@@ -48,10 +52,10 @@ const client = createClient<paths>({
   // Resolved per call so tests can stub fetch.
   fetch: (request) => globalThis.fetch(request),
 });
-client.use(authAndErrors);
+client.use(auth, throwOnError);
 
 // Errors already threw in the middleware.
-function bodyOf<T>(result: { data?: T }): T {
+export function bodyOf<T>(result: { data?: T }): T {
   if (result.data === undefined) {
     throw new ApiError(502, "The server returned an empty response");
   }
