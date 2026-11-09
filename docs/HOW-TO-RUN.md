@@ -22,6 +22,7 @@ Scripts follow `start|stop:env:service`:
 | Capability                                        | How                       | Status                                             |
 | ------------------------------------------------- | ------------------------- | -------------------------------------------------- |
 | Local infra (Postgres, MinIO, Keycloak, RabbitMQ) | `pnpm start:l:pods`       | ✅ available                                       |
+| HLS edge cache (nginx, port 8088)                 | `pnpm start:l:pods`       | ✅ available                                       |
 | Upload service (NestJS)                           | `pnpm start:l:upload`     | ✅ available                                       |
 | Web UI (React)                                    | `pnpm start:l:web`        | ✅ available                                       |
 | Transcoder (Spring Boot)                          | `pnpm start:l:transcoder` | ✅ transcodes to MP4 renditions (ffmpeg in Docker) |
@@ -88,7 +89,9 @@ $env:IMAGE_REGISTRY = "<registry-host>[:port]"
 pwsh -File infra/retag-images.ps1
 ```
 
-The script reports any image that has not been pulled yet; pull it and re-run.
+The script reports any image that has not been pulled yet; pull it and re-run. If your registry keeps an
+image under a different path, map it in the git-ignored `infra/retag-images.local.json`, for example
+`{ "team/images/nginx:1.26.3-build7": "nginx:1.26.3" }`; entries there override the defaults.
 
 ## 3. Start local infrastructure
 
@@ -97,6 +100,25 @@ Brings up Postgres, MinIO, Keycloak and RabbitMQ, and auto-creates the `raw-vide
 `GetObject` but not listing (`infra/minio/hls-read-policy.json`), because a player fetches every segment a
 playlist names and those URLs cannot each be signed. After pulling changes to that policy, apply it with
 `docker compose -f infra/docker-compose-local.yaml up -d --force-recreate minio-setup`.
+
+Players do not talk to MinIO directly: the **edge** (`yt-edge`, nginx 1.26.3, <http://localhost:8088>) sits
+in front of `hls-videos` and caches what it serves (`infra/edge/`). The upload service hands out edge URLs
+(`HLS_PUBLIC_BASE_URL`, default `http://localhost:8088/hls-videos`).
+
+| Path at the edge                                     | Edge cache | Browser `Cache-Control`               |
+| ---------------------------------------------------- | ---------- | ------------------------------------- |
+| `/hls-videos/<id>/hls/<rendition>/seg_NNN.ts`        | 30 days    | `public, max-age=31536000, immutable` |
+| `/hls-videos/<id>/hls/master.m3u8`, `.../index.m3u8` | 60 s       | `public, max-age=60`                  |
+| anything else (listing, `manifest.json`, raw)        | -          | 404                                   |
+
+- `X-Cache-Status` shows `MISS`, `HIT`, `STALE` or `UPDATING`; the access log (`docker logs yt-edge`) has it too.
+- Byte ranges (`Range: bytes=...`) are answered with 206 from the cached copy; on a miss nginx fetches the
+  whole segment once.
+- Many viewers asking for the same cold segment cause one MinIO request (cache lock).
+- While MinIO is down, cached segments and playlists keep playing (`proxy_cache_use_stale`).
+- Only `GET`, `HEAD` and CORS preflight are allowed; CORS is `*` because the content is public.
+- Empty the cache: `docker compose -f infra/docker-compose-local.yaml rm -sfv edge` then `up -d edge`
+  (or `pnpm stop:l:pods`, which drops all volumes). Requests to try are in `http/edge.http`.
 
 Keycloak takes about 30 seconds to start. It imports `infra/keycloak/realm-youtube-clone.json`:
 
@@ -328,6 +350,7 @@ opens a table. The field only appears by default once the config has a value.
 | Postgres       | `localhost:5432`                        | user `yt` / password `yt_password` / db `youtube_clone` |
 | MinIO S3 API   | <http://localhost:9000>                 | `minioadmin` / `minioadmin`                             |
 | MinIO Console  | <http://localhost:9001>                 | `minioadmin` / `minioadmin`                             |
+| HLS edge       | <http://localhost:8088/healthz>         | none (public, read-only)                                |
 
 > Credentials are local dev defaults only — never use them outside local.
 

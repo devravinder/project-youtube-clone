@@ -37,3 +37,6 @@ Thumbs.db
 
 # Local transcoding scratch.
 tmp/
+
+# Registry-specific image paths (infra/retag-images.ps1).
+infra/retag-images.local.json

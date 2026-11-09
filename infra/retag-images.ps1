@@ -1,5 +1,6 @@
 # Tags pulled images with plain names so compose stays portable.
 # Usage: $env:IMAGE_REGISTRY = "<host[:port]>"; pwsh -File infra/retag-images.ps1
+# Paths that differ in your registry go in infra/retag-images.local.json (see below).
 
 param(
   [string]$Registry = $env:IMAGE_REGISTRY
@@ -24,6 +25,19 @@ $map = [ordered]@{
   "2462402/otel-lgtm:1.3"                 = "grafana/otel-lgtm:1.3"
   # Transcoder runs ffmpeg/ffprobe from this image locally (verified with ffmpeg 9.0.2).
   "mwader/static-ffmpeg:latest"           = "mwader/static-ffmpeg:latest"
+  # Edge cache for HLS (infra/edge).
+  "nginx:1.26.3"                          = "nginx:1.26.3"
+}
+
+# Registry-specific paths stay on this machine: infra/retag-images.local.json (git-ignored),
+# e.g. { "team/images/nginx:1.26.3-build7": "nginx:1.26.3" }. Entries override the defaults.
+$localMap = Join-Path $PSScriptRoot "retag-images.local.json"
+if (Test-Path $localMap) {
+  $extra = Get-Content -Raw $localMap | ConvertFrom-Json -AsHashtable
+  foreach ($key in $extra.Keys) {
+    foreach ($old in @($map.Keys | Where-Object { $map[$_] -eq $extra[$key] })) { $map.Remove($old) }
+    $map[$key] = $extra[$key]
+  }
 }
 
 $missing = @()

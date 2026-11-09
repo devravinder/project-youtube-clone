@@ -82,7 +82,7 @@ Concepts: ABR/HLS, CDN/edge caching, byte-range/seek.
 
 - [x] ffmpeg produces HLS (manifest + segments) into MinIO hls bucket: 4 s segments, keyframes aligned every 2 s, master playlist with bandwidth/resolution; bucket readable (not listable) anonymously; API serves the master as `playbackUrl`
 - [x] React player uses adaptive bitrate (hls.js): Auto (shows the level it picked) or a pinned level that switches at the next segment; native HLS on Safari; error recovery; `react-player` removed
-- [ ] nginx edge cache + cache headers + byte-range
+- [x] nginx edge cache + cache headers + byte-range: `yt-edge` on 8088 (RHEL nginx 1.26.3), segments immutable for a year, playlists 60 s, ranges from cache, cache lock, stale-on-error, only segments/playlists exposed
 - [ ] Verify seek + quality switching under throttled bandwidth
 
 ## Stage 4 — Phase 3: Events & search (Kafka + Elasticsearch + notifications)

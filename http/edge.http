@@ -1,0 +1,33 @@
+# nginx edge cache in front of the hls-videos bucket (infra/edge).
+# Set a READY video's id; GET /videos/{id} on the upload service shows it in playbackUrl.
+@edge = http://localhost:8088
+@videoId = 00000000-0000-4000-8000-000000000000
+
+### Health
+GET {{edge}}/healthz
+
+?? status == 200
+
+### Master playlist (60 s cache); X-Cache-Status shows MISS, then HIT
+GET {{edge}}/hls-videos/{{videoId}}/hls/master.m3u8
+
+?? status == 200
+?? header cache-control == public, max-age=60
+
+### A segment (cached for a year, immutable)
+GET {{edge}}/hls-videos/{{videoId}}/hls/360p/seg_000.ts
+
+?? status == 200
+?? header cache-control == public, max-age=31536000, immutable
+
+### Byte range, served from the cached copy
+GET {{edge}}/hls-videos/{{videoId}}/hls/360p/seg_000.ts
+Range: bytes=0-99
+
+?? status == 206
+?? header content-length == 100
+
+### Anything that is not a playlist or segment is refused
+GET {{edge}}/hls-videos/{{videoId}}/manifest.json
+
+?? status == 404

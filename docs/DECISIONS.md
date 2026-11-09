@@ -572,3 +572,36 @@ Date: 2026-11-08 - Status: Accepted
 
 Rejected: keeping react-player (it hides the hls.js instance, so no level list or pinning) and Video.js
 (a much larger player for features we do not use yet).
+
+## ADR-033 - nginx edge cache in front of the HLS bucket
+
+Date: 2026-11-08 - Status: Accepted
+
+Players fetch HLS from `yt-edge` (nginx, port 8088), which proxies the public `hls-videos` bucket and
+caches it, the local stand-in for a CDN. `HLS_PUBLIC_BASE_URL` points at it.
+
+- Image: a RHEL 10.2-based nginx 1.26.3 build (`nginx-1.26.3-6.el10_2.7`; Red Hat backports security fixes),
+  tagged `nginx:1.26.3`. The config is a whole `nginx.conf`, so an image's own default server on 8080 is not
+  loaded, logs go to stdout, and the same files work on the official `nginx:1.26.3`. Rejected: `nginx:v1`
+  (1.6.2 from 2014) and `arm64v8/nginx:1.22.0` (wrong CPU architecture, emulated, and an unmaintained branch).
+- Only `/hls-videos/<id>/hls/**/seg_N.ts` and `*.m3u8` are proxied; everything else is 404, so the edge
+  cannot be used to reach raw uploads, `manifest.json` or a listing.
+- TTLs: segments 30 days at the edge and `immutable` for a year in browsers (fixed keys, and finished
+  videos are never re-encoded); playlists 60 s both ways, so a removed video stops starting within a minute.
+  Upstream `Cache-Control`, `Expires`, `Vary` and `Set-Cookie` are ignored; the edge decides.
+- `proxy_cache_key $uri` (public objects need no query string), `Authorization` and `Cookie` stripped.
+- Byte ranges: with caching on, nginx fetches the whole object and cuts ranges from the cached copy
+  (`proxy_force_ranges`). Segments are a few MB at most, so the `slice` module is not needed; it would be
+  for multi-GB files.
+- `proxy_cache_lock` collapses concurrent misses into one MinIO request (20 parallel cold requests gave 1
+  MISS, 19 HIT); `proxy_cache_use_stale` + `background_update` keep cached content playing during a MinIO
+  outage and refresh playlists without making a viewer wait.
+- CORS: MinIO echoes the request `Origin`, and a cached echo would be wrong for the next site, so those
+  headers are hidden and the edge sends `*` itself, plus a 204 for preflights (`limit_except GET OPTIONS`;
+  without `OPTIONS` there, the preflight falls into the `limit_except` block and gets 403).
+
+Verified: 23 edge checks (MISS/HIT, ranges incl. cold and suffix, headers, CORS, refusals, cache lock,
+origin down) and a Chrome run where a second, cache-less browser got every previously fetched file as HIT.
+
+Not yet: the video list and API are not cached (Redis is Stage 5), and private/unlisted videos would need
+signed URLs or cookies checked at the edge.
