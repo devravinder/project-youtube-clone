@@ -2,6 +2,8 @@ import { LogIn, LogOut, Moon, Sun } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "react-oidc-context";
 import { Link, NavLink, Outlet } from "react-router-dom";
+import { useNotifications } from "../hooks/use-notifications";
+import { NotificationToasts } from "./notification-toasts";
 import { Button } from "./ui";
 
 const navClass = ({ isActive }: { isActive: boolean }) =>
@@ -52,8 +54,10 @@ function UserMenu() {
 }
 
 export function Layout() {
+  const { toasts, dismiss } = useNotifications();
   return (
     <div className="min-h-screen">
+      <NotificationToasts toasts={toasts} onDismiss={dismiss} />
       <header className="sticky top-0 z-10 border-b border-border bg-card/80 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
           <div className="flex items-center gap-6">

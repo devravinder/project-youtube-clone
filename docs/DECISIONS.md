@@ -832,3 +832,61 @@ Rejected:
 - A shared processed-ids table (the external version already makes writes idempotent).
 - The ES `completion` suggester (prefix of the whole title only, and an extra field to keep in sync).
 - `@elastic/elasticsearch` 9.x (it sends version-9 compatibility headers, which an 8.19 server rejects).
+
+## ADR-038 - notification-service: one consumer group per instance, pushed over WebSocket
+
+Date: 2026-11-09 - Status: Accepted
+
+`apps/notification-service` (NestJS, port 3004) turns `video.ready` events into WebSocket messages. The web
+app shows them as toasts and refreshes its video queries.
+
+```mermaid
+flowchart LR
+  K[[yt.video-events]] -->|group notification-service-a1b2| N1[instance 1]
+  K -->|group notification-service-c3d4| N2[instance 2]
+  N1 -->|video.ready| A[alice's tab]
+  N2 -->|video.published| B[bob's tab]
+```
+
+- **Fan-out, not work-sharing.** A socket lives on one instance, so every instance needs every event.
+  Each instance therefore joins with its own group id, reads from `latest` and never commits. A shared
+  group, as search uses, would give each event to one instance only, and most users would miss it.
+  Because nothing is committed, Kafka keeps no offsets for these groups, and they disappear when the
+  instance leaves.
+- **Trade-off:** an event published while an instance is restarting is never pushed by that instance.
+  Notifications are best-effort hints; the source of truth (the list and status APIs) is still right
+  after a refresh. At large scale (thousands of instances, or a per-user inbox) you would switch to one
+  shared group writing to Redis pub/sub or a notifications table. That is out of scope here.
+- **Routing:** the uploader's signed-in sockets get `video.ready` ("Your video … is ready"), and everyone
+  else gets `video.published`. The message schemas live in `@yt/contracts`, and the browser validates each
+  message against them.
+- **Auth:** the browser's `WebSocket` cannot send headers. The token is sent as the first message
+  (`{ event: "auth", data: { token } }`), never in the URL, where proxies and access logs would record it.
+  It is verified with jose against Keycloak's JWKS (issuer and audience `yt-api`, as in the upload
+  service). Anonymous sockets still get public messages. A token that expires later doesn't disconnect
+  the socket; the only thing it unlocks is "your video is ready".
+- **Duplicates:** the outbox can deliver an event more than once (ADR-036), so the last 1000 `eventId`s
+  are remembered. Events older than 10 minutes are dropped.
+- **Liveness:** a ping every 30 s (below the usual 60 s proxy idle timeout); a socket that missed the
+  previous ping is terminated. The browser reconnects with backoff (1 s doubling, up to 30 s) and signs in
+  again when the user's token changes.
+- **Transport:** `@nestjs/platform-ws` (plain `ws`), not socket.io: the browser's built-in `WebSocket` is
+  the client, and there's no extra protocol to learn or bundle. The Vite proxy forwards `/ws` with
+  `ws: true`, so the page stays same-origin; an ingress does the same later.
+
+Verified (9 checks):
+
+- Two instances ran on one topic with real Keycloak tokens. Alice, on instance 1, got her personal
+  message and no public toast. Bob, on instance 2, and an anonymous socket through the Vite proxy got
+  `video.published`.
+- A tampered token was refused.
+- A duplicate `eventId` was pushed once, and a 1-hour-old event was dropped.
+- Kafka listed one group per instance.
+
+Rejected:
+
+- socket.io: an extra protocol and client library for features (rooms, fallbacks) we don't need.
+- Server-Sent Events: they would work for this one-way feed, but WebSocket also carries the auth message,
+  and later features (live view counts) need both directions.
+- A token in the query string: it gets logged.
+- A shared consumer group: delivery would be lost, as explained above.

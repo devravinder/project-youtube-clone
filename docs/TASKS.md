@@ -93,7 +93,7 @@ Concepts: event log, consumer groups/replay, search sync, real-time notification
 - [x] Add Kafka (Bitnami, KRaft) + Elasticsearch to compose: `yt-kafka` (host `localhost:9094`), topics `yt.video-events` (3 partitions, key videoId, compacted) and `.dlt` from a one-shot `kafka-setup`; `yt-elasticsearch` 8.19.16 single node on 9200
 - [x] Emit `video.ready` event (from outbox) to Kafka: written with the READY transition, keyed by videoId, schema in `@yt/contracts`; publishes time out after 10 s so a hung broker cannot stall the relay
 - [x] `apps/search-service` (NestJS) — Kafka consumer → Elasticsearch indexer: group `search-service`, manual commit after indexing, external versions (idempotent), DLT for poison events, `/search` (typo-tolerant) and `/search/suggest` (search_as_you_type); rebuild = new group or offset reset
-- [ ] `apps/notification-service` (NestJS) — Kafka consumer → WebSocket
+- [x] `apps/notification-service` (NestJS) — Kafka consumer → WebSocket: own consumer group per instance (`latest`, no commits) so every instance sees every event; owner gets `video.ready`, others `video.published`; token sent in an `auth` message; deduped by eventId; toasts in the web app
 - [ ] Search UI (query + autocomplete)
 - [ ] AsyncAPI event contract in `libs/ts/contracts`
 

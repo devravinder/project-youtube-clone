@@ -19,6 +19,10 @@ export default defineConfig(({ command, mode }) => {
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api/, ""),
         },
+        // WebSocket upgrade to the notification service.
+        ...(env.NOTIFICATIONS_PROXY_TARGET && {
+          "/ws": { target: env.NOTIFICATIONS_PROXY_TARGET, ws: true, changeOrigin: true },
+        }),
       },
     },
   };

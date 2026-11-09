@@ -16,6 +16,7 @@
     "start:l:web": "pnpm --filter @yt/web dev",
     "start:l:transcoder": "pnpm --filter @yt/transcoder-service dev",
     "start:l:search": "pnpm --filter @yt/search-service dev",
+    "start:l:notify": "pnpm --filter @yt/notification-service dev",
     "test": "pnpm -r --if-present test",
     "test:coverage": "pnpm -r --if-present test:coverage",
     "db:generate": "pnpm -r --if-present db:generate",

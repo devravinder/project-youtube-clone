@@ -10,3 +10,13 @@ export {
   type VideoReadyEvent,
   videoReadyEventSchema,
 } from "./video-events.js";
+export {
+  authResultMessageSchema,
+  type ClientAuthMessage,
+  clientAuthMessageSchema,
+  NOTIFICATIONS_PATH,
+  type ServerMessage,
+  serverMessageSchema,
+  videoPublishedMessageSchema,
+  yourVideoReadyMessageSchema,
+} from "./notifications.js";

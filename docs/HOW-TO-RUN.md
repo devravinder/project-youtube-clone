@@ -28,17 +28,20 @@ Scripts follow `start|stop:env:service`:
 | Web UI (React)                                    | `pnpm start:l:web`        | ✅ available                                        |
 | Transcoder (Spring Boot)                          | `pnpm start:l:transcoder` | ✅ transcodes to MP4 renditions (ffmpeg in Docker)  |
 | Search service (NestJS, Kafka → Elasticsearch)    | `pnpm start:l:search`     | ✅ indexes `video.ready`, search + autocomplete API |
+| Notification service (NestJS, Kafka → WebSocket)  | `pnpm start:l:notify`     | ✅ live toasts in the web app                       |
 | Observability (otel-lgtm)                         | `pnpm start:lo:pods`      | ⏳ compose file not added yet                       |
 
 Web app settings live in `apps/web/.env.development` (public values only). Override any of them
 in a git-ignored `apps/web/.env.local`. Restart `pnpm start:l:web` after changing either file.
 
-| Variable              | Purpose                                  |
-| --------------------- | ---------------------------------------- |
-| `VITE_API_BASE_URL`   | API prefix used by the browser (`/api`)  |
-| `VITE_OIDC_AUTHORITY` | Keycloak realm URL                       |
-| `VITE_OIDC_CLIENT_ID` | Keycloak client (`yt-web`)               |
-| `API_PROXY_TARGET`    | Where the Vite dev proxy forwards `/api` |
+| Variable                     | Purpose                                                                         |
+| ---------------------------- | ------------------------------------------------------------------------------- |
+| `VITE_API_BASE_URL`          | API prefix used by the browser (`/api`)                                         |
+| `VITE_OIDC_AUTHORITY`        | Keycloak realm URL                                                              |
+| `VITE_OIDC_CLIENT_ID`        | Keycloak client (`yt-web`)                                                      |
+| `VITE_NOTIFICATIONS_PATH`    | WebSocket path on the page's own host (`/ws`)                                   |
+| `API_PROXY_TARGET`           | Where the Vite dev proxy forwards `/api`                                        |
+| `NOTIFICATIONS_PROXY_TARGET` | Where the Vite dev proxy forwards the `/ws` WebSocket (`http://localhost:3004`) |
 
 ## Run the tests
 
@@ -437,6 +440,33 @@ pnpm start:l:search   # recreates the index and re-reads every event
 
 Using a new `KAFKA_GROUP_ID` instead of resetting has the same effect and leaves the old group untouched.
 
+## 9. Run the notification service
+
+Needs Kafka running (step 3); Keycloak for signed-in sockets.
+
+```bash
+pnpm start:l:notify
+```
+
+It holds WebSocket connections at `ws://localhost:3004/ws` (the web app reaches it as `/ws` through the Vite
+proxy) and pushes a message for every new `video.ready` on `yt.video-events`:
+
+| Who                      | Message           | Web app shows           |
+| ------------------------ | ----------------- | ----------------------- |
+| The uploader (signed in) | `video.ready`     | Your video "…" is ready |
+| Everyone else            | `video.published` | New video: …            |
+
+- A socket is anonymous until it sends `{ "event": "auth", "data": { "token": "<access token>" } }`; the
+  token is verified against Keycloak (issuer and audience `yt-api`). Tokens never go in the URL.
+- Every instance joins Kafka with its **own** consumer group (`notification-service-<random>`), reads only
+  new events (`latest`) and never commits, because each instance must push every event to its own sockets.
+  Compare search-service, where all instances share one group and split the work. List them with
+  `kafka-consumer-groups.sh --list`.
+- The same `eventId` is pushed once (the outbox can deliver twice), and events older than
+  `NOTIFY_MAX_EVENT_AGE_SECONDS` (default 600) are dropped.
+- Dead connections are found by a ping every 30 s and closed if the pong never comes.
+- `GET /health` reports the number of open sockets. Requests to try: `http/notification-service.http`.
+
 ## Local service URLs & credentials
 
 | Service        | URL                                     | Credentials                                             |
@@ -444,6 +474,7 @@ Using a new `KAFKA_GROUP_ID` instead of resetting has the same effect and leaves
 | Upload service | <http://localhost:3001>                 | Keycloak bearer token (see `http/keycloak.http`)        |
 | Transcoder     | <http://localhost:3002/actuator/health> | none                                                    |
 | Search service | <http://localhost:3003/docs>            | none (public, read-only)                                |
+| Notifications  | `ws://localhost:3004/ws`                | optional Keycloak token in an `auth` message            |
 | Postgres       | `localhost:5432`                        | user `yt` / password `yt_password` / db `youtube_clone` |
 | MinIO S3 API   | <http://localhost:9000>                 | `minioadmin` / `minioadmin`                             |
 | MinIO Console  | <http://localhost:9001>                 | `minioadmin` / `minioadmin`                             |

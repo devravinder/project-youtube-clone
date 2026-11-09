@@ -225,6 +225,16 @@ const sentinel = useInView<HTMLDivElement>(
 );
 ```
 
+### Live notifications (WebSocket)
+
+`services/notifications.ts` keeps one socket to `VITE_NOTIFICATIONS_PATH` on the page's own host (Vite proxies
+`/ws` with `ws: true`), sends `{ event: "auth", data: { token } }` on open (never a token in the URL),
+validates each message with `serverMessageSchema` from `@yt/contracts`, and reconnects with backoff.
+`hooks/use-notifications.ts` reconnects when the token changes, turns messages into toasts (max 3, 8 s), and
+invalidates the affected TanStack queries. `components/notification-toasts.tsx` is a `role="status"`
+`aria-live="polite"` region. Test the service with a fake socket class and fake timers; mock the service
+module in the hook test.
+
 ### Video player (hls.js)
 
 `components/hls-video.tsx` attaches hls.js to a plain `<video>`:

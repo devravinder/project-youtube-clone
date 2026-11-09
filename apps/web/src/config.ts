@@ -9,4 +9,5 @@ export const config = {
   apiBaseUrl: required("VITE_API_BASE_URL", import.meta.env.VITE_API_BASE_URL),
   oidcAuthority: required("VITE_OIDC_AUTHORITY", import.meta.env.VITE_OIDC_AUTHORITY),
   oidcClientId: required("VITE_OIDC_CLIENT_ID", import.meta.env.VITE_OIDC_CLIENT_ID),
+  notificationsPath: required("VITE_NOTIFICATIONS_PATH", import.meta.env.VITE_NOTIFICATIONS_PATH),
 } as const;

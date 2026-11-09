@@ -81,6 +81,9 @@ flowchart LR
   same `eventId`; the idempotent producer only removes duplicates within its own retries.
 - Event schemas live in `libs/ts/contracts` (`@yt/contracts`): Zod schema, topic and header names, shared by
   producer and consumers. Not strict (tolerant reader), so adding a field breaks nobody.
+- **Work-sharing vs fan-out groups.** Same group id on every instance = the partitions are split, each event
+  handled once (search indexer). Unique group id per instance, `latest`, no commits = every instance sees
+  every event (notification-service, whose sockets live on one instance each).
 
 ## Transactional outbox (the dual-write problem)
 
