@@ -52,4 +52,7 @@ See `git-commit-convention` for the per-task rule (commit after every task, unde
 
 - Keep hooks enabled; do not `--no-verify` unless explicitly required.
 - On Windows, Gradle hook commands go through `scripts/gradle.mjs`, which picks `gradlew.bat` or `gradlew`.
+- Cross-platform: store `gradlew`, `.husky/*` and every `*.sh` as `100755` (`git add --chmod=+x <file>`;
+  Windows never sets the bit itself), give every PowerShell script a bash twin, and check a fresh Linux
+  clone with `git ls-files -s` (modes) and `git ls-files --eol` (no `i/crlf`).
 - Tooling packages resolve via the org registry (developer's npm settings; not committed).

@@ -963,3 +963,47 @@ Rejected:
 - `@asyncapi/cli` for generation: heavy, and the document is about 200 lines of plain TypeScript.
 - A schema registry with Avro: it means one more container, and JSON with a tolerant reader is enough at
   this scale.
+
+## ADR-041 - The same repo works on Linux (Ubuntu) and Windows
+
+Date: 2026-11-09 - Status: Accepted
+
+Developers may work on Windows or Linux; Ubuntu is the main Linux target.
+
+Fixes from the Linux pass:
+
+- **Executable bits:** `gradlew` and the Husky hooks were stored as `100644`, so on Linux `./gradlew`
+  (used by `scripts/gradle.mjs` for every transcoder script) failed with "Permission denied". They are
+  now `100755` in git, and so is the new `infra/retag-images.sh`. Windows ignores the bit, which is how
+  this went unnoticed.
+- **Root-owned output:** the ffmpeg container ran as root. On Docker Engine for Linux, every segment it
+  wrote into the bind-mounted work directory became root-owned on the host. `FfmpegLauncher.Docker`
+  now adds `--user <uid>:<gid>`, read from the owner of the work directory (`unix:uid`/`unix:gid`). On
+  Windows that attribute is unsupported, so nothing changes there, and Docker Desktop maps ownership
+  itself.
+- **Shell scripts:** `infra/retag-images.sh` is the bash twin of `retag-images.ps1`, with the same image
+  list and the same git-ignored `retag-images.local.json`; Node, already a prerequisite, parses the
+  JSON. Docs show bash next to every PowerShell block, and HOW-TO-RUN has Ubuntu notes (docker group,
+  Node via nvm, `vm.max_map_count`, Docker Desktop for Linux file sharing).
+- **Already portable:** `scripts/gradle.mjs` picks `gradlew` or `gradlew.bat`; `.gitattributes` stores
+  LF everywhere; the compose file uses named volumes and read-only bind mounts of 644 files. Every other
+  script is a `pnpm`/Node script.
+
+Verified on Linux in a container, from a fresh `git clone` of HEAD with no host `node_modules`: 24 of 24
+checks passed.
+
+- File modes, and no CR in stored text or in the scripts.
+- `pnpm install --frozen-lockfile` and `db:generate`.
+- Typecheck of all 7 packages.
+- `pnpm test`: contracts 5, upload 123 (+4 skipped that need a live MinIO), search 23, notification 12,
+  web 84, and the transcoder's Gradle build, with `forCurrentUser` taking the Unix-uid branch.
+- `test:coverage` gates, the web build, oxlint, markdownlint, `api:check` and `spotlessCheck`.
+- `retag-images.sh`, tested separately against a fake `docker`: default map, a local override, a
+  missing image, and a registry given as an argument.
+
+Not verified:
+
+- Ubuntu itself: the container was Alpine (musl), the only Linux image available, and the WSL Ubuntu
+  here has no network to install Node or a JDK. Node, Java and bash behave the same on glibc.
+- The full running stack on a Linux Docker Engine. The compose file is the same one Docker Desktop
+  already runs on its Linux VM.
