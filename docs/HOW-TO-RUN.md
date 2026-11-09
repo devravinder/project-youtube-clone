@@ -242,6 +242,20 @@ Tail logs:
 pnpm logs:l
 ```
 
+### With observability
+
+`pnpm start:lo:pods` starts the same stack plus `yt-lgtm` (`grafana/otel-lgtm:1.3`): an OpenTelemetry
+Collector in front of Tempo (traces), Prometheus (metrics) and Loki (logs), with Grafana on top.
+`infra/docker-compose-local-observability.yaml` includes the local file, so there is only one place to
+change the stack. `pnpm stop:lo:pods` stops everything.
+
+| Item         | Value                                                                 |
+| ------------ | --------------------------------------------------------------------- |
+| Grafana      | <http://localhost:3000> (`admin` / `admin`)                           |
+| OTLP         | `http://localhost:4318` (HTTP), `localhost:4317` (gRPC)               |
+| Data sources | Tempo, Prometheus, Loki (provisioned; trace ids link logs and traces) |
+| Retention    | In the container only; recreating it starts empty                     |
+
 ## 4. Set up the database
 
 Needs Postgres running (step 3). Run these from the repo root:

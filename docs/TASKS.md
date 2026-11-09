@@ -114,7 +114,7 @@ Concepts: caching, eventual consistency, back-pressure, autoscaling, load testin
 Goal: one trace across the whole pipeline.
 Concepts: metrics, traces, logs; context propagation across brokers.
 
-- [ ] Add `grafana/otel-lgtm` to `docker-compose-local-observability.yaml`
+- [x] Add `grafana/otel-lgtm` to `docker-compose-local-observability.yaml`: `yt-lgtm` (collector + Tempo + Prometheus + Loki + Grafana 11.2) on 3000/4317/4318, the file `include`s the local stack
 - [ ] NestJS OTel SDK + Spring Micrometer OTLP export
 - [ ] Context propagation across HTTP + RabbitMQ + Kafka
 - [ ] Grafana dashboards; trace one upload end to end

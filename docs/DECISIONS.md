@@ -1070,3 +1070,24 @@ Rejected:
 - `allkeys-lru` (it can evict unflushed counts).
 - Postgres `UPDATE ... +1` per view (row lock contention on a popular video).
 - Redis Streams for views: more machinery than a counter, for durability that view counts don't need.
+
+## ADR-043 - One all-in-one telemetry container, pushed to over OTLP
+
+Date: 2026-11-09 - Status: Accepted
+
+`infra/docker-compose-local-observability.yaml` uses Compose `include` to pull in the whole local stack,
+then adds `yt-lgtm` (`grafana/otel-lgtm:1.3`). That is an OpenTelemetry Collector 0.110, Tempo 2.6, Loki 3.2,
+Prometheus 2.54 and Grafana 11.2 in one container, with the three data sources already provisioned and
+linked: trace ids in logs open the trace.
+
+- **Push, not scrape:** every service sends OTLP to `localhost:4318`, and the collector routes it.
+  Services expose no `/metrics` endpoint, the Prometheus config never changes when a service is added,
+  and the same code would talk to a real collector later.
+- **`include`, not a copy:** the observability stack can't drift from the local one.
+- **Throwaway data:** it lives inside the container, which is fine for local learning.
+
+Rejected:
+
+- Separate Tempo, Loki, Prometheus and Grafana containers: four configs to keep in step, and no image list
+  entries for them.
+- Jaeger: traces only.
