@@ -707,7 +707,7 @@ sequenceDiagram
   participant DB as Postgres
   participant K as Kafka
   T->>U: READY (RabbitMQ yt.video-status)
-  U->>DB: TX { video -> READY; insert outbox video.ready.v1 }
+  U->>DB: one TX: video -> READY + insert outbox video.ready.v1
   loop OutboxRelay, every 1 s
     U->>DB: claim due rows
     U->>K: yt.video-events, key = videoId, acks=all

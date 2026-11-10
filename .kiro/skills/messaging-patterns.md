@@ -97,7 +97,7 @@ sequenceDiagram
   participant DB as Postgres
   participant R as Outbox relay
   participant K as Kafka
-  S->>DB: TX { update video; insert outbox(video.ready) }
+  S->>DB: one TX: update video + insert outbox(video.ready)
   R->>DB: poll unsent outbox
   R->>K: publish video.ready
   R->>DB: mark outbox sent

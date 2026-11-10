@@ -85,7 +85,7 @@ sequenceDiagram
   C->>S: PUT raw bytes
   C->>GW: confirm upload
   GW->>UP: confirm upload
-  UP->>UP: TX { mark Uploaded; insert outbox(transcode.cmd) }
+  UP->>UP: one TX: mark Uploaded + insert outbox(transcode.cmd)
   UP-->>C: 201 Uploaded
   UP->>Q: outbox relay publishes transcode.cmd (retries until confirmed)
   Q->>TR: deliver job
@@ -130,7 +130,7 @@ sequenceDiagram
   participant DB as Postgres
   participant RL as outbox relay
   participant K as Kafka
-  S->>DB: TX { update video; insert outbox(video.ready) }
+  S->>DB: one TX: update video + insert outbox(video.ready)
   RL->>DB: poll unsent outbox
   RL->>K: publish video.ready
   RL->>DB: mark sent

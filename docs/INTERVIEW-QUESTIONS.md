@@ -190,7 +190,7 @@ sequenceDiagram
   B->>S: PUT file (direct, with progress)
   B->>U: POST /uploads/:id/complete
   U->>S: HEAD object (it really is there)
-  U->>DB: TX { video → UPLOADED ; INSERT outbox(transcode.command, traceparent) }
+  U->>DB: one TX: video → UPLOADED + INSERT outbox(transcode.command, traceparent)
   U-->>B: 201 UPLOADED (immediately)
   loop every 1 s
     R->>DB: claim due rows (FOR UPDATE SKIP LOCKED, 30 s lease)
@@ -202,7 +202,7 @@ sequenceDiagram
   T->>S: master.m3u8, then manifest.json last
   T->>Q: status READY + renditions (publisher confirm), then ack
   Q->>U: status consumer
-  U->>DB: TX { video → READY (forward only) ; INSERT outbox(video.ready) } ; evict cache
+  U->>DB: one TX: video → READY (forward only) + INSERT outbox(video.ready), then evict cache
   R->>K: video.ready, key = videoId, acks=all
   K->>SE: group search-service → index (external version)
   K->>N: own group per instance → WebSocket
