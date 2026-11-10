@@ -11,6 +11,7 @@ reasoning and what was rejected.
 - [Level 5 — Architecture trade-offs](#level-5--architecture-trade-offs)
 - [Level 6 — Scenarios: "it is 2 a.m. and..."](#level-6--scenarios-it-is-2-am-and)
 - [Level 7 — Design extensions](#level-7--design-extensions)
+- [Definitions — "what is X?" quick answers](#definitions--what-is-x-quick-answers)
 
 ---
 
@@ -489,3 +490,193 @@ rebuild its index.
 - Images built in CI on pinned base images; readiness/liveness probes; resource limits; HPA (Stage 5).
 - Sampling below 100 % for traces; log retention; SLOs and alerts on the business metrics.
 - Load tests (k6) to find the real bottleneck before guessing.
+
+---
+
+## Definitions — "what is X?" quick answers
+
+Short answers for definition-style questions. Each one says where the idea is used in this project.
+
+### Observability
+
+**D1. What is `suppressTracing`?**
+A function from `@opentelemetry/core` that returns a copy of a context with a "tracing suppressed" flag.
+While that context is active, every tracer (yours and the auto-instrumentations for HTTP, pg, Redis)
+returns a non-recording span: nothing is created or exported. The SDK span processor uses it around export, so
+sending spans does not create spans. Here, `untraced()` in `libs/ts/telemetry/src/messaging.ts` wraps
+the outbox poll and the view-count flush, which would otherwise start a new trace every second. Work
+inside it that calls `withStoredContext(...)` still traces, because that context is rebuilt from
+`ROOT_CONTEXT` plus the stored `traceparent`, which drops the flag (ADR-045).
+
+**D2. Trace, span, span kind?**
+A **trace** is one request's whole journey; a **span** is one timed operation inside it, with a parent.
+**Kind** says the role: `SERVER`/`CLIENT` for HTTP, `PRODUCER`/`CONSUMER` for messaging, `INTERNAL`
+otherwise. Kafka spans here are created by hand with `PRODUCER`/`CONSUMER`, because the client has no
+instrumentation.
+
+**D3. What is context propagation / `traceparent`?**
+Passing the trace id across process boundaries. W3C `traceparent` is
+`00-<trace-id>-<parent-span-id>-<flags>`, carried in HTTP headers, AMQP and Kafka headers, and here
+also in the outbox column `trace_context` so a relay running later continues the request's trace.
+
+**D4. What is OTLP?**
+OpenTelemetry Protocol: one wire format for traces, metrics and logs, over HTTP (4318) or gRPC (4317).
+All services send to the `otel-lgtm` collector, which fans out to Tempo, Prometheus/Mimir and Loki.
+
+**D5. Counter, gauge, histogram?**
+Counter only goes up (views recorded). Gauge is a current value read on demand (outbox pending rows,
+an observable callback). Histogram records a distribution so you can ask for p95 (request latency).
+
+**D6. Sampling?**
+Deciding which traces to keep. Local runs keep 100 %; production would sample head-based (decide at the
+start) or tail-based (decide after seeing errors/latency in the collector).
+
+### Messaging
+
+**D7. Transactional outbox?**
+Write the business change and the event row in the same database transaction; a relay publishes rows
+later and marks them sent. No event is lost if the broker is down, and no event exists for a rolled-back
+change. The cost is at-least-once delivery (ADR-028, ADR-036).
+
+**D8. At-most-once, at-least-once, exactly-once?**
+At-most-once may lose, never duplicates. At-least-once never loses, may duplicate - this project's
+choice everywhere. Exactly-once is at-least-once plus idempotent processing, which is what the
+consumers implement.
+
+**D9. Idempotency?**
+Doing the same operation twice has the effect of doing it once. Examples: the transcoder skips a video
+whose HLS manifest already exists; Elasticsearch uses external versioning so a replayed older event is ignored;
+the view Lua script uses `SET NX` so a refresh is not a second view.
+
+**D10. Command vs event?**
+A command asks one receiver to do something (`transcode-video` on RabbitMQ, one worker handles it).
+An event states a fact that already happened (`video.ready` on Kafka, any number of consumers react).
+
+**D11. Prefetch / backpressure?**
+Prefetch is how many unacked messages a broker pushes to a consumer. The transcoder uses 1 (one heavy
+job at a time); the status consumer uses 10. It is backpressure: a slow consumer is not flooded.
+
+**D12. Ack, nack, requeue?**
+Ack removes the message. Nack with requeue puts it back (risk: hot loop). Nack without requeue sends it
+to the dead-letter exchange - the default here (`default-requeue-rejected: false`).
+
+**D13. Partition, offset, consumer lag?**
+A partition is an ordered, append-only log; an offset is a position in it; **lag** is the newest offset
+minus the group's committed offset - how far behind a consumer is. KEDA can scale on it.
+
+**D14. Log compaction?**
+Kafka keeps at least the newest record per key and deletes older ones in the background. The topic
+becomes "current state per video", replayable from the start (ADR-035).
+
+**D15. KRaft?**
+Kafka's built-in Raft metadata quorum that replaced ZooKeeper. The local broker runs as both broker
+and controller.
+
+**D16. Raft / quorum?**
+A consensus algorithm: a leader replicates a log and a write is committed once a majority has it. Used
+by RabbitMQ quorum queues and KRaft. With 3 nodes you survive 1 failure.
+
+**D17. Poison message?**
+A message that fails every time it is processed (bad schema, not a video). It must go to a DLQ/DLT
+rather than block the queue or partition (ADR-029, ADR-037).
+
+### Data and caching
+
+**D18. Cache-aside vs write-through?**
+Cache-aside: the app reads the cache, on a miss loads the DB and fills the cache; writes go to the DB
+and evict the key (used here). Write-through: every write updates the cache and the DB together.
+
+**D19. Cache stampede?**
+Many requests miss the same expired key at once and all hit the database. Mitigations: short TTL with
+jitter, single-flight locks, or serving stale while one request refreshes.
+
+**D20. TTL and eviction policy?**
+TTL is a key's lifetime. The eviction policy decides what Redis deletes when memory is full;
+`volatile-lru` only touches keys with a TTL, protecting the view counters (ADR-042).
+
+**D21. Why Lua in Redis?**
+A script runs atomically on the server: check-then-increment happens with no other command in between
+and in one round trip.
+
+**D22. Eventual consistency?**
+Replicas or derived stores converge after a delay instead of instantly. Search index, view totals and
+the list page are all eventually consistent with Postgres.
+
+**D23. Index alias (Elasticsearch)?**
+A name pointing at one or more real indexes. Code uses `videos`; the data lives in `videos-v1`. A
+mapping change builds `videos-v2` and swaps the alias atomically - zero-downtime reindex (ADR-037).
+
+**D24. Inverted index, n-gram, fuzziness?**
+An inverted index maps each term to the documents containing it. N-grams index word fragments for
+prefix matching (`search_as_you_type`). Fuzziness allows 1-2 character edits (Levenshtein distance).
+
+**D25. Database migration?**
+A versioned, ordered schema change (Prisma `migrate`). Run once per deploy, before the new code: in
+Kubernetes it is a Helm pre-install/pre-upgrade hook Job.
+
+### Video delivery
+
+**D26. HLS, segment, playlist?**
+HLS cuts video into short files (segments) listed in an `.m3u8` playlist per quality, plus a master
+playlist listing the qualities. Plain HTTP, so any CDN can cache it.
+
+**D27. ABR (adaptive bitrate)?**
+The player measures throughput and buffer and switches quality between segments. `hls.js` does it here,
+capped to the player size (ADR-034).
+
+**D28. CDN / edge?**
+Caches close to users that serve static bytes. Locally the nginx "edge" on 8088 plays that role for
+`/hls/` (ADR-033).
+
+**D29. Presigned URL?**
+A URL signed with storage credentials that allows one operation on one object until it expires
+(see Q7).
+
+### Security
+
+**D30. OIDC, OAuth 2.0, JWT?**
+OAuth 2.0 delegates access; OIDC adds identity (who logged in) on top. A JWT is a signed token with
+claims (`sub`, `iss`, `aud`, `exp`). Keycloak issues them; services only verify them.
+
+**D31. JWKS?**
+The issuer's public keys as JSON at a URL. Services fetch and cache them to verify JWT signatures
+without calling Keycloak per request; `kid` in the token header picks the key (`OIDC_JWKS_URL`).
+
+**D32. PKCE?**
+Proof Key for Code Exchange: a browser app sends a hash of a random secret when starting login and the
+secret when exchanging the code, so a stolen authorization code is useless. The realm requires `S256`.
+
+**D33. CORS?**
+The browser's rule for which other origins may call an API. The API answers with allowed origins
+(5173, 8090); it does not protect the server, it protects users' browsers.
+
+**D34. `trust proxy`?**
+Tells Express how many proxy hops to trust when reading `X-Forwarded-For`, so `req.ip` is the client,
+not nginx. Too many hops lets a client spoof its IP (`TRUST_PROXY_HOPS`).
+
+### Containers and Kubernetes
+
+**D35. Multi-stage build, BuildKit secret?**
+Multi-stage builds compile in one stage and copy only the output into a small runtime image. A BuildKit
+secret (`--secret`) is mounted for one `RUN` and never stored in a layer - used for `.npmrc`/CA files
+(ADR-048).
+
+**D36. Why run as a non-root uid?**
+A container escape or file-write bug then has no root privileges. Images here run as uid 10001.
+
+**D37. Startup, readiness, liveness probe?**
+Startup: give a slow boot time before other probes run. Readiness: "send me traffic" - failing removes
+the pod from the Service. Liveness: "I am stuck" - failing restarts the container. All three are in
+`yt-common/_workload.tpl`.
+
+**D38. HPA vs KEDA?**
+The HPA scales replicas on resource metrics (CPU, memory). KEDA feeds external metrics (queue depth,
+Kafka lag) to an HPA it manages, and can scale to zero - right for the transcoder (ADR-049).
+
+**D39. Helm umbrella chart, library chart, hook?**
+An umbrella chart installs subcharts as one release. A library chart only holds shared templates
+(`yt-common`). A hook is a resource run at a lifecycle point, e.g. the migration Job.
+
+**D40. Requests vs limits?**
+Requests are what the scheduler reserves and what HPA percentages are measured against. Limits are a
+ceiling: CPU is throttled, memory over the limit gets the container OOM-killed.
